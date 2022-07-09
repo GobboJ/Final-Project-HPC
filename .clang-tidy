@@ -1,0 +1,13 @@
+Checks: "
+    *,
+    openmp-*
+    -abseil-*,
+    -altera-*,
+    -android-*,
+    -boost-*,
+    -darwin-*,
+    -fuchsia-*,
+    -llvmlibc-*,
+    -mpi-*,
+    -objc*,
+    -modernize*"
