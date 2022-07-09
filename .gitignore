@@ -6,3 +6,6 @@ cmake-build-*
 *.iws
 *.iml
 *.ipr
+
+### Test resources ###
+**/test/resources
