@@ -2,6 +2,7 @@ package it.debsite.dcv.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.ToString;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
@@ -15,6 +16,7 @@ import java.util.List;
  * @since version date
  */
 @AllArgsConstructor
+@ToString
 public class Cluster {
     
     @NotNull

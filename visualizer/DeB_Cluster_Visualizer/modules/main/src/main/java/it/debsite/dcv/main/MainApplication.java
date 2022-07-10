@@ -2,6 +2,8 @@ package it.debsite.dcv.main;
 
 import it.debsite.dcv.model.Cluster;
 import it.debsite.dcv.model.ClusterPoint;
+import it.debsite.dcv.model.file.ClusterFileReader;
+import it.debsite.dcv.model.file.MalformedFileException;
 import it.debsite.dcv.presenter.GraphPresenter;
 import it.debsite.dcv.view.GraphPrinter;
 
@@ -33,7 +35,17 @@ public class MainApplication {
     
     private static void start() {
         
-        final ClusterPoint a = new ClusterPoint("A", 1, 1);
+        final List<ClusterPoint> points = new ArrayList<>();
+        final List<Cluster> clusters = new ArrayList<>();
+        try {
+            final Path inputPath = Path.of("..", "..", "out", "out.txt");
+            ClusterFileReader reader = new ClusterFileReader(inputPath, points, clusters);
+        } catch (MalformedFileException | IOException exception) {
+            // TODO: Auto-generated block
+            exception.printStackTrace();
+        }
+        
+        /*final ClusterPoint a = new ClusterPoint("A", 1, 1);
         final ClusterPoint b = new ClusterPoint("B", 1.5, 1.5);
         final ClusterPoint c = new ClusterPoint("C", 5, 5);
         final ClusterPoint d = new ClusterPoint("D", 3, 4);
@@ -66,7 +78,7 @@ public class MainApplication {
             new Cluster("DFE", dfeCluster),
             new Cluster("DFEC", dfecCluster),
             new Cluster("ALL", allCluster)
-        );
+        );*/
         
         try {
             final BufferedImage image = new BufferedImage(620, 620, BufferedImage.TYPE_INT_ARGB);
