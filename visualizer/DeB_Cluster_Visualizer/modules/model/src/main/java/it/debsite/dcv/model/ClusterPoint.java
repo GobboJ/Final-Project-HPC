@@ -18,6 +18,8 @@ import org.jetbrains.annotations.NotNull;
 public class ClusterPoint {
 
     @NotNull
+    private String identifier;
+    @NotNull
     private String name;
     private double x1;
     private double x2;

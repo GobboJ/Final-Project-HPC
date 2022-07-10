@@ -59,11 +59,15 @@ public class AxesPrinter {
             );
         }
         for (final GraphAxisLabel label : yLabels) {
-            this.drawHorizontalLine(context,
+            HorizontalAxisPrinter.drawHorizontalLine(context,
                 rectangle.x,
                 rectangle.x + rectangle.width,
                 label.getPixelCoordinate(),
-                label.getName()
+                label.getName(),
+                AxesPrinter.LINE_WIDTH,
+                AxesPrinter.FONT_HEIGHT,
+                AxesPrinter.TEXT_MARGIN,
+                true
             );
         }
         
@@ -71,32 +75,6 @@ public class AxesPrinter {
         context.setColor(Color.BLACK);
         context.setStroke(new BasicStroke(AxesPrinter.LINE_WIDTH));
         context.draw(rectangle);
-    }
-    
-    private void drawHorizontalLine(
-        final Graphics2D context,
-        final double startX,
-        final double endX,
-        final double y,
-        final String text
-    ) {
-        
-        context.setColor(Color.LIGHT_GRAY);
-        context.setStroke(new BasicStroke(AxesPrinter.LINE_WIDTH));
-        context.draw(new Line2D.Double(startX, y, endX, y));
-        
-        context.setColor(Color.BLACK);
-        Font font = new Font("Arial", Font.PLAIN, 10).deriveFont(FONT_HEIGHT);
-        context.setFont(font);
-        final int textWidth = context.getFontMetrics().stringWidth(text);
-        context.drawString(text,
-            (float) (startX - AxesPrinter.TEXT_MARGIN - textWidth),
-            (float) (y + (AxesPrinter.FONT_HEIGHT / 2))
-        );
-        context.drawString(text,
-            (float) (endX + AxesPrinter.TEXT_MARGIN),
-            (float) (y + (AxesPrinter.FONT_HEIGHT / 2))
-        );
     }
     
     private void drawVerticalLine(
@@ -111,7 +89,7 @@ public class AxesPrinter {
         context.setStroke(new BasicStroke(AxesPrinter.LINE_WIDTH));
         context.draw(new Line2D.Double(x, startY, x, endY));
         context.setColor(Color.BLACK);
-        Font font = new Font("Arial", Font.PLAIN, 10).deriveFont(FONT_HEIGHT);
+        final Font font = new Font("Arial", Font.PLAIN, 10).deriveFont(AxesPrinter.FONT_HEIGHT);
         context.setFont(font);
         final int textWidth = context.getFontMetrics().stringWidth(text);
         final int textHeight = context.getFontMetrics().getHeight();

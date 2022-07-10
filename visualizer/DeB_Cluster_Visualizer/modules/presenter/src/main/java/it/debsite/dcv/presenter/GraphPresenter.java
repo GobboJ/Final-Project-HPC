@@ -3,6 +3,7 @@ package it.debsite.dcv.presenter;
 import it.debsite.dcv.model.Cluster;
 import it.debsite.dcv.model.ClusterPoint;
 import it.debsite.dcv.presenter.utils.GraphInformation;
+import it.debsite.dcv.presenter.utils.ScaleComputer;
 import it.debsite.dcv.view.GraphAxisLabel;
 import it.debsite.dcv.view.GraphCluster;
 import it.debsite.dcv.view.GraphPoint;
@@ -27,8 +28,6 @@ public class GraphPresenter {
     private static final int BOX_MARGIN = 10;
     
     private static final int BLOCK_SIZE = 60;
-    
-    private static final double[] SCALE = new double[]{1, 2, 4, 5, 10};
     
     private final BufferedImage image;
     
@@ -121,7 +120,7 @@ public class GraphPresenter {
         // Compute x1 and x2 correspondent to BLOCK_SIZE pixels
         final double x1Block = graphInformation.computeX1FromLength(GraphPresenter.BLOCK_SIZE);
         // Round to scale
-        final double x1Scale = GraphPresenter.getScale(x1Block);
+        final double x1Scale = ScaleComputer.getScale(x1Block);
         final double xScale = graphInformation.computeLengthX(x1Scale);
         
         // Compute the start and end points
@@ -154,7 +153,7 @@ public class GraphPresenter {
         final double x2Block = graphInformation.computeX2FromLength(GraphPresenter.BLOCK_SIZE);
         
         // Round to scale
-        final double x2Scale = GraphPresenter.getScale(x2Block);
+        final double x2Scale = ScaleComputer.getScale(x2Block);
         final double yScale = graphInformation.computeLengthX(x2Scale);
         
         // Compute the start and end points
@@ -182,44 +181,5 @@ public class GraphPresenter {
         return yLabels;
     }
     
-    private static double getScale(final double xBlock) {
-        
-        // xBlock = 2.3 --> 4
-        // xBlock = 4.5 --> 5
-        // xBlock = 7.9 --> 10
-        
-        double scale = 1;
-        int scaleIndex = 0;
-        double newScale = GraphPresenter.SCALE[0];
-        double prevScale = newScale;
-        
-        if (xBlock > 1) {
-            while (newScale < xBlock) {
-                scaleIndex++;
-                if (scaleIndex == GraphPresenter.SCALE.length) {
-                    scale *= GraphPresenter.SCALE[GraphPresenter.SCALE.length - 1];
-                    scaleIndex = 0;
-                    newScale = GraphPresenter.SCALE[0];
-                } else {
-                    prevScale = newScale;
-                    newScale = scale * GraphPresenter.SCALE[scaleIndex];
-                }
-            }
-            
-        } else {
-            while (newScale > xBlock) {
-                scaleIndex++;
-                if (scaleIndex == GraphPresenter.SCALE.length) {
-                    scale /= GraphPresenter.SCALE[GraphPresenter.SCALE.length - 1];
-                    scaleIndex = 0;
-                    newScale = GraphPresenter.SCALE[0];
-                } else {
-                    prevScale = newScale;
-                    newScale = scale / GraphPresenter.SCALE[scaleIndex];
-                }
-            }
-        }
-        
-        return prevScale;
-    }
+    
 }

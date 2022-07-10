@@ -16,7 +16,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -26,11 +25,11 @@ import java.util.List;
  * @version 1.0 2022-07-09
  * @since version date
  */
-public class MainApplication {
+public class MainGraphPrinter {
     
     public static void main(final String[] args) {
         
-        EventQueue.invokeLater(MainApplication::start);
+        EventQueue.invokeLater(MainGraphPrinter::start);
     }
     
     private static void start() {

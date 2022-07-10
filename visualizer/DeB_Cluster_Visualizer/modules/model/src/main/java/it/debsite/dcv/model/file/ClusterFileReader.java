@@ -4,6 +4,7 @@ import it.debsite.dcv.model.Cluster;
 import it.debsite.dcv.model.ClusterPoint;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -30,36 +31,31 @@ public class ClusterFileReader {
     
     @AllArgsConstructor
     @Getter
-    private static enum Type {
-        POINT_POINT(true, true),
-        CLUSTER_POINT(false, true),
-        POINT_CLUSTER(true, false),
-        CLUSTER_CLUSTER(false, false);
-        
-        private final boolean firstPoint;
-        
-        private final boolean secondPoint;
-    }
-    
-    @AllArgsConstructor
-    @Getter
     private static class ClusterInfo {
+        
+        private String identifier;
         
         private String name;
         
-        private Type type;
+        private String leftIdentifier;
         
-        private int firstIndex;
+        private int leftIndex;
         
-        private int secondIndex;
+        private String rightIdentifier;
+        
+        private int rightIndex;
+        
+        private double distance;
+        
     }
     
     private static final Pattern POINT_PATTERN = Pattern.compile(
-        "P(?<num>\\d+): \"(?<name>[^\"]*)\" (?<x1>[-]?\\d+[.]?\\d*) (?<x2>[-]?\\d+[.]?\\d*)");
+        "(?<id>P(?<num>\\d+)): \"(?<name>[^\"]*)\"(?<other> (?<x1>[-]?\\d+[.]?\\d*) " +
+            "(?<x2>[-]?\\d+[.]?\\d*))?");
     
     private static final Pattern CLUSTER_PATTERN = Pattern.compile(
-        "C(?<num>\\d+): \"(?<name>[^\"]*)\" (?<cOrP1>[CP])(?<first>\\d+) (?<cOrP2>[CP])" +
-            "(?<second>\\d+) (?<distance>[-]?\\d+[.]?\\d*)");
+        "(?<id>C(?<num>\\d+)): \"(?<name>[^\"]*)\" (?<first>[CP](?<firstIndex>\\d+)) " +
+            "(?<second>[CP](?<secondIndex>\\d+)) (?<distance>[-]?\\d+[.]?\\d*)");
     
     public ClusterFileReader(
         final Path filePath, final List<ClusterPoint> points, final List<Cluster> clusters
@@ -79,39 +75,51 @@ public class ClusterFileReader {
                         ClusterFileReader.POINT_PATTERN.matcher(line.trim());
                     
                     if (pointMatcher.matches()) {
+                        final String pointIdentifier = pointMatcher.group("id");
                         final int pointNumber = Integer.parseInt(pointMatcher.group("num"));
                         final String pointName = pointMatcher.group("name");
-                        final double x1 = Double.parseDouble(pointMatcher.group("x1"));
-                        final double x2 = Double.parseDouble(pointMatcher.group("x2"));
+                        final String other = pointMatcher.group("other");
                         
-                        final ClusterPoint point = new ClusterPoint(pointName, x1, x2);
+                        final double x1;
+                        final double x2;
+                        if ((other != null) && !other.isBlank()) {
+                            x1 = Double.parseDouble(pointMatcher.group("x1"));
+                            x2 = Double.parseDouble(pointMatcher.group("x2"));
+                        } else {
+                            x1 = 0;
+                            x2 = 0;
+                        }
+                        
+                        final ClusterPoint point =
+                            new ClusterPoint(pointIdentifier, pointName, x1, x2);
                         pointsMap.put(pointNumber, point);
                         points.add(point);
                     } else {
                         final Matcher clusterMatcher =
                             ClusterFileReader.CLUSTER_PATTERN.matcher(line);
                         if (clusterMatcher.matches()) {
+                            final String clusterIdentifier = clusterMatcher.group("id");
                             final int clusterNumber = Integer.parseInt(clusterMatcher.group("num"));
                             final String clusterName = clusterMatcher.group("name");
-                            final boolean isFirstPoint = clusterMatcher.group("cOrP1").equals("P");
-                            final boolean isSecondPoint = clusterMatcher.group("cOrP2").equals("P");
-                            final int firstIndex = Integer.parseInt(clusterMatcher.group("first"));
-                            final int secondIndex = Integer.parseInt(clusterMatcher.group("second"));
                             
-                            final Type type;
-                            if (isFirstPoint && isSecondPoint) {
-                                type = Type.POINT_POINT;
-                            } else if (!isFirstPoint && !isSecondPoint) {
-                                type = Type.CLUSTER_CLUSTER;
-                            } else if (isFirstPoint) {
-                                type = Type.POINT_CLUSTER;
-                            } else {
-                                type = Type.CLUSTER_POINT;
-                            }
+                            final String leftIdentifier = clusterMatcher.group("first");
+                            final int leftIndex = Integer.parseInt(clusterMatcher.group("firstIndex"));
                             
-                            clustersInfo.put(clusterNumber,
-                                new ClusterInfo(clusterName, type, firstIndex, secondIndex)
-                            );
+                            final String rightIdentifier = clusterMatcher.group("second");
+                            final int rightIndex =
+                                Integer.parseInt(clusterMatcher.group("secondIndex"));
+                            
+                            final double distance =
+                                Double.parseDouble(clusterMatcher.group("distance"));
+                            
+                            clustersInfo.put(clusterNumber, new ClusterInfo(clusterIdentifier,
+                                clusterName,
+                                leftIdentifier,
+                                leftIndex,
+                                rightIdentifier,
+                                rightIndex,
+                                distance
+                            ));
                         } else {
                             throw new MalformedFileException("Malformed line '%s'".formatted(line));
                         }
@@ -152,15 +160,15 @@ public class ClusterFileReader {
         final List<ClusterPoint> clusterPoints = new ArrayList<>();
         
         // Check if the first is a point
-        if (clusterInfo.getType().isFirstPoint()) {
+        if (clusterInfo.getLeftIdentifier().startsWith("P")) {
             ClusterFileReader.addPoint(clusterPoints,
-                clusterInfo.getFirstIndex(),
+                clusterInfo.getLeftIndex(),
                 clusterIndex,
                 pointsMap
             );
         } else {
             ClusterFileReader.addCluster(clusterPoints,
-                clusterInfo.getFirstIndex(),
+                clusterInfo.getLeftIndex(),
                 clusterIndex,
                 clustersInfo,
                 pointsMap,
@@ -169,15 +177,15 @@ public class ClusterFileReader {
             );
         }
         
-        if (clusterInfo.getType().isSecondPoint()) {
+        if (clusterInfo.getRightIdentifier().startsWith("P")) {
             ClusterFileReader.addPoint(clusterPoints,
-                clusterInfo.getSecondIndex(),
+                clusterInfo.getRightIndex(),
                 clusterIndex,
                 pointsMap
             );
         } else {
             ClusterFileReader.addCluster(clusterPoints,
-                clusterInfo.getSecondIndex(),
+                clusterInfo.getRightIndex(),
                 clusterIndex,
                 clustersInfo,
                 pointsMap,
@@ -186,7 +194,13 @@ public class ClusterFileReader {
             );
         }
         
-        final Cluster cluster = new Cluster(clusterInfo.getName(), clusterPoints);
+        final Cluster cluster = new Cluster(clusterInfo.getIdentifier(),
+            clusterInfo.getName(),
+            clusterInfo.getLeftIdentifier(),
+            clusterInfo.getRightIdentifier(),
+            clusterInfo.getDistance(),
+            clusterPoints
+        );
         clusters.add(cluster);
         clustersMap.put(clusterIndex, cluster);
     }

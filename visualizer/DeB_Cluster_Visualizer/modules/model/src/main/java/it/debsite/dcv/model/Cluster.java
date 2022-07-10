@@ -21,7 +21,22 @@ public class Cluster {
     
     @NotNull
     @Getter
+    private String identifier;
+    
+    @NotNull
+    @Getter
     private String name;
+    
+    @NotNull
+    @Getter
+    private String leftIdentifier;
+    
+    @NotNull
+    @Getter
+    private String rightIdentifier;
+    
+    @Getter
+    private double distance;
     
     @NotNull
     private List<@NotNull ClusterPoint> clusterPoints;
