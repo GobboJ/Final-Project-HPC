@@ -2,21 +2,17 @@ package it.debsite.dcv.main;
 
 import it.debsite.dcv.model.Cluster;
 import it.debsite.dcv.model.ClusterPoint;
-import it.debsite.dcv.presenter.CanvasPresenter;
 import it.debsite.dcv.presenter.GraphPresenter;
 import it.debsite.dcv.view.GraphPrinter;
-import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.image.WritableImage;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.BorderPane;
-import javafx.stage.Stage;
 
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.EventQueue;
+import java.awt.Graphics2D;
+import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.net.URL;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,43 +24,41 @@ import java.util.List;
  * @version 1.0 2022-07-09
  * @since version date
  */
-public class MainApplication extends Application {
+public class MainApplication {
     
     public static void main(final String[] args) {
         
-        Application.launch(args);
+        EventQueue.invokeLater(MainApplication::start);
     }
     
-    @Override
-    public void start(final Stage primaryStage) {
-    
+    private static void start() {
         
-        ClusterPoint a = new ClusterPoint("A", 1, 1);
-        ClusterPoint b = new ClusterPoint("B", 1.5, 1.5);
-        ClusterPoint c = new ClusterPoint("C", 5, 5);
-        ClusterPoint d = new ClusterPoint("D", 3, 4);
-        ClusterPoint e = new ClusterPoint("E", 4, 4);
-        ClusterPoint f = new ClusterPoint("F", 3, 3.5);
+        final ClusterPoint a = new ClusterPoint("A", 1, 1);
+        final ClusterPoint b = new ClusterPoint("B", 1.5, 1.5);
+        final ClusterPoint c = new ClusterPoint("C", 5, 5);
+        final ClusterPoint d = new ClusterPoint("D", 3, 4);
+        final ClusterPoint e = new ClusterPoint("E", 4, 4);
+        final ClusterPoint f = new ClusterPoint("F", 3, 3.5);
         
-        List<ClusterPoint> points = new ArrayList<>();
+        final List<ClusterPoint> points = new ArrayList<>();
         Collections.addAll(points, a, b, c, d, e, f);
         
-        List<ClusterPoint> abCluster = new ArrayList<>();
+        final List<ClusterPoint> abCluster = new ArrayList<>();
         Collections.addAll(abCluster, a, b);
         
-        List<ClusterPoint> dfCluster = new ArrayList<>();
+        final List<ClusterPoint> dfCluster = new ArrayList<>();
         Collections.addAll(dfCluster, d, f);
         
-        List<ClusterPoint> dfeCluster = new ArrayList<>();
+        final List<ClusterPoint> dfeCluster = new ArrayList<>();
         Collections.addAll(dfeCluster, d, f, e);
         
-        List<ClusterPoint> dfecCluster = new ArrayList<>();
+        final List<ClusterPoint> dfecCluster = new ArrayList<>();
         Collections.addAll(dfecCluster, d, f, e, c);
         
-        List<ClusterPoint> allCluster = new ArrayList<>();
+        final List<ClusterPoint> allCluster = new ArrayList<>();
         Collections.addAll(allCluster, a, b, d, f, e, c);
         
-        List<Cluster> clusters = new ArrayList<>();
+        final List<Cluster> clusters = new ArrayList<>();
         Collections.addAll(
             clusters,
             new Cluster("AB", abCluster),
@@ -75,22 +69,19 @@ public class MainApplication extends Application {
         );
         
         try {
-            final FXMLLoader fxmlLoader =
-                new FXMLLoader(MainApplication.class.getResource("/fxml/window.fxml"));
-            final BorderPane root = fxmlLoader.load();
-            Scene scene = new Scene(root);
-            primaryStage.setScene(scene);
-            primaryStage.show();
+            final BufferedImage image = new BufferedImage(620, 620, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D context = image.createGraphics();
+            context.setColor(Color.WHITE);
+            context.fill(new Rectangle2D.Double(0, 0, image.getWidth(), image.getHeight()));
             
-            AnchorPane canvasContainer = (AnchorPane) scene.lookup("#graph-container");
-            Canvas canvas = (Canvas) scene.lookup("#graph-canvas");
-            GraphPrinter graphPrinter = new GraphPrinter(canvas);
+            final GraphPrinter graphPrinter = new GraphPrinter(image);
             
-            CanvasPresenter presenter = new CanvasPresenter(canvasContainer, canvas);
-            GraphPresenter graphPresenter =
-                new GraphPresenter(points, clusters, canvas, graphPrinter);
+            final GraphPresenter graphPresenter =
+                new GraphPresenter(points, clusters, image, graphPrinter);
             
-        } catch (IOException exception) {
+            final Path outputPath = Path.of("..", "..", "out", "out.png");
+            ImageIO.write(image, "png", outputPath.toAbsolutePath().toFile());
+        } catch (final IOException exception) {
             // TODO: Auto-generated block
             exception.printStackTrace();
         }

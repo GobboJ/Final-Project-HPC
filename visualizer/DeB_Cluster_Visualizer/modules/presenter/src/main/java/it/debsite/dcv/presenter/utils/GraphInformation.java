@@ -1,9 +1,9 @@
 package it.debsite.dcv.presenter.utils;
 
 import it.debsite.dcv.model.ClusterPoint;
-import javafx.geometry.Insets;
 import lombok.Getter;
 
+import java.awt.geom.Rectangle2D;
 import java.util.List;
 
 /**
@@ -37,16 +37,16 @@ public class GraphInformation {
      */
     private final double yPixels;
     
-    private final Insets insets;
+    private final Rectangle2D.Double area;
     
     public GraphInformation(
         final List<ClusterPoint> points,
-        final Insets insets,
-        final double canvasWidth,
-        final double canvasHeight
+        final Rectangle2D.Double area,
+        final double imageWidth,
+        final double imageHeight
     ) {
         
-        this.insets = insets;
+        this.area = area;
         if (points.isEmpty()) {
             throw new IllegalArgumentException("Empty cluster");
         }
@@ -69,22 +69,60 @@ public class GraphInformation {
         this.minX2 = currentMinX2;
         this.maxX2 = currentMaxX2;
         // Compute the steps
-        final double availableWidth =
-            StrictMath.max(canvasWidth - insets.getLeft() - insets.getRight(), 0);
-        final double availableHeight =
-            StrictMath.max(canvasHeight - insets.getTop() - insets.getBottom(), 0);
-        
-        this.xPixels = availableWidth / (this.maxX1 - this.minX1);
-        this.yPixels = availableHeight / (this.maxX2 - this.minX2);
+        this.xPixels = area.width / (this.maxX1 - this.minX1);
+        this.yPixels = area.height / (this.maxX2 - this.minX2);
     }
     
     public double computeXOf(final double pointX1) {
         
-        return this.insets.getLeft() + (pointX1 * this.xPixels);
+        return this.area.x + ((pointX1 - this.minX1) * this.xPixels);
     }
     
     public double computeYOf(final double pointX2) {
         
-        return this.insets.getTop() + ((this.maxX2 - pointX2) * this.yPixels);
+        return this.area.y + ((this.maxX2 - pointX2) * this.yPixels);
+    }
+    
+    public double computeX1From(final double x) {
+        
+        // (this.maxX1 - this.minX1) : width = ??? : x
+        // 4 : 500 : ?? : 62.5
+        
+        return this.minX1 + (((x - this.area.x) * (this.maxX1 - this.minX1)) / this.area.width);
+    }
+    
+    public double computeX2From(final double y) {
+        
+        // (this.maxX2 - this.minX2) : height = ??? : y
+        
+        return this.maxX2 - (((y - this.area.y) * (this.maxX2 - this.minX2)) / this.area.height);
+    }
+    
+    public double computeX1FromLength(final double x) {
+        
+        // 1 : this.xPixels = ? : x
+        
+        return x / this.xPixels;
+    }
+    
+    public double computeX2FromLength(final double y) {
+        
+        // 1 : this.yPixels = ? : y
+        
+        return y / this.yPixels;
+    }
+    
+    public double computeLengthX(final double length) {
+        
+        // 1 : this.yPixels = ? : y
+        
+        return length * this.xPixels;
+    }
+    
+    public double computeLengthY(final double length) {
+        
+        // 1 : this.yPixels = ? : y
+        
+        return length * this.yPixels;
     }
 }

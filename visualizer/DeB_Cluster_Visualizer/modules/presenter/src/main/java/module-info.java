@@ -8,7 +8,7 @@ module it.debsite.dcv.presenter {
     
     requires it.debsite.dcv.model;
     requires it.debsite.dcv.view;
-    requires javafx.graphics;
+    requires java.desktop;
     
     requires static org.jetbrains.annotations;
     requires static lombok;

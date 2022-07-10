@@ -3,7 +3,6 @@ plugins {
 }
 
 apply from: '../../base.gradle'
-apply from: '../../javaFX.gradle'
 
 dependencies {
     implementation project(":modules:model")

@@ -3,4 +3,3 @@ plugins {
 }
 
 apply from: '../../base.gradle'
-apply from: '../../javaFX.gradle'

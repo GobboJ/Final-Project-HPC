@@ -2,6 +2,7 @@ package it.debsite.dcv.view;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.ToString;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -13,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
  */
 @AllArgsConstructor
 @Getter
+@ToString
 public class GraphCluster {
     
     @NotNull
