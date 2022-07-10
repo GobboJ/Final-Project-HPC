@@ -1,0 +1,10 @@
+rootProject.name = 'DeB Cluster Visualizer'
+include ':modules:main'
+include ':modules:model'
+include ':modules:view'
+include ':modules:presenter'
+
+findProject(':main')?.name = 'Main'
+findProject(':model')?.name = 'Model'
+findProject(':view')?.name = 'View'
+findProject(':presenter')?.name = 'Presenter'

@@ -1,0 +1,17 @@
+plugins {
+    id 'java'
+}
+
+group 'it.debsite.utt'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = '16'
+targetCompatibility = '16'
+
+test {
+    useJUnitPlatform()
+}
+
+repositories {
+    mavenCentral()
+}
