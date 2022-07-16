@@ -83,8 +83,8 @@ public class GraphPresenter {
             final double clusterCenterX1 = (firstPoint.getX1() + secondPoint.getX1()) / 2;
             final double clusterCenterX2 = (firstPoint.getX2() + secondPoint.getX2()) / 2;
             
-            double leftRadius = maxDistance / 2;
-            double rightRadius = leftRadius;
+            final double leftRadius;
+            final int leftNestingLevel;
             final List<ClusterCircle> internalClusterCircles = new ArrayList<>(2);
             
             if (cluster.getLeftIdentifier().startsWith("C")) {
@@ -95,8 +95,15 @@ public class GraphPresenter {
                     clusterCenterX2,
                     leftClusterCircle
                 );
+                leftNestingLevel = leftClusterCircle.getNestingLevel();
                 internalClusterCircles.add(leftClusterCircle);
+            } else {
+                leftRadius = maxDistance / 2;
+                leftNestingLevel = 0;
             }
+            
+            final double rightRadius;
+            final int rightNestingLevel;
             
             if (cluster.getRightIdentifier().startsWith("C")) {
                 final ClusterCircle rightClusterCircle =
@@ -105,7 +112,11 @@ public class GraphPresenter {
                     clusterCenterX2,
                     rightClusterCircle
                 );
+                rightNestingLevel = rightClusterCircle.getNestingLevel();
                 internalClusterCircles.add(rightClusterCircle);
+            } else {
+                rightRadius = maxDistance / 2;
+                rightNestingLevel = 0;
             }
             
             // Create the circle that wraps all the points in the cluster
@@ -113,6 +124,7 @@ public class GraphPresenter {
                 clusterCenterX1,
                 clusterCenterX2,
                 StrictMath.max(leftRadius, rightRadius),
+                StrictMath.max(leftNestingLevel, rightNestingLevel) + 1,
                 internalClusterCircles
             );
             clusterCircleList.add(clusterCircle);
@@ -141,14 +153,16 @@ public class GraphPresenter {
         }
         
         final List<GraphCluster> graphClusters = new ArrayList<>(clusters.size());
-        for (
+        for (final ClusterCircle clusterCircle : clusterCircleList) {
+            final int nestingLevel = clusterCircle.getNestingLevel();
             
-            final ClusterCircle clusterCircle : clusterCircleList) {
             final GraphCluster graphCluster = new GraphCluster(clusterCircle.getName(),
                 graphInformation.computeXOf(clusterCircle.getCenterX1()),
                 graphInformation.computeYOf(clusterCircle.getCenterX2()),
-                graphInformation.computeLengthX(clusterCircle.getRadius()),
-                graphInformation.computeLengthY(clusterCircle.getRadius())
+                graphInformation.computeLengthX(clusterCircle.getRadius()) +
+                    (nestingLevel * GraphPrinter.CLUSTER_MARGIN),
+                graphInformation.computeLengthY(clusterCircle.getRadius()) +
+                    (nestingLevel * GraphPrinter.CLUSTER_MARGIN)
             
             );
             graphClusters.add(graphCluster);
@@ -255,15 +269,7 @@ public class GraphPresenter {
         final double x1Difference = x1 - clusterCircle.getCenterX1();
         final double x2Difference = x2 - clusterCircle.getCenterX2();
         
-        double radius =
-            StrictMath.sqrt((x1Difference * x1Difference) + (x2Difference * x2Difference)) +
-                clusterCircle.getRadius();
-        for (final ClusterCircle internalClusterCircle :
-            clusterCircle.getInternalClusterCircles()) {
-            radius =
-                StrictMath.max(radius, GraphPresenter.computeRadius(x1, x2, internalClusterCircle));
-        }
-        
-        return radius;
+        return StrictMath.sqrt((x1Difference * x1Difference) + (x2Difference * x2Difference)) +
+                   clusterCircle.getRadius();
     }
 }

@@ -24,6 +24,8 @@ public class ClusterCircle {
     
     private final double radius;
     
+    private int nestingLevel;
+    
     private final List<ClusterCircle> internalClusterCircles;
     
 }

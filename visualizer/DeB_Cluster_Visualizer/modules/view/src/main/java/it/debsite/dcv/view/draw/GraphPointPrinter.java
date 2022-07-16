@@ -48,6 +48,9 @@ public class GraphPointPrinter {
         context.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
             RenderingHints.VALUE_ANTIALIAS_ON
         );
+        context.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON
+        );
         context.setFont(SystemFont.deriveSystemFont(FONT_HEIGHT, Font.BOLD));
         context.setColor(Color.BLUE);
         
@@ -62,7 +65,7 @@ public class GraphPointPrinter {
         
         context.setColor(new Color(0, 0, 0, 128));
         final Rectangle2D.Double box = new Rectangle2D.Double(textX - GraphPointPrinter.BOX_MARGIN,
-            textY - FONT_HEIGHT,
+            textY - FONT_HEIGHT - GraphPointPrinter.BOX_MARGIN,
             GraphPointPrinter.BOX_MARGIN + textWidth + GraphPointPrinter.BOX_MARGIN,
             GraphPointPrinter.BOX_MARGIN + FONT_HEIGHT + GraphPointPrinter.BOX_MARGIN
         );

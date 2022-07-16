@@ -1,6 +1,7 @@
 package it.debsite.dcv.presenter.utils;
 
 import it.debsite.dcv.model.ClusterPoint;
+import it.debsite.dcv.view.GraphPrinter;
 import lombok.Getter;
 
 import java.awt.geom.Rectangle2D;
@@ -40,41 +41,39 @@ public class GraphInformation {
     private final Rectangle2D.Double area;
     
     public GraphInformation(
-        List<ClusterCircle> clusterCircleList,
+        final List<ClusterCircle> clusterCircleList,
         final Rectangle2D.Double area,
         final double imageWidth,
         final double imageHeight
     ) {
         
-        this.area = area;
         if (clusterCircleList.isEmpty()) {
             throw new IllegalArgumentException("Empty cluster");
         }
-        final ClusterCircle firstPoint = clusterCircleList.get(0);
-        double currentMinX1 = firstPoint.getCenterX1() - firstPoint.getRadius();
-        double currentMaxX1 = firstPoint.getCenterX1() + firstPoint.getRadius();
-        double currentMinX2 = firstPoint.getCenterX2() - firstPoint.getRadius();
-        double currentMaxX2 = firstPoint.getCenterX2() + firstPoint.getRadius();
+        ClusterCircle widestCluster = clusterCircleList.get(0);
         
         // Compute the bounding box
         for (final ClusterCircle clusterPoint : clusterCircleList) {
-            
-            currentMinX1 =
-                StrictMath.min(currentMinX1, clusterPoint.getCenterX1() - clusterPoint.getRadius());
-            currentMaxX1 =
-                StrictMath.max(currentMaxX1, clusterPoint.getCenterX1() + clusterPoint.getRadius());
-            currentMinX2 =
-                StrictMath.min(currentMinX2, clusterPoint.getCenterX2() - clusterPoint.getRadius());
-            currentMaxX2 =
-                StrictMath.max(currentMaxX2, clusterPoint.getCenterX2() + clusterPoint.getRadius());
+            if (widestCluster.getRadius() < clusterPoint.getRadius()) {
+                widestCluster = clusterPoint;
+            }
         }
-        this.minX1 = currentMinX1;
-        this.maxX1 = currentMaxX1;
-        this.minX2 = currentMinX2;
-        this.maxX2 = currentMaxX2;
+        this.minX1 = widestCluster.getCenterX1() - widestCluster.getRadius();
+        this.maxX1 = widestCluster.getCenterX1() + widestCluster.getRadius();
+        this.minX2 = widestCluster.getCenterX2() - widestCluster.getRadius();
+        this.maxX2 = widestCluster.getCenterX2() + widestCluster.getRadius();
+        
+        final int maxNestingLevel = widestCluster.getNestingLevel();
+        this.area = new Rectangle2D.Double(
+            area.getX() + (maxNestingLevel * GraphPrinter.CLUSTER_MARGIN),
+            area.getY() + (maxNestingLevel * GraphPrinter.CLUSTER_MARGIN),
+            area.getWidth() - (maxNestingLevel * (GraphPrinter.CLUSTER_MARGIN * 2)),
+            area.getHeight() - (maxNestingLevel * (GraphPrinter.CLUSTER_MARGIN * 2))
+        );
+        
         // Compute the steps
-        this.xPixels = area.width / (this.maxX1 - this.minX1);
-        this.yPixels = area.height / (this.maxX2 - this.minX2);
+        this.xPixels = this.area.width / (this.maxX1 - this.minX1);
+        this.yPixels = this.area.height / (this.maxX2 - this.minX2);
     }
     
     public double computeXOf(final double pointX1) {

@@ -17,6 +17,8 @@ import java.util.List;
  */
 public class GraphPrinter {
     
+    public static final int CLUSTER_MARGIN = 10;
+    
     private final AxesPrinter axesPrinter;
     
     private final GraphPointPrinter pointPrinter;
