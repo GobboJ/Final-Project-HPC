@@ -32,8 +32,6 @@ public class HorizontalAxisPrinter {
         context.draw(new Line2D.Double(startX, y, endX, y));
         
         context.setColor(Color.BLACK);
-        Font font = new Font("Arial", Font.PLAIN, 10).deriveFont(fontHeight);
-        context.setFont(font);
         final int textWidth = context.getFontMetrics().stringWidth(text);
         context.drawString(text,
             (float) (startX - textMargin - textWidth),

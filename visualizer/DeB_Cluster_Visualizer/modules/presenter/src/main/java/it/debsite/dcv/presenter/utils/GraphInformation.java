@@ -40,29 +40,33 @@ public class GraphInformation {
     private final Rectangle2D.Double area;
     
     public GraphInformation(
-        final List<ClusterPoint> points,
+        List<ClusterCircle> clusterCircleList,
         final Rectangle2D.Double area,
         final double imageWidth,
         final double imageHeight
     ) {
         
         this.area = area;
-        if (points.isEmpty()) {
+        if (clusterCircleList.isEmpty()) {
             throw new IllegalArgumentException("Empty cluster");
         }
-        final ClusterPoint firstPoint = points.get(0);
-        double currentMinX1 = firstPoint.getX1();
-        double currentMaxX1 = firstPoint.getX1();
-        double currentMinX2 = firstPoint.getX2();
-        double currentMaxX2 = firstPoint.getX2();
+        final ClusterCircle firstPoint = clusterCircleList.get(0);
+        double currentMinX1 = firstPoint.getCenterX1() - firstPoint.getRadius();
+        double currentMaxX1 = firstPoint.getCenterX1() + firstPoint.getRadius();
+        double currentMinX2 = firstPoint.getCenterX2() - firstPoint.getRadius();
+        double currentMaxX2 = firstPoint.getCenterX2() + firstPoint.getRadius();
         
         // Compute the bounding box
-        for (final ClusterPoint clusterPoint : points) {
+        for (final ClusterCircle clusterPoint : clusterCircleList) {
             
-            currentMinX1 = StrictMath.min(currentMinX1, clusterPoint.getX1());
-            currentMaxX1 = StrictMath.max(currentMaxX1, clusterPoint.getX1());
-            currentMinX2 = StrictMath.min(currentMinX2, clusterPoint.getX2());
-            currentMaxX2 = StrictMath.max(currentMaxX2, clusterPoint.getX2());
+            currentMinX1 =
+                StrictMath.min(currentMinX1, clusterPoint.getCenterX1() - clusterPoint.getRadius());
+            currentMaxX1 =
+                StrictMath.max(currentMaxX1, clusterPoint.getCenterX1() + clusterPoint.getRadius());
+            currentMinX2 =
+                StrictMath.min(currentMinX2, clusterPoint.getCenterX2() - clusterPoint.getRadius());
+            currentMaxX2 =
+                StrictMath.max(currentMaxX2, clusterPoint.getCenterX2() + clusterPoint.getRadius());
         }
         this.minX1 = currentMinX1;
         this.maxX1 = currentMaxX1;

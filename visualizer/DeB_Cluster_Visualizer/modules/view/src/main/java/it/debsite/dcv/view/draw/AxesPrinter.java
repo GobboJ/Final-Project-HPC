@@ -4,9 +4,7 @@ import it.debsite.dcv.view.GraphAxisLabel;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
@@ -24,7 +22,7 @@ public class AxesPrinter {
     
     private static final float LINE_WIDTH = 3.0F;
     
-    private static final float FONT_HEIGHT = 12.0F;
+    private static final float FONT_HEIGHT = 16.0F;
     
     private static final double TEXT_MARGIN = 5.0F;
     
@@ -38,7 +36,9 @@ public class AxesPrinter {
     public void draw(
         final Rectangle2D.Double rectangle,
         final List<GraphAxisLabel> xLabels,
-        final List<GraphAxisLabel> yLabels
+        final List<GraphAxisLabel> yLabels,
+        final GraphAxisLabel xAxis,
+        final GraphAxisLabel yAxis
     ) {
         
         final Graphics2D context = this.image.createGraphics();
@@ -48,6 +48,7 @@ public class AxesPrinter {
         context.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
             RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT
         );
+        context.setFont(SystemFont.deriveSystemFont(FONT_HEIGHT));
         
         // Draw the grid
         for (final GraphAxisLabel label : xLabels) {
@@ -71,6 +72,24 @@ public class AxesPrinter {
             );
         }
         
+        // Draw the x-axis
+        context.setColor(Color.GREEN);
+        context.setStroke(new BasicStroke(AxesPrinter.LINE_WIDTH));
+        context.draw(new Line2D.Double(rectangle.x,
+            xAxis.getPixelCoordinate(),
+            rectangle.x + rectangle.width,
+            xAxis.getPixelCoordinate()
+        ));
+        
+        // Draw the y-axis
+        context.setColor(Color.GREEN);
+        context.setStroke(new BasicStroke(AxesPrinter.LINE_WIDTH));
+        context.draw(new Line2D.Double(yAxis.getPixelCoordinate(),
+            rectangle.y,
+            yAxis.getPixelCoordinate(),
+            rectangle.y + rectangle.height
+        ));
+        
         // Draw the frame
         context.setColor(Color.BLACK);
         context.setStroke(new BasicStroke(AxesPrinter.LINE_WIDTH));
@@ -89,17 +108,16 @@ public class AxesPrinter {
         context.setStroke(new BasicStroke(AxesPrinter.LINE_WIDTH));
         context.draw(new Line2D.Double(x, startY, x, endY));
         context.setColor(Color.BLACK);
-        final Font font = new Font("Arial", Font.PLAIN, 10).deriveFont(AxesPrinter.FONT_HEIGHT);
-        context.setFont(font);
+        
         final int textWidth = context.getFontMetrics().stringWidth(text);
-        final int textHeight = context.getFontMetrics().getHeight();
+       
         context.drawString(text,
             (float) (x - (textWidth / 2.0F)),
             (float) (startY - AxesPrinter.TEXT_MARGIN)
         );
         context.drawString(text,
             (float) (x - (textWidth / 2.0F)),
-            (float) (endY + AxesPrinter.TEXT_MARGIN + textHeight)
+            (float) (endY + AxesPrinter.TEXT_MARGIN + FONT_HEIGHT)
         );
     }
 }

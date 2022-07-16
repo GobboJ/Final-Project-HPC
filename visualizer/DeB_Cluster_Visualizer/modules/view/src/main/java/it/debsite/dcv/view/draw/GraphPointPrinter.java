@@ -3,6 +3,7 @@ package it.debsite.dcv.view.draw;
 import it.debsite.dcv.view.GraphPoint;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.Ellipse2D;
@@ -25,6 +26,8 @@ public class GraphPointPrinter {
     
     private static final double BOX_MARGIN = 4;
     
+    private static final float FONT_HEIGHT = 14;
+    
     private final BufferedImage image;
     
     public GraphPointPrinter(final BufferedImage image) {
@@ -45,6 +48,7 @@ public class GraphPointPrinter {
         context.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
             RenderingHints.VALUE_ANTIALIAS_ON
         );
+        context.setFont(SystemFont.deriveSystemFont(FONT_HEIGHT, Font.BOLD));
         context.setColor(Color.BLUE);
         
         context.fill(new Ellipse2D.Double(point.getX() - GraphPointPrinter.RADIUS,
@@ -55,13 +59,12 @@ public class GraphPointPrinter {
         final double textX = point.getX() + GraphPointPrinter.RADIUS + GraphPointPrinter.MARGIN;
         final double textY = point.getY();
         final double textWidth = context.getFontMetrics().stringWidth(point.getName());
-        final double textHeight = context.getFontMetrics().getHeight();
         
         context.setColor(new Color(0, 0, 0, 128));
         final Rectangle2D.Double box = new Rectangle2D.Double(textX - GraphPointPrinter.BOX_MARGIN,
-            textY - textHeight,
+            textY - FONT_HEIGHT,
             GraphPointPrinter.BOX_MARGIN + textWidth + GraphPointPrinter.BOX_MARGIN,
-            GraphPointPrinter.BOX_MARGIN + textHeight + GraphPointPrinter.BOX_MARGIN
+            GraphPointPrinter.BOX_MARGIN + FONT_HEIGHT + GraphPointPrinter.BOX_MARGIN
         );
         context.fill(box);
         

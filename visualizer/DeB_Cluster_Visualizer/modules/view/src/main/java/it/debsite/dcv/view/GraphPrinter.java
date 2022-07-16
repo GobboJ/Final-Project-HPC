@@ -35,11 +35,13 @@ public class GraphPrinter {
         final Rectangle2D.Double boxArea,
         final List<GraphAxisLabel> xLabels,
         final List<GraphAxisLabel> yLabels,
+        final GraphAxisLabel xAxis,
+        final GraphAxisLabel yAxis,
         final List<GraphPoint> points,
         final List<GraphCluster> clusters
     ) {
         
-        this.axesPrinter.draw(boxArea, xLabels, yLabels);
+        this.axesPrinter.draw(boxArea, xLabels, yLabels, xAxis, yAxis);
         this.clusterPrinter.draw(clusters);
         this.pointPrinter.draw(points);
     }

@@ -20,11 +20,11 @@ public class GraphCluster {
     @NotNull
     private String name;
     
-    private double minX;
+    private double centerX;
     
-    private double minY;
+    private double centerY;
     
-    private double maxX;
+    private double radiusX;
     
-    private double maxY;
+    private double radiusY;
 }

@@ -8,6 +8,8 @@ import it.debsite.dcv.presenter.GraphPresenter;
 import it.debsite.dcv.view.GraphPrinter;
 
 import javax.imageio.ImageIO;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Graphics2D;
@@ -80,6 +82,7 @@ public class MainGraphPrinter {
         );*/
         
         try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             final BufferedImage image = new BufferedImage(620, 620, BufferedImage.TYPE_INT_ARGB);
             Graphics2D context = image.createGraphics();
             context.setColor(Color.WHITE);
@@ -92,7 +95,8 @@ public class MainGraphPrinter {
             
             final Path outputPath = Path.of("..", "..", "out", "out.png");
             ImageIO.write(image, "png", outputPath.toAbsolutePath().toFile());
-        } catch (final IOException exception) {
+        } catch (final IOException | ClassNotFoundException | InstantiationException |
+                       IllegalAccessException | UnsupportedLookAndFeelException exception) {
             // TODO: Auto-generated block
             exception.printStackTrace();
         }

@@ -2,6 +2,8 @@ package it.debsite.dcv.presenter;
 
 import it.debsite.dcv.model.Cluster;
 import it.debsite.dcv.model.ClusterPoint;
+import it.debsite.dcv.presenter.utils.ClusterCircle;
+import it.debsite.dcv.presenter.utils.DistanceMatrix;
 import it.debsite.dcv.presenter.utils.GraphInformation;
 import it.debsite.dcv.presenter.utils.ScaleComputer;
 import it.debsite.dcv.view.GraphAxisLabel;
@@ -12,7 +14,10 @@ import it.debsite.dcv.view.GraphPrinter;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Description.
@@ -25,7 +30,7 @@ public class GraphPresenter {
     
     private static final int MARGIN = 60;
     
-    private static final int BOX_MARGIN = 10;
+    private static final int BOX_MARGIN = 20;
     
     private static final int BLOCK_SIZE = 60;
     
@@ -46,6 +51,74 @@ public class GraphPresenter {
         final double imageWidth = image.getWidth();
         final double imageHeight = image.getHeight();
         
+        // Compute the distance matrix
+        final DistanceMatrix matrix = new DistanceMatrix(points);
+        
+        // Order the clusters by the number of points within it
+        final List<Cluster> orderedClusters = new ArrayList<>(clusters);
+        orderedClusters.sort(Comparator.comparingInt(cluster -> cluster.getClusterPoints().size()));
+        final Map<String, ClusterCircle> addedClusterCircles = new HashMap<>();
+        
+        // Compute the bounding box
+        final List<ClusterCircle> clusterCircleList = new ArrayList<>(clusters.size());
+        for (final Cluster cluster : orderedClusters) {
+            // Compute the maximum distance between the points in the cluster
+            final List<ClusterPoint> clusterPoints = cluster.getClusterPoints();
+            ClusterPoint firstPoint = clusterPoints.get(0);
+            ClusterPoint secondPoint = clusterPoints.get(1);
+            double maxDistance = matrix.getDistance(firstPoint, secondPoint);
+            
+            for (int i = 0; i < clusterPoints.size(); i++) {
+                for (int j = i + 1; j < clusterPoints.size(); j++) {
+                    final double distance =
+                        matrix.getDistance(clusterPoints.get(i), clusterPoints.get(j));
+                    if (distance > maxDistance) {
+                        maxDistance = distance;
+                        firstPoint = clusterPoints.get(i);
+                        secondPoint = clusterPoints.get(j);
+                    }
+                }
+            }
+            
+            final double clusterCenterX1 = (firstPoint.getX1() + secondPoint.getX1()) / 2;
+            final double clusterCenterX2 = (firstPoint.getX2() + secondPoint.getX2()) / 2;
+            
+            double leftRadius = maxDistance / 2;
+            double rightRadius = leftRadius;
+            final List<ClusterCircle> internalClusterCircles = new ArrayList<>(2);
+            
+            if (cluster.getLeftIdentifier().startsWith("C")) {
+                final ClusterCircle leftClusterCircle =
+                    addedClusterCircles.get(cluster.getLeftIdentifier());
+                
+                leftRadius = GraphPresenter.computeRadius(clusterCenterX1,
+                    clusterCenterX2,
+                    leftClusterCircle
+                );
+                internalClusterCircles.add(leftClusterCircle);
+            }
+            
+            if (cluster.getRightIdentifier().startsWith("C")) {
+                final ClusterCircle rightClusterCircle =
+                    addedClusterCircles.get(cluster.getRightIdentifier());
+                rightRadius = GraphPresenter.computeRadius(clusterCenterX1,
+                    clusterCenterX2,
+                    rightClusterCircle
+                );
+                internalClusterCircles.add(rightClusterCircle);
+            }
+            
+            // Create the circle that wraps all the points in the cluster
+            final ClusterCircle clusterCircle = new ClusterCircle(cluster.getName(),
+                clusterCenterX1,
+                clusterCenterX2,
+                StrictMath.max(leftRadius, rightRadius),
+                internalClusterCircles
+            );
+            clusterCircleList.add(clusterCircle);
+            addedClusterCircles.put(cluster.getIdentifier(), clusterCircle);
+        }
+        
         final Rectangle2D.Double area = new Rectangle2D.Double(GraphPresenter.MARGIN,
             GraphPresenter.MARGIN,
             imageWidth - (GraphPresenter.MARGIN * 2),
@@ -53,10 +126,12 @@ public class GraphPresenter {
         );
         
         final GraphInformation graphInformation =
-            new GraphInformation(points, area, imageWidth, imageHeight);
+            new GraphInformation(clusterCircleList, area, imageWidth, imageHeight);
         
         final List<GraphPoint> graphPoints = new ArrayList<>(points.size());
-        for (final ClusterPoint point : points) {
+        for (
+            
+            final ClusterPoint point : points) {
             
             final GraphPoint graphPoint = new GraphPoint(point.getName(),
                 graphInformation.computeXOf(point.getX1()),
@@ -66,8 +141,17 @@ public class GraphPresenter {
         }
         
         final List<GraphCluster> graphClusters = new ArrayList<>(clusters.size());
-        for (final Cluster cluster : clusters) {
-            graphClusters.add(GraphPresenter.createGraphCluster(cluster, graphInformation));
+        for (
+            
+            final ClusterCircle clusterCircle : clusterCircleList) {
+            final GraphCluster graphCluster = new GraphCluster(clusterCircle.getName(),
+                graphInformation.computeXOf(clusterCircle.getCenterX1()),
+                graphInformation.computeYOf(clusterCircle.getCenterX2()),
+                graphInformation.computeLengthX(clusterCircle.getRadius()),
+                graphInformation.computeLengthY(clusterCircle.getRadius())
+            
+            );
+            graphClusters.add(graphCluster);
         }
         
         final Rectangle2D.Double boxArea =
@@ -79,37 +163,22 @@ public class GraphPresenter {
         
         final List<GraphAxisLabel> xLabels =
             GraphPresenter.computeXLabels(graphInformation, boxArea);
+        
         final List<GraphAxisLabel> yLabels =
             GraphPresenter.computeYLabels(graphInformation, boxArea);
-        this.graphPrinter.draw(area, boxArea, xLabels, yLabels, graphPoints, graphClusters);
-    }
-    
-    private static GraphCluster createGraphCluster(
-        final Cluster cluster, final GraphInformation graphInformation
-    ) {
         
-        final List<ClusterPoint> clusterPoints = cluster.getClusterPoints();
-        if (clusterPoints.isEmpty()) {
-            throw new IllegalArgumentException("Empty cluster");
-        }
-        final ClusterPoint firstPoint = clusterPoints.get(0);
-        double minX1 = firstPoint.getX1();
-        double maxX1 = firstPoint.getX1();
-        double minX2 = firstPoint.getX2();
-        double maxX2 = firstPoint.getX2();
+        final GraphAxisLabel xAxis = new GraphAxisLabel("x", graphInformation.computeYOf(0));
         
-        for (final ClusterPoint clusterPoint : clusterPoints) {
-            minX1 = StrictMath.min(minX1, clusterPoint.getX1());
-            maxX1 = StrictMath.max(maxX1, clusterPoint.getX1());
-            minX2 = StrictMath.min(minX2, clusterPoint.getX2());
-            maxX2 = StrictMath.max(maxX2, clusterPoint.getX2());
-        }
+        final GraphAxisLabel yAxis = new GraphAxisLabel("y", graphInformation.computeXOf(0));
         
-        return new GraphCluster(cluster.getName(),
-            graphInformation.computeXOf(minX1),
-            graphInformation.computeYOf(maxX2),
-            graphInformation.computeXOf(maxX1),
-            graphInformation.computeYOf(minX2)
+        this.graphPrinter.draw(area,
+            boxArea,
+            xLabels,
+            yLabels,
+            xAxis,
+            yAxis,
+            graphPoints,
+            graphClusters
         );
     }
     
@@ -170,9 +239,7 @@ public class GraphPresenter {
         
         while (y < (endY + 1)) {
             if ((y > area.y) && (y < (area.y + area.height + 1))) {
-                yLabels.add(new GraphAxisLabel("%.2f".formatted(x2),
-                    y
-                ));
+                yLabels.add(new GraphAxisLabel("%.2f".formatted(x2), y));
             }
             y += yScale;
             x2 -= x2Scale;
@@ -181,5 +248,22 @@ public class GraphPresenter {
         return yLabels;
     }
     
-    
+    private static double computeRadius(
+        final double x1, final double x2, final ClusterCircle clusterCircle
+    ) {
+        
+        final double x1Difference = x1 - clusterCircle.getCenterX1();
+        final double x2Difference = x2 - clusterCircle.getCenterX2();
+        
+        double radius =
+            StrictMath.sqrt((x1Difference * x1Difference) + (x2Difference * x2Difference)) +
+                clusterCircle.getRadius();
+        for (final ClusterCircle internalClusterCircle :
+            clusterCircle.getInternalClusterCircles()) {
+            radius =
+                StrictMath.max(radius, GraphPresenter.computeRadius(x1, x2, internalClusterCircle));
+        }
+        
+        return radius;
+    }
 }
