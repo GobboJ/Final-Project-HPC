@@ -1,11 +1,10 @@
 package it.debsite.dcv.view;
 
 import it.debsite.dcv.view.draw.HorizontalAxisPrinter;
+import it.debsite.dcv.view.draw.SystemFont;
 
-import javax.swing.JLabel;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.Line2D;
@@ -64,13 +63,7 @@ public class DendrogramPrinter {
         context.setColor(Color.BLACK);
         context.setStroke(new BasicStroke(DendrogramPrinter.LINE_WIDTH));
         
-        final JLabel jLabel = new JLabel();
-        final String fontFamily = jLabel.getFont().getFamily();
-        context.setFont(new Font(
-            fontFamily,
-            Font.PLAIN,
-            10
-        ).deriveFont(DendrogramPrinter.FONT_HEIGHT));
+        context.setFont(SystemFont.deriveSystemFont(DendrogramPrinter.FONT_HEIGHT));
         
         // Other horizontal
         for (final GraphAxisLabel label : yAxisLabels) {
@@ -138,13 +131,7 @@ public class DendrogramPrinter {
             rightMiddleNode.y - rightBarHeight
         ));
         
-        final JLabel label = new JLabel();
-        final String fontFamily = label.getFont().getFamily();
-        context.setFont(new Font(
-            fontFamily,
-            Font.PLAIN,
-            10
-        ).deriveFont(DendrogramPrinter.FONT_HEIGHT));
+        context.setFont(SystemFont.deriveSystemFont(DendrogramPrinter.FONT_HEIGHT));
         final double textWidth = context.getFontMetrics().stringWidth(clusterNode.getName());
         
         final double textX = rightMiddleNode.x - (textWidth / 2);
@@ -171,13 +158,7 @@ public class DendrogramPrinter {
         final double textX = pointNode.getX() - (textWidth / 2);
         final double textY = pointNode.getY() + DendrogramPrinter.TEXT_MARGIN + textHeight;
         
-        final JLabel label = new JLabel();
-        final String fontFamily = label.getFont().getFamily();
-        context.setFont(new Font(
-            fontFamily,
-            Font.PLAIN,
-            10
-        ).deriveFont(DendrogramPrinter.FONT_HEIGHT));
+        context.setFont(SystemFont.deriveSystemFont(DendrogramPrinter.FONT_HEIGHT));
         context.setColor(Color.BLACK);
         context.drawString(pointNode.getName(), (float) textX, (float) textY);
         

@@ -134,7 +134,7 @@ public class DendrogramPresenter {
         
         double y = yStep;
         double value = scale;
-        while ((horizontalAxisY - y) > area.getY()) {
+        while ((horizontalAxisY - y) >= area.getY()) {
             GraphAxisLabel label = new GraphAxisLabel("%.2f".formatted(value), horizontalAxisY - y);
             yLabels.add(label);
             y += yStep;
