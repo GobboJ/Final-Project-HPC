@@ -9,6 +9,7 @@ import it.debsite.dcv.view.GraphAxisLabel;
 
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,11 +26,19 @@ import java.util.Objects;
  */
 public class DendrogramPresenter {
     
-    private final double MARGIN = 80;
+    private static final double MARGIN_X = 80;
+    private static final double MARGIN_Y = 40;
     
-    private final double BOX_MARGIN = 20;
+    private static final double BOX_MARGIN = 20;
     
-    private final double BLOCK_SIZE = 60;
+    private static final double BLOCK_SIZE = 60;
+    
+    private static final DecimalFormat DECIMAL_FORMAT;
+    
+    static {
+        DECIMAL_FORMAT = new DecimalFormat();
+        DendrogramPresenter.DECIMAL_FORMAT.setMaximumFractionDigits(2);
+    }
     
     private final BufferedImage image;
     
@@ -98,10 +107,10 @@ public class DendrogramPresenter {
             throw new IllegalArgumentException("Malformed clusters");
         }
         
-        final Rectangle2D.Double area = new Rectangle2D.Double(this.MARGIN,
-            this.MARGIN,
-            image.getWidth() - (this.MARGIN * 2),
-            image.getHeight() - (this.MARGIN * 2)
+        final Rectangle2D.Double area = new Rectangle2D.Double(DendrogramPresenter.MARGIN_X,
+            DendrogramPresenter.MARGIN_Y,
+            image.getWidth() - (DendrogramPresenter.MARGIN_X * 2),
+            image.getHeight() - (DendrogramPresenter.MARGIN_Y * 2)
         );
         
         final double xStep = area.getWidth() / (points.size() - 1);
@@ -117,31 +126,35 @@ public class DendrogramPresenter {
             root.getDistance()
         );
         
-        final Rectangle2D.Double boxArea = new Rectangle2D.Double(this.BOX_MARGIN,
-            this.BOX_MARGIN,
-            image.getWidth() - (this.BOX_MARGIN * 2),
-            image.getHeight() - (this.BOX_MARGIN * 2)
+        final Rectangle2D.Double boxArea = new Rectangle2D.Double(
+            DendrogramPresenter.BOX_MARGIN,
+            DendrogramPresenter.BOX_MARGIN,
+            image.getWidth() - (DendrogramPresenter.BOX_MARGIN * 2),
+            image.getHeight() - (DendrogramPresenter.BOX_MARGIN * 2)
         );
         
-        double horizontalAxisY = area.getY() + area.getHeight();
+        final double horizontalAxisY = area.getY() + area.getHeight();
         
         // dendrogramHeight : rootDistance = 60 : ???
-        double blockDistance = (root.getDistance() * BLOCK_SIZE) / area.getHeight();
-        double scale = ScaleComputer.getScale(blockDistance);
+        final double blockDistance =
+            (root.getDistance() * DendrogramPresenter.BLOCK_SIZE) / area.getHeight();
+        final double scale = ScaleComputer.getScale(blockDistance);
         // dendrogramHeight : rootDistance = ??? : scale
-        double yStep = (scale * area.getHeight()) / root.getDistance();
-        List<GraphAxisLabel> yLabels = new ArrayList<>();
+        final double yStep = (scale * area.getHeight()) / root.getDistance();
+        final List<GraphAxisLabel> yLabels = new ArrayList<>();
         
         double y = yStep;
         double value = scale;
         while ((horizontalAxisY - y) >= area.getY()) {
-            GraphAxisLabel label = new GraphAxisLabel("%.2f".formatted(value), horizontalAxisY - y);
+            final GraphAxisLabel label =
+                new GraphAxisLabel(DendrogramPresenter.DECIMAL_FORMAT.format(value), horizontalAxisY - y);
             yLabels.add(label);
             y += yStep;
             value += scale;
         }
         
-        this.printer.draw(root, boxArea, horizontalAxisY, area.getX() - this.BOX_MARGIN, yLabels);
+        this.printer.draw(root, boxArea, horizontalAxisY, area.getX() -
+                                                              DendrogramPresenter.BOX_MARGIN, yLabels);
     }
     
     private static int setCoordinatesOf(

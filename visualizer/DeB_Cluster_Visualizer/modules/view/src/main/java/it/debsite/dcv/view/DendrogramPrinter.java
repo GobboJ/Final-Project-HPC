@@ -7,10 +7,13 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Line2D;
+import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.text.DecimalFormat;
 import java.util.List;
 import java.util.Objects;
 
@@ -29,11 +32,23 @@ public class DendrogramPrinter {
     
     private static final float FONT_HEIGHT = 22;
     
+    private static final int ARROW_WIDTH = 20;
+    private static final int ARROW_HEIGHT = 20;
+    private static final int ARROW_MARGIN = 10;
+    
+    private static final DecimalFormat DECIMAL_FORMAT;
+    
+    static {
+        DECIMAL_FORMAT = new DecimalFormat();
+        DendrogramPrinter.DECIMAL_FORMAT.setMaximumFractionDigits(2);
+    }
+    
     private final BufferedImage image;
     
     public DendrogramPrinter(final BufferedImage image) {
         
         this.image = image;
+        
     }
     
     public void draw(
@@ -65,7 +80,7 @@ public class DendrogramPrinter {
         
         context.setFont(SystemFont.deriveSystemFont(DendrogramPrinter.FONT_HEIGHT));
         
-        // Other horizontal
+        // Other horizontal lines
         for (final GraphAxisLabel label : yAxisLabels) {
             HorizontalAxisPrinter.drawHorizontalLine(context,
                 verticalAxesX,
@@ -86,7 +101,18 @@ public class DendrogramPrinter {
             horizontalAxesY
         ));
         // Vertical
-        context.draw(new Line2D.Double(verticalAxesX, area.getY(), verticalAxesX, horizontalAxesY));
+        context.draw(new Line2D.Double(verticalAxesX, area.getY() + ARROW_HEIGHT - ARROW_MARGIN, verticalAxesX, horizontalAxesY));
+        
+        // Draw the arrow
+        context.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+            RenderingHints.VALUE_ANTIALIAS_ON
+        );
+        Path2D.Double arrow = new Path2D.Double();
+        arrow.moveTo(verticalAxesX, area.getY() - ARROW_MARGIN);
+        arrow.lineTo(verticalAxesX + (ARROW_WIDTH / 2), area.getY()+ARROW_HEIGHT - ARROW_MARGIN);
+        arrow.lineTo(verticalAxesX - (ARROW_WIDTH / 2), area.getY()+ARROW_HEIGHT - ARROW_MARGIN);
+        arrow.closePath();
+        context.fill(arrow);
     }
     
     private Point2D.Double drawTreeNode(final DendrogramTreeNode node) {
@@ -137,7 +163,7 @@ public class DendrogramPrinter {
         final double textX = rightMiddleNode.x - (textWidth / 2);
         final double textY = clusterNode.getY() - DendrogramPrinter.TEXT_MARGIN;
         
-        context.drawString("%.2f".formatted(clusterNode.getDistance()),
+        context.drawString(DendrogramPrinter.DECIMAL_FORMAT.format(clusterNode.getDistance()),
             (float) textX,
             (float) textY
         );
