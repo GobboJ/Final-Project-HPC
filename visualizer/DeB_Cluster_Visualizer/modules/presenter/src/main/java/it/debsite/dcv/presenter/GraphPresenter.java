@@ -13,6 +13,7 @@ import it.debsite.dcv.view.GraphPrinter;
 
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -33,6 +34,13 @@ public class GraphPresenter {
     private static final int BOX_MARGIN = 20;
     
     private static final int BLOCK_SIZE = 60;
+    
+    private static final DecimalFormat DECIMAL_FORMAT;
+    
+    static {
+        DECIMAL_FORMAT = new DecimalFormat();
+        GraphPresenter.DECIMAL_FORMAT.setMaximumFractionDigits(2);
+    }
     
     private final BufferedImage image;
     
@@ -212,14 +220,22 @@ public class GraphPresenter {
         
         // Compute the x labels
         final double startX = graphInformation.computeXOf(x1Start);
-        final double endX = graphInformation.computeXOf(x1End);
+        double endX = graphInformation.computeXOf(x1End);
+        while ((endX + xScale) <= (area.getX() + area.getWidth())) {
+            endX += xScale;
+        }
         
         final List<GraphAxisLabel> xLabels = new ArrayList<>();
         double x = startX;
         double x1 = x1Start;
-        while (x < (endX + 1)) {
+        while ((x - xScale) > area.getX()) {
+            x -= xScale;
+            x1 -= x1Scale;
+        }
+        
+        while (x <= (endX + 1)) {
             if ((x > area.x) && (x < (area.x + area.width + 1))) {
-                xLabels.add(new GraphAxisLabel("%.2f".formatted(x1), x));
+                xLabels.add(new GraphAxisLabel(GraphPresenter.DECIMAL_FORMAT.format(x1), x));
             }
             x += xScale;
             x1 += x1Scale;
@@ -245,15 +261,21 @@ public class GraphPresenter {
         
         // Compute the x labels
         final double startY = graphInformation.computeYOf(x2End);
-        final double endY = graphInformation.computeYOf(x2Start);
+        double endY = graphInformation.computeYOf(x2Start);
+        while ((endY + yScale) <= (area.getY() + area.getHeight())) {
+            endY += yScale;
+        }
         
         final List<GraphAxisLabel> yLabels = new ArrayList<>();
         double y = startY;
         double x2 = x2End;
-        
+        while ((y - yScale) > area.getY()) {
+            y -= yScale;
+            x2 += x2Scale;
+        }
         while (y < (endY + 1)) {
             if ((y > area.y) && (y < (area.y + area.height + 1))) {
-                yLabels.add(new GraphAxisLabel("%.2f".formatted(x2), y));
+                yLabels.add(new GraphAxisLabel(GraphPresenter.DECIMAL_FORMAT.format(x2), y));
             }
             y += yScale;
             x2 -= x2Scale;

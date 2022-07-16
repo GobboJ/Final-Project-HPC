@@ -22,7 +22,6 @@ public class ScaleComputer {
         double scale = 1;
         int scaleIndex = 0;
         double newScale = ScaleComputer.SCALE[0];
-        double prevScale = newScale;
         
         if (xBlock > 1) {
             while (newScale < xBlock) {
@@ -30,24 +29,24 @@ public class ScaleComputer {
                 if (scaleIndex == ScaleComputer.SCALE.length) {
                     scale *= ScaleComputer.SCALE[ScaleComputer.SCALE.length - 1];
                     scaleIndex = 0;
-                    newScale = ScaleComputer.SCALE[0];
+                    newScale = scale * ScaleComputer.SCALE[0];
                 } else {
-                    prevScale = newScale;
                     newScale = scale * ScaleComputer.SCALE[scaleIndex];
                 }
             }
-            
-        } else {
-            while (newScale > xBlock) {
-                scaleIndex++;
-                if (scaleIndex == ScaleComputer.SCALE.length) {
-                    scale /= ScaleComputer.SCALE[ScaleComputer.SCALE.length - 1];
-                    scaleIndex = 0;
-                    newScale = ScaleComputer.SCALE[0];
-                } else {
-                    prevScale = newScale;
-                    newScale = scale / ScaleComputer.SCALE[scaleIndex];
-                }
+            return newScale;
+        }
+        
+        double prevScale = newScale;
+        while (newScale > xBlock) {
+            scaleIndex++;
+            if (scaleIndex == ScaleComputer.SCALE.length) {
+                scale /= ScaleComputer.SCALE[ScaleComputer.SCALE.length - 1];
+                scaleIndex = 0;
+                newScale = scale / ScaleComputer.SCALE[0];
+            } else {
+                prevScale = newScale;
+                newScale = scale / ScaleComputer.SCALE[scaleIndex];
             }
         }
         
