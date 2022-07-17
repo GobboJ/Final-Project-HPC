@@ -12,12 +12,18 @@ add_compile_options(
     -Warray-bounds=2
     -Warray-parameter=2
     -Wattribute-alias=2
+    -Wbidi-chars=any
     -Wc++0x-compat
     -Wc++11-compat
+    -Wc++11-extensions
     -Wc++14-compat
+    -Wc++14-extensions
     -Wc++17-compat
+    -Wc++17-extensions
     -Wc++1z-compat
     -Wc++20-compat
+    -Wc++20-extensions
+    -Wc++23-extensions
     -Wc++2a-compat
     -Wcast-align=strict
     -Wcast-qual
@@ -30,6 +36,7 @@ add_compile_options(
     -Wconversion-null
     -Wctad-maybe-unsupported
     -Wctor-dtor-privacy
+    -Wdangling-pointer=2
     -Wdate-time
     -Wdelete-incomplete
     -Wdelete-non-virtual-dtor
@@ -58,6 +65,7 @@ add_compile_options(
     -Winit-list-lifetime
     -Winit-self
     -Winline
+    -Winterference-size
     -Winvalid-imported-macros
     -Winvalid-offsetof
     -Winvalid-pch
@@ -69,6 +77,8 @@ add_compile_options(
     -Wmissing-format-attribute
     -Wmissing-include-dirs
     -Wmissing-noreturn
+    -Wmissing-requires
+    -Wmissing-template-keyword
     -Wmultichar
     -Wmultiple-inheritance
     -Wmultistatement-macros
@@ -80,6 +90,7 @@ add_compile_options(
     -Wnormalized=nfkc
     -Wnull-dereference
     -Wold-style-cast
+    -Wopenacc-parallelism
     -Woverloaded-virtual
     -Wpacked
     -Wpacked-bitfield-compat
@@ -121,11 +132,13 @@ add_compile_options(
     -Wterminate
     -Wterminate
     -Wtrampolines
+    -Wtrivial-auto-var-init
     -Wundef
     -Wuninitialized
     -Wunknown-pragmas
     -Wunused-const-variable=2
     -Wunused-macros
+    -Wuse-after-free=3
     -Wuseless-cast
     -Wvector-operation-performance
     -Wvexing-parse
