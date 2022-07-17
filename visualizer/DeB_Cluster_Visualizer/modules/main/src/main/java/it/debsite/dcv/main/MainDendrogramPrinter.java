@@ -2,6 +2,7 @@ package it.debsite.dcv.main;
 
 import it.debsite.dcv.model.Cluster;
 import it.debsite.dcv.model.ClusterPoint;
+import it.debsite.dcv.model.file.ClusterData;
 import it.debsite.dcv.model.file.ClusterFileReader;
 import it.debsite.dcv.model.file.MalformedFileException;
 import it.debsite.dcv.presenter.DendrogramPresenter;
@@ -40,17 +41,11 @@ public class MainDendrogramPrinter {
     
     private static void start() {
         
-        final List<ClusterPoint> points = new ArrayList<>();
-        final List<Cluster> clusters = new ArrayList<>();
         try {
             final Path inputPath = Path.of("..", "..", "out", "out.txt");
-            final ClusterFileReader reader = new ClusterFileReader(inputPath, points, clusters);
-        } catch (final MalformedFileException | IOException exception) {
-            // TODO: Auto-generated block
-            exception.printStackTrace();
-        }
-        
-        try {
+            final ClusterFileReader reader = new ClusterFileReader();
+            final ClusterData clusterData = reader.readData(inputPath);
+            
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             final BufferedImage image = new BufferedImage(1920, 1080, BufferedImage.TYPE_INT_ARGB);
             
@@ -59,13 +54,17 @@ public class MainDendrogramPrinter {
             context.fill(new Rectangle2D.Double(0, 0, image.getWidth(), image.getHeight()));
             
             final DendrogramPrinter printer = new DendrogramPrinter(image);
-            final DendrogramPresenter presenter =
-                new DendrogramPresenter(image, printer, clusters, points);
+            final DendrogramPresenter presenter = new DendrogramPresenter(image,
+                printer,
+                clusterData.getClusters(),
+                clusterData.getPoints()
+            );
             
             final Path outputPath = Path.of("..", "..", "out", "dendrogram.png");
             ImageIO.write(image, "png", outputPath.toAbsolutePath().toFile());
-        } catch (final IOException | ClassNotFoundException | InstantiationException |
-                       IllegalAccessException | UnsupportedLookAndFeelException exception) {
+        } catch (final MalformedFileException | IOException | ClassNotFoundException |
+                       InstantiationException | IllegalAccessException |
+                       UnsupportedLookAndFeelException exception) {
             // TODO: Auto-generated block
             exception.printStackTrace();
         }

@@ -2,6 +2,7 @@ package it.debsite.dcv.main;
 
 import it.debsite.dcv.model.Cluster;
 import it.debsite.dcv.model.ClusterPoint;
+import it.debsite.dcv.model.file.ClusterData;
 import it.debsite.dcv.model.file.ClusterFileReader;
 import it.debsite.dcv.model.file.MalformedFileException;
 import it.debsite.dcv.presenter.GraphPresenter;
@@ -36,52 +37,16 @@ public class MainGraphPrinter {
     
     private static void start() {
         
-        final List<ClusterPoint> points = new ArrayList<>();
-        final List<Cluster> clusters = new ArrayList<>();
         try {
             final Path inputPath = Path.of("..", "..", "out", "out.txt");
-            ClusterFileReader reader = new ClusterFileReader(inputPath, points, clusters);
-        } catch (MalformedFileException | IOException exception) {
-            // TODO: Auto-generated block
-            exception.printStackTrace();
-        }
-        
-        /*final ClusterPoint a = new ClusterPoint("A", 1, 1);
-        final ClusterPoint b = new ClusterPoint("B", 1.5, 1.5);
-        final ClusterPoint c = new ClusterPoint("C", 5, 5);
-        final ClusterPoint d = new ClusterPoint("D", 3, 4);
-        final ClusterPoint e = new ClusterPoint("E", 4, 4);
-        final ClusterPoint f = new ClusterPoint("F", 3, 3.5);
-        
-        final List<ClusterPoint> points = new ArrayList<>();
-        Collections.addAll(points, a, b, c, d, e, f);
-        
-        final List<ClusterPoint> abCluster = new ArrayList<>();
-        Collections.addAll(abCluster, a, b);
-        
-        final List<ClusterPoint> dfCluster = new ArrayList<>();
-        Collections.addAll(dfCluster, d, f);
-        
-        final List<ClusterPoint> dfeCluster = new ArrayList<>();
-        Collections.addAll(dfeCluster, d, f, e);
-        
-        final List<ClusterPoint> dfecCluster = new ArrayList<>();
-        Collections.addAll(dfecCluster, d, f, e, c);
-        
-        final List<ClusterPoint> allCluster = new ArrayList<>();
-        Collections.addAll(allCluster, a, b, d, f, e, c);
-        
-        final List<Cluster> clusters = new ArrayList<>();
-        Collections.addAll(
-            clusters,
-            new Cluster("AB", abCluster),
-            new Cluster("DF", dfCluster),
-            new Cluster("DFE", dfeCluster),
-            new Cluster("DFEC", dfecCluster),
-            new Cluster("ALL", allCluster)
-        );*/
-        
-        try {
+            ClusterFileReader reader = new ClusterFileReader();
+            final ClusterData clusterData = reader.readData(inputPath);
+            
+            if (clusterData.isMultiDimensional()) {
+                System.err.println("Only bi-dimensional data can be processed by the GraphPrinter");
+                System.exit(1);
+            }
+            
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             final BufferedImage image = new BufferedImage(620, 620, BufferedImage.TYPE_INT_ARGB);
             Graphics2D context = image.createGraphics();
@@ -90,13 +55,17 @@ public class MainGraphPrinter {
             
             final GraphPrinter graphPrinter = new GraphPrinter(image);
             
-            final GraphPresenter graphPresenter =
-                new GraphPresenter(points, clusters, image, graphPrinter);
+            final GraphPresenter graphPresenter = new GraphPresenter(clusterData.getPoints(),
+                clusterData.getClusters(),
+                image,
+                graphPrinter
+            );
             
             final Path outputPath = Path.of("..", "..", "out", "out.png");
             ImageIO.write(image, "png", outputPath.toAbsolutePath().toFile());
-        } catch (final IOException | ClassNotFoundException | InstantiationException |
-                       IllegalAccessException | UnsupportedLookAndFeelException exception) {
+        } catch (final MalformedFileException | IOException | ClassNotFoundException |
+                       InstantiationException | IllegalAccessException |
+                       UnsupportedLookAndFeelException exception) {
             // TODO: Auto-generated block
             exception.printStackTrace();
         }

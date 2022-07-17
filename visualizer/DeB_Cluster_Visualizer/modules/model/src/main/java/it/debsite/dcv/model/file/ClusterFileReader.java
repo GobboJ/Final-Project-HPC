@@ -4,10 +4,8 @@ import it.debsite.dcv.model.Cluster;
 import it.debsite.dcv.model.ClusterPoint;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -49,20 +47,26 @@ public class ClusterFileReader {
         
     }
     
+    @SuppressWarnings("ConstantExpression")
     private static final Pattern POINT_PATTERN = Pattern.compile(
         "(?<id>P(?<num>\\d+)): \"(?<name>[^\"]*)\"(?<other> (?<x1>[-]?\\d+[.]?\\d*) " +
-            "(?<x2>[-]?\\d+[.]?\\d*))?");
+            "(?<x2>[-]?\\d+[.]?\\d*)(?<multi>[\\s\\d.]*))?");
     
+    @SuppressWarnings("ConstantExpression")
     private static final Pattern CLUSTER_PATTERN = Pattern.compile(
         "(?<id>C(?<num>\\d+)): \"(?<name>[^\"]*)\" (?<first>[CP](?<firstIndex>\\d+)) " +
             "(?<second>[CP](?<secondIndex>\\d+)) (?<distance>[-]?\\d+[.]?\\d*)");
     
-    public ClusterFileReader(
-        final Path filePath, final List<ClusterPoint> points, final List<Cluster> clusters
-    ) throws MalformedFileException, IOException {
+    public ClusterData readData(final Path filePath) throws MalformedFileException, IOException {
         
         final Map<Integer, ClusterPoint> pointsMap = new HashMap<>();
         final Map<Integer, ClusterInfo> clustersInfo = new HashMap<>();
+        final ClusterData clusterData = new ClusterData();
+    
+        final Matcher pointMatcher =
+            ClusterFileReader.POINT_PATTERN.matcher("");
+        final Matcher clusterMatcher =
+            ClusterFileReader.CLUSTER_PATTERN.matcher("");
         
         try (
             final BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)
@@ -71,14 +75,14 @@ public class ClusterFileReader {
             do {
                 line = reader.readLine();
                 if ((line != null) && !line.isBlank()) {
-                    final Matcher pointMatcher =
-                        ClusterFileReader.POINT_PATTERN.matcher(line.trim());
+                    pointMatcher.reset(line);
                     
                     if (pointMatcher.matches()) {
                         final String pointIdentifier = pointMatcher.group("id");
                         final int pointNumber = Integer.parseInt(pointMatcher.group("num"));
                         final String pointName = pointMatcher.group("name");
                         final String other = pointMatcher.group("other");
+                        final String multi = pointMatcher.group("multi");
                         
                         final double x1;
                         final double x2;
@@ -93,10 +97,13 @@ public class ClusterFileReader {
                         final ClusterPoint point =
                             new ClusterPoint(pointIdentifier, pointName, x1, x2);
                         pointsMap.put(pointNumber, point);
-                        points.add(point);
+                        clusterData.getPoints().add(point);
+                        
+                        if ((multi != null) && !multi.isBlank()) {
+                            clusterData.setMultiDimensional(true);
+                        }
                     } else {
-                        final Matcher clusterMatcher =
-                            ClusterFileReader.CLUSTER_PATTERN.matcher(line);
+                        clusterMatcher.reset(line);
                         if (clusterMatcher.matches()) {
                             final String clusterIdentifier = clusterMatcher.group("id");
                             final int clusterNumber = Integer.parseInt(clusterMatcher.group("num"));
@@ -139,10 +146,12 @@ public class ClusterFileReader {
                     clusterIndex,
                     pointsMap,
                     clustersMap,
-                    clusters
+                    clusterData.getClusters()
                 );
             }
         }
+        
+        return clusterData;
     }
     
     private static void addCluster(
