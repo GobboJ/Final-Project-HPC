@@ -6,7 +6,18 @@
 #include <algorithm>
 #include <unordered_map>
 
-bool readData(std::vector<double *> &data, std::size_t &dimension, const std::string &fileName) {
+/**
+ *
+ * @param data
+ * @param startColumnIndex Included.
+ * @param endColumnIndex Included.
+ * @param fileName
+ * @return
+ */
+bool readData(std::vector<double *> &data,
+              const std::size_t startColumnIndex,
+              const std::size_t endColumnIndex,
+              const std::string &fileName) {
     std::ifstream file{fileName};
     std::string line{};
 
@@ -15,22 +26,29 @@ bool readData(std::vector<double *> &data, std::size_t &dimension, const std::st
             std::getline(file, line);
             if (file.good() || file.eof()) {
                 if (!line.empty()) {
-                    dimension = static_cast<size_t>(std::count(line.cbegin(), line.cend(), ','));
-                    auto *const element = new double[dimension];
+                    auto *const element = new double[endColumnIndex - startColumnIndex + 1];
 
                     std::size_t start = 0;
                     std::size_t length = 0;
                     std::size_t elementIndex = 0;
-                    for (char character : line) {
-                        if (character == ',') {
-                            double value = std::strtod(line.substr(start, length).c_str(), nullptr);
+                    std::size_t columnIndex = 0;
+                    
+                    std::string::const_iterator iterator = line.cbegin();
+                    while (iterator != line.end() && columnIndex <= endColumnIndex) {
+                        if (*iterator == ',') {
+                            if (columnIndex >= startColumnIndex) {
+                                double value =
+                                        std::strtod(line.substr(start, length).c_str(), nullptr);
+                                element[elementIndex] = value;
+                                elementIndex++;
+                            }
                             start += length + 1;
                             length = 0;
-                            element[elementIndex] = value;
-                            elementIndex++;
+                            columnIndex++;
                         } else {
                             length++;
                         }
+                        ++iterator;
                     }
                     if (start < line.length()) {
                         element[elementIndex] =
@@ -142,185 +160,40 @@ bool createOutputFile(const std::filesystem::path &outputPath,
 }
 
 bool createMathematicaOutputFile(const std::filesystem::path &outputPath,
-                                 const std::vector<std::size_t> &pi,
-                                 const std::vector<double> &lambda) {
+                                  const std::vector<std::size_t> &pi,
+                                  const std::vector<double> &lambda) {
 
+    using namespace std::literals::string_literals;
     std::ofstream file{outputPath};
     if (file) {
-        /*
-         * Cluster[
-         *      Cluster[1, 2, 0.71, 1, 1],
-         *      Cluster[
-         *          Cluster[
-         *              Cluster[4, 6, 0.5, 1, 1], 5, 1, 2, 1
-         *          ], 3, 1.41, 3, 1
-         *      ], 2.5, 2, 4
-         * ]
-         *
-         * ab = Cluster[1, 2, 0.71, 1, 1]
-df = Cluster[4, 6, 0.5, 1, 1]
-dfe = Cluster[df, 5, 1, 2, 1]
-dfec = Cluster[dfe, 3, 1.41, 3, 1]
-tot = Cluster[ab, dfec, 2.5, 2, 4]
-DendrogramPlot[tot, LeafLabels ->(#&)]
-         */
-        std::vector<std::tuple<std::size_t, std::size_t, double>> o{};
-        for (std::size_t i = 0; i < lambda.size(); i++) {
-            o.emplace_back(std::make_tuple(i, pi[i], lambda[i]));
-        }
-        std::sort(o.begin(),
-                  o.end(),
-                  [](const std::tuple<std::size_t, std::size_t, double> &a,
-                     const std::tuple<std::size_t, std::size_t, double> &b) -> bool {
-                      return std::get<2>(a) < std::get<2>(b);
-                  });
-
-        std::unordered_map<std::size_t, std::pair<std::size_t, std::size_t>> p{};
-
-        for (std::size_t i = 0; i < o.size() - 1; i++) {
-            const auto &[index, pi, lambda] = o[i];
-
-            std::size_t c1;
-            std::size_t size1;
-            bool found = false;
-            for (const auto &[key, value] : p) {
-                if (value.first == pi) {
-                    found = true;
-                    c1 = key;
-                    size1 = value.second;
-                    break;
-                }
-            }
-
-            if (found) {
-                // Found
-                std::size_t c2;
-                std::size_t size2;
-                bool found = false;
-                for (const auto &[key, value] : p) {
-                
-                }
-                if (found) {
-                    // Found
-                    file << "c" << i << " = Cluster[c" << c1 << ", c" << c2 << ", " << lambda
-                         << ", " << size1 << ", " << size2 << "]\n";
-                    p[i] = {std::max(p[c1].first, p[c2].first), size1 + size2};
-                } else {
-                    // Not found
-                    file << "c" << i << " = Cluster[c" << c1 << ", " << index + 1 << ", " << lambda
-                         << ", " << size1 << ", 1]\n";
-                    p[i] = {std::max(p[c1].first, pi), size1 + 1};
-                }
-            } else {
-                // Not found
-                file << "c" << i << " = Cluster[" << index + 1 << ", " << pi + 1 << ", " << lambda
-                     << ", 1, 1]\n";
-                p[i] = {pi, 1};
-            }
-        }
-
-        file << "DendrogramPlot[c" << o.size() - 2 << ", LeafLabels ->(#&)]\n";
-        return true;
-    }
-    std::cerr << "Unable to open output file." << std::endl;
-    return false;
-}
-
-bool createMathematicaExpandedOutputFile(const std::filesystem::path &outputPath,
-                                         const std::vector<std::size_t> &pi,
-                                         const std::vector<double> &lambda) {
-
-    std::ofstream file{outputPath};
-    if (file) {
-        /*
-         * Cluster[
-         *      Cluster[1, 2, 0.71, 1, 1],
-         *      Cluster[
-         *          Cluster[
-         *              Cluster[4, 6, 0.5, 1, 1], 5, 1, 2, 1
-         *          ], 3, 1.41, 3, 1
-         *      ], 2.5, 2, 4
-         * ]
-         *
-         * ab = Cluster[1, 2, 0.71, 1, 1]
-df = Cluster[4, 6, 0.5, 1, 1]
-dfe = Cluster[df, 5, 1, 2, 1]
-dfec = Cluster[dfe, 3, 1.41, 3, 1]
-tot = Cluster[ab, dfec, 2.5, 2, 4]
-DendrogramPlot[tot, LeafLabels ->(#&)]
-         */
-        std::vector<std::tuple<std::size_t, std::size_t, double>> o{};
-        for (std::size_t i = 0; i < lambda.size(); i++) {
-            o.emplace_back(std::make_tuple(i, pi[i], lambda[i]));
-        }
-        std::sort(o.begin(),
-                  o.end(),
-                  [](const std::tuple<std::size_t, std::size_t, double> &a,
-                     const std::tuple<std::size_t, std::size_t, double> &b) -> bool {
-                      return std::get<2>(a) < std::get<2>(b);
-                  });
-
-        std::unordered_map<std::size_t, std::pair<std::size_t, std::size_t>> p{};
-        std::unordered_map<std::size_t, std::string> clusters{};
-
-        for (std::size_t i = 0; i < o.size() - 1; i++) {
-            const auto &[index, pi, lambda] = o[i];
-
-            std::size_t c1;
-            std::size_t size1;
-            bool found = false;
-            for (const auto &[key, value] : p) {
-                if (value.first == pi) {
-                    found = true;
-                    c1 = key;
-                    size1 = value.second;
-                    break;
-                }
-            }
-
-            if (found) {
-                // Found
-                std::size_t c2;
-                std::size_t size2;
-                bool found = false;
-                for (const auto &[key, value] : p) {
-                    if (value.first == index) {
-                        found = true;
-                        c2 = key;
-                        size2 = value.second;
-                        break;
-                    }
-                }
-                if (found) {
-                    // Found
-                    std::ostringstream stream{};
-                    stream << "Cluster[" << clusters[c1] << ", " << clusters[c2] << ", " << lambda
-                           << ", " << size1 << ", " << size2 << "]";
-                    clusters[i] = stream.str();
-                    p[i] = {std::max(p[c1].first, p[c2].first), size1 + size2};
-                } else {
-                    // Not found
-                    std::ostringstream stream{};
-                    stream << "Cluster[" << clusters[c1] << ", " << index + 1 << ", " << lambda << ", "
-                           << size1 << ", 1]";
-                    clusters[i] = stream.str();
-                    p[i] = {std::max(p[c1].first, pi), size1 + 1};
-                }
-            } else {
-                // Not found
-                std::ostringstream stream{};
-                stream << "Cluster[" << index + 1 << ", " << pi + 1 << ", " << lambda
-                     << ", 1, 1]";
-                clusters[i] = stream.str();
-                p[i] = {pi, 1};
-            }
-        }
         
-        auto a = clusters[20];
-        file << clusters[o.size() - 2] << '\n';
-        file << "DendrogramPlot[c" << o.size() - 2 << ", LeafLabels ->(#&)]\n";
+        std::vector<std::tuple<std::size_t, std::size_t, double>> ordered{};
+        for (std::size_t i = 0; i < lambda.size(); i++) {
+            ordered.emplace_back(std::make_tuple(i, pi[i], lambda[i]));
+        }
+        std::sort(ordered.begin(), ordered.end(), [](const auto &a, const auto &b) -> bool {
+            return std::get<2>(a) < std::get<2>(b);
+        });
+
+        std::unordered_map<std::size_t, std::pair<std::string, std::size_t>> map{};
+        for (std::size_t i = 0; i < ordered.size(); i++) {
+            map[i] = {std::to_string(i + 1), 1};
+        }
+
+        for (std::size_t i = 0; i < ordered.size() - 1; i++) {
+            const auto &[index, pi, lambda] = ordered[i];
+            file << "c" << i << " = Cluster[" << map[index].first << ", " << map[pi].first << ", "
+                 << lambda << ", " << map[index].second << ", " << map[index].second << "]\n";
+            map[pi].first = "c"s + std::to_string(i);
+            map[pi].second += map[index].second;
+            map[index].first = "c"s + std::to_string(i);
+            map[index].second += map[pi].second;
+        }
+        file << "DendrogramPlot[c" << ordered.size() - 2 << ", LeafLabels ->(#&)]\n";
+
         return true;
     }
+
     std::cerr << "Unable to open output file." << std::endl;
     return false;
 }
@@ -332,21 +205,50 @@ DendrogramPlot[tot, LeafLabels ->(#&)]
  * @version 1.0 2022-07-09
  * @since version date
  */
-int main() {
-
+int main(int argc, char *argv[]) {
+    
+    if (argc < 4) {
+        std::cerr << "Too few arguments" << std::endl;
+        return 1;
+    }
+    std::string fileName{argv[1]};
+    char *nextNonParsedIndex = &(argv[2][0]);
+    unsigned long startColumnIndex = std::strtoul(argv[2], &nextNonParsedIndex, 10);
+    if (nextNonParsedIndex == &(argv[2][0])) {
+        std::cerr << "Wrong start column index" << std::endl;
+        return 1;
+    }
+    nextNonParsedIndex = &(argv[3][0]);
+    unsigned long endColumnIndex = std::strtoul(argv[3], &nextNonParsedIndex, 10);
+    if (nextNonParsedIndex == &(argv[3][0])) {
+        std::cerr << "Wrong end column index" << std::endl;
+        return 1;
+    }
+    
+    if (endColumnIndex < startColumnIndex) {
+        std::cerr << "Wrong start and end column index" << std::endl;
+        return 1;
+    }
+    
+    const unsigned long dimension = endColumnIndex - startColumnIndex;
+    
     std::vector<double *> data{};
-    std::size_t dimension = 0;
 
-    if (readData(data, dimension, "iris.data")) {
+    if (readData(data, startColumnIndex-1, endColumnIndex-1, fileName)) {
+
+        auto start = std::chrono::high_resolution_clock::now();
+
         std::vector<std::size_t> pi{};
         pi.resize(data.size());
 
         std::vector<double> lambda{};
         lambda.resize(data.size());
-
+        
         std::vector<double> m{};
         m.resize(data.size());
-
+        
+        
+        
         for (ssize_t n = 0; n < data.size(); n++) {
             pi[n] = n;
             lambda[n] = INFINITY;
@@ -372,6 +274,21 @@ int main() {
                 }
             }
         }
+        auto end = std::chrono::high_resolution_clock::now();
+
+        auto duration = end - start;
+
+        using namespace std::literals::chrono_literals;
+
+        auto nanoseconds = duration % 1us;
+        auto microseconds = (duration % 1ms) / 1us;
+        auto milliseconds = (duration % 1s) / 1ms;
+        auto seconds = (duration % 1min) / 1s;
+        auto minute = duration / 1min;
+
+        std::cout << minute << " minutes " << seconds << " seconds " << milliseconds << " ms ("
+                  << milliseconds << "." << microseconds << "." << nanoseconds.count() << " ns)"
+                  << std::endl;
 
         std::filesystem::path outputDirectory{".."};
         outputDirectory =
@@ -379,7 +296,6 @@ int main() {
 
         createOutputFile(outputDirectory / "out.txt", data, dimension, pi, lambda);
         createMathematicaOutputFile(outputDirectory / "mat.txt", pi, lambda);
-        createMathematicaExpandedOutputFile(outputDirectory / "mat-ext.txt", pi, lambda);
     } else {
         return 1;
     }
