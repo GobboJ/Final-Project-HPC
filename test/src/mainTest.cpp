@@ -3,6 +3,7 @@
 #include <cmath>
 #include "DataReader.h"
 #include "SequentialClustering.h"
+#include "ParallelClustering.h"
 
 bool areAlmostLess(const double first, const double second) {
 
@@ -129,8 +130,7 @@ int main(int arcg, char *argv[]) {
     std::vector<std::size_t> pi{};
     std::vector<double> lambda{};
 
-    SequentialClustering sequentialClustering{};
-    sequentialClustering.cluster(data, 2, pi, lambda);
+    ParallelClustering::clusterV1(data, 2, pi, lambda);
 
     std::vector<std::pair<std::size_t, double>> result{};
     for (std::size_t i = 0; i < pi.size(); i++) {

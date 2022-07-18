@@ -158,6 +158,9 @@ add_compile_options(
     -Wl,-z,now
     -Wl,-z,relro
     -fno-common
+    -fopenmp
+    -msse
+    -msse3
     # Build-type-related options
     $<$<CONFIG:Release>:-O3>
     $<$<CONFIG:Debug>:-O0>

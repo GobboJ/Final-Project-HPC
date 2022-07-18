@@ -102,11 +102,11 @@ std::vector<double *> DataReader::readData(const std::size_t startColumnIndex,
                     }
 
                     // Check if all the dimensions has been filled
-                    if (elementIndex != dimension) {
+                    if (elementIndex < dimension) {
                         throw MalformedFileException("Line "s + std::to_string(lineNumber) +
                                                      " lists " + std::to_string(elementIndex) +
-                                                     ", but " + std::to_string(dimension) +
-                                                     " are required");
+                                                     "coordinates, but " +
+                                                     std::to_string(dimension) + " are required");
                     }
 
                     // Add the point to the data

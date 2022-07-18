@@ -47,6 +47,7 @@ endfunction ()
 
 # Include the headers
 include_directories(${SEQUENTIAL_INCLUDE_DIR})
+include_directories(${PARALLEL_INCLUDE_DIR})
 
 # Set the resources used by the test programs
 set_test_resources(
@@ -54,6 +55,8 @@ set_test_resources(
     resources/samples.data
     resources/same-distance.data
     resources/slide.data
+    "resources/Parking Birmingham.data"
+    resources/accelerometer.csv
 )
 
 # Define the test executable
@@ -65,18 +68,38 @@ add_executable(
     src/DataReader.h
     src/MalformedFileException.cpp
     src/MalformedFileException.h
+    src/DataWriter.cpp
+    src/DataWriter.h
 )
-target_link_libraries(Final_Project_HPC_Test Final_Project_HPC_Sequential)
+target_link_libraries(
+    Final_Project_HPC_Test Final_Project_HPC_Sequential Final_Project_HPC_Parallel
+)
 
 add_executable(
     Final_Project_HPC_Test_Sequential
+    ${testResources}
     src/DataReader.cpp
     src/DataReader.h
+    src/DataWriter.cpp
+    src/DataWriter.h
     src/mainSequential.cpp
     src/MalformedFileException.cpp
     src/MalformedFileException.h
 )
 target_link_libraries(Final_Project_HPC_Test_Sequential Final_Project_HPC_Sequential)
+
+add_executable(
+    Final_Project_HPC_Test_Parallel
+    ${testResources}
+    src/DataReader.cpp
+    src/DataReader.h
+    src/DataWriter.cpp
+    src/DataWriter.h
+    src/mainParallel.cpp
+    src/MalformedFileException.cpp
+    src/MalformedFileException.h
+)
+target_link_libraries(Final_Project_HPC_Test_Parallel Final_Project_HPC_Parallel)
 
 #
 # Tests
