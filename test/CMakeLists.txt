@@ -45,16 +45,43 @@ function (set_test_resources)
     set(testResources ${copiedResourcesPaths} PARENT_SCOPE)
 endfunction ()
 
+# Include the headers
+include_directories(${SEQUENTIAL_INCLUDE_DIR})
+
 # Set the resources used by the test programs
-set_test_resources(resources/a.data)
+set_test_resources(
+    resources/two-points.data
+    resources/samples.data
+    resources/same-distance.data
+    resources/slide.data
+)
+
 # Define the test executable
 add_executable(
     Final_Project_HPC_Test
-    ${testResources} src/main.cpp
+    ${testResources}
+    src/mainTest.cpp
+    src/DataReader.cpp
+    src/DataReader.h
+    src/MalformedFileException.cpp
+    src/MalformedFileException.h
 )
+target_link_libraries(Final_Project_HPC_Test Final_Project_HPC_Sequential)
+
+add_executable(
+    Final_Project_HPC_Test_Sequential
+    src/DataReader.cpp
+    src/DataReader.h
+    src/mainSequential.cpp
+    src/MalformedFileException.cpp
+    src/MalformedFileException.h
+)
+target_link_libraries(Final_Project_HPC_Test_Sequential Final_Project_HPC_Sequential)
 
 #
 # Tests
 #
-add_test(TestA Final_Project_HPC_Test "abc")
-add_test(TestB Final_Project_HPC_Test "bcd")
+add_test(TwoPoints Final_Project_HPC_Test "two-points")
+add_test(Samples Final_Project_HPC_Test "samples")
+add_test(SameDistance Final_Project_HPC_Test "same-distance")
+add_test(Slide Final_Project_HPC_Test "slide")

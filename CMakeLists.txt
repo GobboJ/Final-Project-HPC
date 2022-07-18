@@ -16,6 +16,5 @@ endif ()
 enable_testing()
 
 # Include the two sub-projects
-add_subdirectory(projects/src/sequential)
-add_subdirectory(projects/src/parallel)
+add_subdirectory(projects)
 add_subdirectory(test)
