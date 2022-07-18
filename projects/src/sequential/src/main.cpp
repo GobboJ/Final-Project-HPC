@@ -141,6 +141,9 @@ bool createOutputFile(const std::filesystem::path &outputPath,
 
                 std::string fullClusterName = firstName;
                 fullClusterName += secondName;
+                if (fullClusterName.length() > 10) {
+                    fullClusterName = fullClusterName.substr(0, 7) + "...";
+                }
 
                 file << clusterName << ": \"" << fullClusterName << "\" " << firstClusterIndex
                      << ' ' << secondClusterIndex << ' ' << distance << '\n';

@@ -6,8 +6,16 @@ project(Final_Project_HPC CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 # Include the compiler options
-include(cmake/CompilerOptions.cmake)
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    include(cmake/CompilerOptionsWindows.cmake)
+else ()
+    include(cmake/CompilerOptionsLinux.cmake)
+endif ()
+
+# Enable CTest
+enable_testing()
 
 # Include the two sub-projects
-add_subdirectory(projects/sequential)
-add_subdirectory(projects/parallel)
+add_subdirectory(projects/src/sequential)
+add_subdirectory(projects/src/parallel)
+add_subdirectory(test)
