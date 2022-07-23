@@ -6,12 +6,12 @@
 #include <iomanip>
 #include <unordered_map>
 #include <functional>
+#include <cstring>
+#include <xmmintrin.h>
 #include "data/DataReader.h"
 #include "SequentialClustering.h"
 #include "data/DataWriter.h"
 #include "ParallelClustering.h"
-
-#include <xmmintrin.h>
 
 template <typename C, typename D>
 void printElapsedTime(std::chrono::time_point<C, D> start, std::chrono::time_point<C, D> end);
@@ -44,6 +44,7 @@ int main(int argc, char *argv[]) {
             // Sequential :  6 s 362.728.561 ns
             // Parallel v1:  3 s 984.201.053 ns
             // Parallel v2:  3 s 910.884.877 ns
+            // Parallel v3:  3 s 932.660.255 ns
             {"birm", {"Parking Birmingham.data", 2, 3}},
             {"slide", {"slide.data", 1, 2}},
             // Sequential: 122.690 ns
@@ -51,6 +52,7 @@ int main(int argc, char *argv[]) {
             // Sequential :  2 m 10 s 448.206.284 ns
             // Parallel v1:  1 m 44 s 508.938.089 ns
             // Parallel v2:  1 m 38 s 773.972.452 ns
+            // Parallel v3:  1 m 33 s 123.307.274 ns
             {"acc", {"accelerometer.csv", 3, 5}}};
 
     std::string option{argv[1]};
@@ -134,35 +136,59 @@ int main(int argc, char *argv[]) {
     std::vector<double *> data =
             DataReader::readData(startColumnIndex - 1, endColumnIndex - 1, fileName);
 
-    if (option == "-p" && version == 2) {
+    double *reallocatedData = nullptr;
+
+    if (isParallel) {
         std::size_t quotient = 1 + ((dimension - 1) / 4);
         std::size_t newDimension = 4 * quotient;
         std::size_t bytes = newDimension * sizeof(double);
-        for (std::size_t i = 0; i < data.size(); i++) {
-            auto *reallocated = static_cast<double *>(_mm_malloc(bytes, 32));
-            memcpy(reallocated, data[i], dimension * sizeof(double));
-            memset(&(reallocated[dimension]), 0, (newDimension - dimension) * sizeof(double));
-            delete data[i];
-            data[i] = reallocated;
+        
+        if (version == 2) {
+            for (std::size_t i = 0; i < data.size(); i++) {
+                auto *reallocated = static_cast<double *>(_mm_malloc(bytes, 32));
+                memcpy(reallocated, data[i], dimension * sizeof(double));
+                memset(&(reallocated[dimension]), 0, (newDimension - dimension) * sizeof(double));
+                delete data[i];
+                data[i] = reallocated;
+            }
+        } else if (version == 3) {
+            auto a = bytes * data.size();
+            reallocatedData = static_cast<double *>(_mm_malloc(bytes * data.size(), 32));
+            memset(reallocatedData, 0, bytes * data.size());
+            
+            std::size_t start = 0;
+            for (std::size_t i = 0; i < data.size(); i++) {
+                memcpy(&(reallocatedData[start]), data[i], dimension * sizeof(double));
+                delete data[i];
+                start += newDimension;
+            }
         }
     }
 
     // Decide the clustering algorithm
-    std::function<void(const std::vector<double *> &,
-                       std::size_t,
-                       std::vector<std::size_t> &,
-                       std::vector<double> &)>
-            clusteringAlgorithm;
+    std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm;
 
     if (isParallel) {
         switch (version) {
             case 1:
                 std::cout << "Parallel clustering version 1";
-                clusteringAlgorithm = ParallelClustering::clusterV1;
+                clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::clusterV1(data, dimension, pi, lambda);
+                };
                 break;
             case 2:
                 std::cout << "Parallel clustering version 2";
-                clusteringAlgorithm = ParallelClustering::clusterV2;
+                clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::clusterV2(data, dimension, pi, lambda);
+                };
+                break;
+            case 3:
+                std::cout << "Parallel clustering version 3";
+                clusteringAlgorithm = [&data, &dimension, reallocatedData](auto &pi,
+                                                                           auto &lambda) noexcept ->  void {
+                    ParallelClustering::clusterV3(
+                            reallocatedData, dimension, data.size(), pi, lambda);
+                };
                 break;
             default:
                 std::cerr << "Unknown version" << ' ' << version << std::endl;
@@ -170,11 +196,13 @@ int main(int argc, char *argv[]) {
         }
     } else {
         std::cout << "Sequential clustering";
-        clusteringAlgorithm = SequentialClustering::cluster;
+        clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
+            SequentialClustering::cluster(data, dimension, pi, lambda);
+        };
     }
     std::cout << " of '" << fileName << "' (columns from " << startColumnIndex << " to "
               << endColumnIndex << ')';
-    
+
     std::time_t t = std::time(nullptr);
     std::tm tm = *std::localtime(&t);
     std::cout << " started at " << std::put_time(&tm, "%H:%M:%S") << std::endl;
@@ -184,7 +212,7 @@ int main(int argc, char *argv[]) {
     std::vector<std::size_t> pi{};
     std::vector<double> lambda{};
 
-    clusteringAlgorithm(data, dimension, pi, lambda);
+    clusteringAlgorithm(pi, lambda);
 
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -206,7 +234,7 @@ int main(int argc, char *argv[]) {
     } else {
         std::cout << "no" << std::endl;
     }
-    
+
     return 0;
 }
 

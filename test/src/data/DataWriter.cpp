@@ -9,6 +9,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <iostream>
+#include <algorithm>
 
 bool DataWriter::createOutputFile(const std::filesystem::path &outputPath,
                                   const std::vector<double *> &data,

@@ -26,6 +26,12 @@ public:
                           std::vector<std::size_t> &pi,
                           std::vector<double> &lambda) noexcept;
     
+    static void clusterV3(double *data,
+                   std:: size_t dimension,
+                   std::size_t dataSize,
+                   std::vector<std::size_t> &pi,
+                   std::vector<double> &lambda) noexcept;
+    
     /**
      * Computes the distance between two points.
      *
@@ -37,6 +43,7 @@ public:
     static inline double distance(const double *__restrict__ firstPoint,
                            const double *__restrict__ secondPoint,
                            std::size_t dimension) noexcept;
+    
 };
 
 #endif  // FINAL_PROJECT_HPC_PARALLELCLUSTERING_H
