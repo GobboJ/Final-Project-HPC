@@ -6,15 +6,17 @@ project(Final_Project_HPC_Sequential CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 find_package(OpenMP REQUIRED)
+add_compile_definitions(TIMERS)
 
 add_library(
     Final_Project_HPC_Sequential STATIC
     include/sequential/SequentialClustering.h src/sequential/SequentialClustering.cpp
+    src/utils/Timer.h
 )
 
 add_library(
     Final_Project_HPC_Parallel STATIC
-    include/parallel/ParallelClustering.h src/parallel/ParallelClustering.cpp
+    include/parallel/ParallelClustering.h src/parallel/ParallelClustering.cpp src/utils/Timer.h
 )
 target_link_libraries(Final_Project_HPC_Parallel PRIVATE OpenMP::OpenMP_CXX)
 

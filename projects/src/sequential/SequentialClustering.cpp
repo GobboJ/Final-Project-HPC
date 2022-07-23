@@ -9,6 +9,7 @@
 #include <climits>
 #include <cmath>
 #include "../../include/sequential/SequentialClustering.h"
+#include "../utils/Timer.h"
 
 /**
  * Sequential clustering algorithm.
@@ -33,21 +34,42 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
     std::vector<double> partRow{};
     partRow.resize(data.size());
 
+#ifdef TIMERS
+    Timer firstTimer{};
+    Timer secondTimer{};
+    Timer thirdTimer{};
+    Timer fourthTimer{};
+#endif
+    
+    
+    
     // 1. Set pi(0) to 0, lambda(0) to infinity
     pi[0] = 0;
     lambda[0] = std::numeric_limits<double>::infinity();
+    
+    
 
     for (std::size_t n = 1; n < data.size(); n++) {
 
+#ifdef TIMERS
+        firstTimer.start();
+#endif
         // 1. Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
         pi[n] = n;
         lambda[n] = std::numeric_limits<double>::infinity();
-
+#ifdef TIMERS
+        firstTimer.stop();
+        secondTimer.start();
+#endif
         // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
         for (std::size_t i = 0; i <= n - 1; i++) {
             partRow[i] = distance(data[i], data[n], dimension);
         }
-
+#ifdef TIMERS
+        secondTimer.stop();
+        
+        thirdTimer.start();
+#endif
         // 3. For i from 1 to n
         for (std::size_t i = 0; i <= n - 1; i++) {
             // if lambda(i) >= M(i)
@@ -65,7 +87,10 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
                 partRow[pi[i]] = std::min(partRow[pi[i]], partRow[i]);
             }
         }
-
+#ifdef TIMERS
+        thirdTimer.stop();
+        fourthTimer.start();
+#endif
         // 4. For i from 1 to n
         for (std::size_t i = 0; i <= n - 1; i++) {
             // if lambda(i) >= lambda(pi(i))
@@ -74,7 +99,26 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
                 pi[i] = n;
             }
         }
+#ifdef TIMERS
+        fourthTimer.stop();
+        if (n%1000 == 0) {
+            std::cout << n << std::endl;
+        }
+#endif
     }
+    
+#ifdef TIMERS
+    std::cout << "Stage 1: ";
+    firstTimer.print();
+    std::cout << "Stage 2: ";
+    secondTimer.print();
+    std::cout << "Stage 3: ";
+    thirdTimer.print();
+    std::cout << "Stage 4: ";
+    fourthTimer.print();
+    std::cout << "Total  : ";
+    (firstTimer + secondTimer + thirdTimer + fourthTimer).print();
+#endif
 }
 
 /**

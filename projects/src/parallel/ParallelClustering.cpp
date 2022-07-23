@@ -6,6 +6,7 @@
  * @since version date
  */
 #include "../../include/parallel/ParallelClustering.h"
+#include "../utils/Timer.h"
 #include <cmath>
 #include <atomic>
 
@@ -97,20 +98,20 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
         lambda[n] = std::numeric_limits<double>::infinity();
 
         // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
-        
+
         std::size_t quotient = 1 + ((dimension - 1) / 4);
-        
-        #pragma omp parallel for default(none) shared(n, data, dimension, m, quotient) \
+
+#pragma omp parallel for default(none) shared(n, data, dimension, m, quotient) \
         num_threads(ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT)
         for (std::size_t i = 0; i <= n - 1; i++) {
             double sum = 0;
             for (std::size_t j = 0; j < quotient; j++) {
                 __m256d dataI = _mm256_load_pd(&(data[i][j * 4]));
                 __m256d dataN = _mm256_load_pd(&(data[n][j * 4]));
-                
+
                 __m256d sub = _mm256_sub_pd(dataI, dataN);
-                __m256d square = _mm256_mul_pd(sub, sub); // x^2, y^2, z^2, a^2
-                sum += _mm256_hadd_pd(square, square)[0]; // (x^2 + y^2 + z^2 + a^2) ...
+                __m256d square = _mm256_mul_pd(sub, sub);  // x^2, y^2, z^2, a^2
+                sum += _mm256_hadd_pd(square, square)[0];  // (x^2 + y^2 + z^2 + a^2) ...
             }
             // {3, 6, 8, 10, 15, 18, 0, 0}
             /*
@@ -120,8 +121,8 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
             __m128d sub = _mm_sub_pd(dataI, dataN);
             __m128d square = _mm_mul_pd(sub, sub);
             __m128d result = _mm_hadd_pd(square, square);
-            
-            
+
+
             _mm_store_sd(&sum, result);
             */
             m[i] = sqrt(sum);
@@ -163,7 +164,7 @@ void ParallelClustering::clusterV3(double *data,
                                    std::size_t dataSize,
                                    std::vector<std::size_t> &pi,
                                    std::vector<double> &lambda) noexcept {
-    
+
     // Initializes pi and lambda vectors
     pi.resize(dataSize);
     lambda.resize(dataSize);
@@ -176,17 +177,29 @@ void ParallelClustering::clusterV3(double *data,
     pi[0] = 0;
     lambda[0] = std::numeric_limits<double>::infinity();
 
+#ifdef TIMERS
+    Timer firstTimer{};
+    Timer secondTimer{};
+    Timer thirdTimer{};
+    Timer fourthTimer{};
+#endif
     for (std::size_t n = 1; n < dataSize; n++) {
-
+#ifdef TIMERS
+        firstTimer.start();
+#endif
         // 1. Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
         pi[n] = n;
         lambda[n] = std::numeric_limits<double>::infinity();
+#ifdef TIMERS
+        firstTimer.stop();
 
+        secondTimer.start();
+#endif
         // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
-        
+
         std::size_t quotient = 1 + ((dimension - 1) / 4);
         std::size_t singleDataSize = 4 * quotient;
-        
+
 #pragma omp parallel for default(none) shared(n, data, dimension, m, quotient, singleDataSize) \
         num_threads(ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT)
         for (std::size_t i = 0; i <= n - 1; i++) {
@@ -201,10 +214,10 @@ void ParallelClustering::clusterV3(double *data,
                 // i = 3 --> 24 - 31
                 __m256d dataI = _mm256_load_pd(&(data[(i * singleDataSize) + (j * 4)]));
                 __m256d dataN = _mm256_load_pd(&(data[(n * singleDataSize) + (j * 4)]));
-                
+
                 __m256d sub = _mm256_sub_pd(dataI, dataN);
-                __m256d square = _mm256_mul_pd(sub, sub); // x^2, y^2, z^2, a^2
-                sum += _mm256_hadd_pd(square, square)[0]; // (x^2 + y^2 + z^2 + a^2) ...
+                __m256d square = _mm256_mul_pd(sub, sub);  // x^2, y^2, z^2, a^2
+                sum += _mm256_hadd_pd(square, square)[0];  // (x^2 + y^2 + z^2 + a^2) ...
             }
             // {3, 6, 8, 10, 15, 18, 0, 0}
             /*
@@ -222,6 +235,11 @@ void ParallelClustering::clusterV3(double *data,
 
             // partRow[i] = ParallelClustering::distance(data[i], data[n], dimension);
         }
+#ifdef TIMERS
+        secondTimer.stop();
+
+        thirdTimer.start();
+#endif
 
         // 3. For i from 1 to n
         for (std::size_t i = 0; i <= n - 1; i++) {
@@ -240,7 +258,11 @@ void ParallelClustering::clusterV3(double *data,
                 m[pi[i]] = std::min(m[pi[i]], m[i]);
             }
         }
+#ifdef TIMERS
+        thirdTimer.stop();
 
+        fourthTimer.start();
+#endif
         // 4. For i from 1 to n
         for (std::size_t i = 0; i <= n - 1; i++) {
             // if lambda(i) >= lambda(pi(i))
@@ -249,7 +271,26 @@ void ParallelClustering::clusterV3(double *data,
                 pi[i] = n;
             }
         }
+#ifdef TIMERS
+        fourthTimer.stop();
+        if (n%1000 == 0) {
+            std::cout << n << std::endl;
+        }
+#endif
     }
+
+#ifdef TIMERS
+    std::cout << "Stage 1: ";
+    firstTimer.print();
+    std::cout << "Stage 2: ";
+    secondTimer.print();
+    std::cout << "Stage 3: ";
+    thirdTimer.print();
+    std::cout << "Stage 4: ";
+    fourthTimer.print();
+    std::cout << "Total  : ";
+    (firstTimer + secondTimer + thirdTimer + fourthTimer).print();
+#endif
 }
 
 /**

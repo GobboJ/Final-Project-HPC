@@ -60,6 +60,7 @@ set_test_resources(
     resources/test
     "resources/test 2"
     resources/iris.data
+    resources/generated.data
 )
 
 # Define the test executable
@@ -87,11 +88,14 @@ add_executable(
     src/data/DataWriter.h
     src/main.cpp
     src/data/MalformedFileException.cpp
-    src/data/MalformedFileException.h
-)
+    src/data/MalformedFileException.h)
 target_link_libraries(
     Final_Project_HPC_Main Final_Project_HPC_Sequential Final_Project_HPC_Parallel
 )
+
+add_executable(
+        Data_Generator
+        src/generate.cpp)
 
 # add_executable( Final_Project_HPC_Test_Parallel ${testResources} src/data/DataReader.cpp
 # src/data/DataReader.h src/data/DataWriter.cpp src/data/DataWriter.h src/mainParallel.cpp

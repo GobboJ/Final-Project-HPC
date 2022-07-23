@@ -53,7 +53,8 @@ int main(int argc, char *argv[]) {
             // Parallel v1:  1 m 44 s 508.938.089 ns
             // Parallel v2:  1 m 38 s 773.972.452 ns
             // Parallel v3:  1 m 33 s 123.307.274 ns
-            {"acc", {"accelerometer.csv", 3, 5}}};
+            {"acc", {"accelerometer.csv", 3, 5}},
+            {"gen", {"generated.data", 1, 32}}};
 
     std::string option{argv[1]};
     std::size_t version = 0;
