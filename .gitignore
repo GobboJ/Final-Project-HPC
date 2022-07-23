@@ -9,3 +9,6 @@ cmake-build-*
 
 ### Test resources ###
 **/test/resources
+
+### Output directories ###
+/out

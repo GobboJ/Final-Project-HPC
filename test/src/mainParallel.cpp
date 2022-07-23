@@ -3,9 +3,9 @@
 #include <iostream>
 #include <cmath>
 #include <filesystem>
-#include "DataReader.h"
+#include "data/DataReader.h"
 #include "ParallelClustering.h"
-#include "DataWriter.h"
+#include "data/DataWriter.h"
 
 static const constexpr int VERSION = 2;
 

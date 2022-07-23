@@ -57,6 +57,9 @@ set_test_resources(
     resources/slide.data
     "resources/Parking Birmingham.data"
     resources/accelerometer.csv
+    resources/test
+    "resources/test 2"
+    resources/iris.data
 )
 
 # Define the test executable
@@ -64,42 +67,36 @@ add_executable(
     Final_Project_HPC_Test
     ${testResources}
     src/mainTest.cpp
-    src/DataReader.cpp
-    src/DataReader.h
-    src/MalformedFileException.cpp
-    src/MalformedFileException.h
-    src/DataWriter.cpp
-    src/DataWriter.h
+    src/data/DataReader.cpp
+    src/data/DataReader.h
+    src/data/MalformedFileException.cpp
+    src/data/MalformedFileException.h
+    src/data/DataWriter.cpp
+    src/data/DataWriter.h
 )
 target_link_libraries(
     Final_Project_HPC_Test Final_Project_HPC_Sequential Final_Project_HPC_Parallel
 )
 
 add_executable(
-    Final_Project_HPC_Test_Sequential
+    Final_Project_HPC_Main
     ${testResources}
-    src/DataReader.cpp
-    src/DataReader.h
-    src/DataWriter.cpp
-    src/DataWriter.h
-    src/mainSequential.cpp
-    src/MalformedFileException.cpp
-    src/MalformedFileException.h
+    src/data/DataReader.cpp
+    src/data/DataReader.h
+    src/data/DataWriter.cpp
+    src/data/DataWriter.h
+    src/main.cpp
+    src/data/MalformedFileException.cpp
+    src/data/MalformedFileException.h
 )
-target_link_libraries(Final_Project_HPC_Test_Sequential Final_Project_HPC_Sequential)
+target_link_libraries(
+    Final_Project_HPC_Main Final_Project_HPC_Sequential Final_Project_HPC_Parallel
+)
 
-add_executable(
-    Final_Project_HPC_Test_Parallel
-    ${testResources}
-    src/DataReader.cpp
-    src/DataReader.h
-    src/DataWriter.cpp
-    src/DataWriter.h
-    src/mainParallel.cpp
-    src/MalformedFileException.cpp
-    src/MalformedFileException.h
-)
-target_link_libraries(Final_Project_HPC_Test_Parallel Final_Project_HPC_Parallel)
+# add_executable( Final_Project_HPC_Test_Parallel ${testResources} src/data/DataReader.cpp
+# src/data/DataReader.h src/data/DataWriter.cpp src/data/DataWriter.h src/mainParallel.cpp
+# src/data/MalformedFileException.cpp src/data/MalformedFileException.h )
+# target_link_libraries(Final_Project_HPC_Test_Parallel Final_Project_HPC_Parallel)
 
 #
 # Tests

@@ -9,6 +9,7 @@
 #include "MalformedFileException.h"
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
 using namespace std::literals::string_literals;
 
@@ -31,6 +32,14 @@ std::vector<double *> DataReader::readData(const std::size_t startColumnIndex,
     const std::size_t dimension = endColumnIndex - startColumnIndex + 1;
     if (dimension < 2) {
         throw MalformedFileException("The data file must list points at least bi-dimensional.");
+    }
+
+    std::filesystem::path inputPath{fileName};
+    std::filesystem::path inputAbsolutePath = absolute(inputPath);
+    if (!exists(inputAbsolutePath)) {
+        using namespace std::literals::string_literals;
+        throw MalformedFileException(
+                "The file '"s + inputAbsolutePath.string() + "' does not exist.");
     }
 
     // Open the input file

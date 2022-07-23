@@ -9,9 +9,9 @@
 #include <cmath>
 #include <atomic>
 
-#include <pmmintrin.h>
-#include <xmmintrin.h>
-
+//#include <pmmintrin.h>
+//#include <xmmintrin.h>
+#include <immintrin.h>
 
 void ParallelClustering::clusterV1(const std::vector<double *> &data,
                                    std::size_t dimension,
@@ -83,8 +83,8 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
     lambda.resize(data.size());
 
     // Initializes the distance matrix
-    std::vector<double> partRow{};
-    partRow.resize(data.size());
+    std::vector<double> m{};
+    m.resize(data.size());
 
     // 1. Set pi(0) to 0, lambda(0) to infinity
     pi[0] = 0;
@@ -97,20 +97,34 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
         lambda[n] = std::numeric_limits<double>::infinity();
 
         // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
-
-        #pragma omp parallel for default(none) shared(n, data, dimension, partRow) \
+        
+        std::size_t quotient = 1 + ((dimension - 1) / 4);
+        
+        #pragma omp parallel for default(none) shared(n, data, dimension, m, quotient) \
         num_threads(ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT)
         for (std::size_t i = 0; i <= n - 1; i++) {
+            double sum = 0;
+            for (std::size_t j = 0; j < quotient; j++) {
+                __m256d dataI = _mm256_load_pd(data[i + (j * 4)]);
+                __m256d dataN = _mm256_load_pd(data[n + (j * 4)]);
+                
+                __m256d sub = _mm256_sub_pd(dataI, dataN);
+                __m256d square = _mm256_mul_pd(sub, sub); // x^2, y^2, z^2, a^2
+                sum += _mm256_hadd_pd(square, square)[0]; // (x^2 + y^2 + z^2 + a^2) ...
+            }
+            // {3, 6, 8, 10, 15, 18, 0, 0}
+            /*
             __m128d dataI = _mm_load_pd(data[i]);  // data[i]{0, 1}
             __m128d dataN = _mm_load_pd(data[n]);  // data[n]{0, 1}
 
             __m128d sub = _mm_sub_pd(dataI, dataN);
             __m128d square = _mm_mul_pd(sub, sub);
             __m128d result = _mm_hadd_pd(square, square);
-
-            double sum = 0;
+            
+            
             _mm_store_sd(&sum, result);
-            partRow[i] = sqrt(sum);
+            */
+            m[i] = sqrt(sum);
 
             // partRow[i] = ParallelClustering::distance(data[i], data[n], dimension);
         }
@@ -118,18 +132,18 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
         // 3. For i from 1 to n
         for (std::size_t i = 0; i <= n - 1; i++) {
             // if lambda(i) >= M(i)
-            if (lambda[i] >= partRow[i]) {
+            if (lambda[i] >= m[i]) {
                 // set M(pi(i)) to min { M(pi(i)), lambda(i) }
-                partRow[pi[i]] = std::min(partRow[pi[i]], lambda[i]);
+                m[pi[i]] = std::min(m[pi[i]], lambda[i]);
                 // set lambda(i) to M(i)
-                lambda[i] = partRow[i];
+                lambda[i] = m[i];
                 // set pi(i) to n + 1
                 pi[i] = n;
             }
             // if lambda(i) < M(i)
-            if (lambda[i] < partRow[i]) {
+            if (lambda[i] < m[i]) {
                 // set M(pi(i)) to min { M(pi(i)), M(i) }
-                partRow[pi[i]] = std::min(partRow[pi[i]], partRow[i]);
+                m[pi[i]] = std::min(m[pi[i]], m[i]);
             }
         }
 

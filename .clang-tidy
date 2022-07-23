@@ -10,4 +10,5 @@ Checks: "
     -llvmlibc-*,
     -mpi-*,
     -objc*,
-    -modernize*"
+    -modernize*,
+    -cppcoreguidelines-pro-bounds-pointer-arithmetic"
