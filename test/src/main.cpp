@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
         std::size_t newDimension = numberOfDoubles * quotient;
         std::size_t bytes = newDimension * sizeof(double);
 
-        if (version == 2 || version == 3) {
+        if (version == 2 || version == 3 || version == 5) {
             for (std::size_t i = 0; i < data.size(); i++) {
                 auto *reallocated =
                         static_cast<double *>(_mm_malloc(bytes, numberOfDoubles * sizeof(double)));
