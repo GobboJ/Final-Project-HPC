@@ -13,9 +13,10 @@
  */
 class ParallelClustering {
 
-private:
-    static const constexpr int DISTANCE_PARALLEL_THREADS_COUNT = 16;
 public:
+    static const constexpr int DISTANCE_PARALLEL_THREADS_COUNT = 4;
+    static const constexpr int STAGE_4_PARALLEL_THREADS_COUNT = 4;
+    
     static void clusterV1(const std::vector<double *> &data,
                    std::size_t dimension,
                    std::vector<std::size_t> &pi,
@@ -37,6 +38,11 @@ public:
                    std::vector<std::size_t> &pi,
                    std::vector<double> &lambda) noexcept;
     
+    static void clusterV5(const std::vector<double *> &data,
+                   std::size_t dimension,
+                   std::vector<std::size_t> &pi,
+                   std::vector<double> &lambda) noexcept;
+    
     /**
      * Computes the distance between two points.
      *
@@ -48,6 +54,7 @@ public:
     static inline double distance(const double *__restrict__ firstPoint,
                            const double *__restrict__ secondPoint,
                            std::size_t dimension) noexcept;
+
     
 };
 

@@ -198,6 +198,11 @@ int main(int argc, char *argv[]) {
                             reallocatedData, dimension, data.size(), pi, lambda);
                 };
                 break;
+            case 5:
+                clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::clusterV5(data, dimension, pi, lambda);
+                };
+                break;
             default:
                 std::cerr << "Unknown version" << ' ' << version << std::endl;
                 return 1;
@@ -215,10 +220,28 @@ int main(int argc, char *argv[]) {
     
     std::cout << " of '" << fileName << "' (columns from " << startColumnIndex << " to "
               << endColumnIndex << ')';
-
+    
     std::time_t t = std::time(nullptr);
     std::tm tm = *std::localtime(&t);
-    std::cout << " started at " << std::put_time(&tm, "%H:%M:%S") << std::endl;
+    std::cout << " started at" << ' ' << std::put_time(&tm, "%H:%M:%S");
+    
+    if (isParallel) {
+        std::cout << " with:" << std::endl;
+        std::cout << "    " << ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT << " thread";
+        if constexpr (ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT != 1) {
+            std::cout << 's';
+        }
+        std::cout << " to compute the distance" << std::endl;
+        if (version >= 5) {
+            std::cout << "    " << ParallelClustering::STAGE_4_PARALLEL_THREADS_COUNT << " thread";
+            if constexpr (ParallelClustering::STAGE_4_PARALLEL_THREADS_COUNT != 1) {
+                std::cout << 's';
+            }
+            std::cout << " to execute the stage 4" << std::endl;
+        }
+    }
+    
+    
 
     auto start = std::chrono::high_resolution_clock::now();
 
