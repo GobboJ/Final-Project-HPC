@@ -8,8 +8,6 @@
 #include "DataReader.h"
 #include "MalformedFileException.h"
 #include <fstream>
-#include <iostream>
-#include <filesystem>
 
 using namespace std::literals::string_literals;
 
@@ -23,7 +21,7 @@ using namespace std::literals::string_literals;
  */
 std::vector<double *> DataReader::readData(const std::size_t startColumnIndex,
                                            const std::size_t endColumnIndex,
-                                           const std::string &fileName) {
+                                           const std::filesystem::path &inputPath) {
 
     // Clear the result
     std::vector<double *> data{};
@@ -34,7 +32,6 @@ std::vector<double *> DataReader::readData(const std::size_t startColumnIndex,
         throw MalformedFileException("The data file must list points at least bi-dimensional.");
     }
 
-    std::filesystem::path inputPath{fileName};
     std::filesystem::path inputAbsolutePath = absolute(inputPath);
     if (!exists(inputAbsolutePath)) {
         using namespace std::literals::string_literals;
@@ -43,7 +40,7 @@ std::vector<double *> DataReader::readData(const std::size_t startColumnIndex,
     }
 
     // Open the input file
-    std::ifstream file{fileName};
+    std::ifstream file{inputAbsolutePath};
     if (file) {
         // Number of the line being parsed
         std::size_t lineNumber = 1;

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <filesystem>
 
 /**
  * Reader that reads the data of the points to cluster from a file.
@@ -25,8 +26,9 @@ public:
      * @return The read data.
      * @throws MalformedFileException If the file does not follow the format.
      */
-    static std::vector<double *> readData(
-            std::size_t startColumnIndex, std::size_t endColumnIndex, const std::string &fileName);
+    static std::vector<double *> readData(std::size_t startColumnIndex,
+                                          std::size_t endColumnIndex,
+                                          const std::filesystem::path &inputPath);
 };
 
 #endif  // FINAL_PROJECT_HPC_DATAREADER_H

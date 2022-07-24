@@ -25,14 +25,17 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
                                    std::size_t dimension,
                                    std::vector<std::size_t> &pi,
                                    std::vector<double> &lambda) noexcept {
-
+    
+    std::size_t dataSize = data.size();
+    
     // Initializes pi and lambda vectors
-    pi.resize(data.size());
-    lambda.resize(data.size());
+    
+    pi.resize(dataSize);
+    lambda.resize(dataSize);
 
     // Initializes the distance matrix
     std::vector<double> partRow{};
-    partRow.resize(data.size());
+    partRow.resize(dataSize);
 
 #ifdef TIMERS
     Timer firstTimer{};
@@ -49,7 +52,7 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
     
     
 
-    for (std::size_t n = 1; n < data.size(); n++) {
+    for (std::size_t n = 1; n < dataSize; n++) {
 
 #ifdef TIMERS
         firstTimer.start();

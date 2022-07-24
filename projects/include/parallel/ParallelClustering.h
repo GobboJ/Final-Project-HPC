@@ -14,7 +14,7 @@
 class ParallelClustering {
 
 private:
-    static const constexpr int DISTANCE_PARALLEL_THREADS_COUNT = 4;
+    static const constexpr int DISTANCE_PARALLEL_THREADS_COUNT = 16;
 public:
     static void clusterV1(const std::vector<double *> &data,
                    std::size_t dimension,
@@ -26,7 +26,12 @@ public:
                           std::vector<std::size_t> &pi,
                           std::vector<double> &lambda) noexcept;
     
-    static void clusterV3(double *data,
+    static void clusterV3(const std::vector<double *> &data,
+                          std::size_t dimension,
+                          std::vector<std::size_t> &pi,
+                          std::vector<double> &lambda) noexcept;
+    
+    static void clusterV4(double *data,
                    std:: size_t dimension,
                    std::size_t dataSize,
                    std::vector<std::size_t> &pi,

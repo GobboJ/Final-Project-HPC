@@ -18,24 +18,43 @@ void ParallelClustering::clusterV1(const std::vector<double *> &data,
                                    std::size_t dimension,
                                    std::vector<std::size_t> &pi,
                                    std::vector<double> &lambda) noexcept {
-
+    
+    std::size_t dataSize = data.size();
+    
     // Initializes pi and lambda vectors
-    pi.resize(data.size());
-    lambda.resize(data.size());
+    pi.resize(dataSize);
+    lambda.resize(dataSize);
 
     // Initializes the distance matrix
     std::vector<double> partRow{};
-    partRow.resize(data.size());
+    partRow.resize(dataSize);
 
     // 1. Set pi(0) to 0, lambda(0) to infinity
     pi[0] = 0;
     lambda[0] = std::numeric_limits<double>::infinity();
+    
+#ifdef TIMERS
+    Timer firstTimer{};
+    Timer secondTimer{};
+    Timer thirdTimer{};
+    Timer fourthTimer{};
+#endif
 
-    for (std::size_t n = 1; n < data.size(); n++) {
+    for (std::size_t n = 1; n < dataSize; n++) {
+    
+#ifdef TIMERS
+        firstTimer.start();
+#endif
 
         // 1. Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
         pi[n] = n;
         lambda[n] = std::numeric_limits<double>::infinity();
+        
+#ifdef TIMERS
+        firstTimer.stop();
+        
+        secondTimer.start();
+#endif
 
         // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
 
@@ -44,6 +63,12 @@ void ParallelClustering::clusterV1(const std::vector<double *> &data,
         for (std::size_t i = 0; i <= n - 1; i++) {
             partRow[i] = ParallelClustering::distance(data[i], data[n], dimension);
         }
+        
+#ifdef TIMERS
+        secondTimer.stop();
+        
+        thirdTimer.start();
+#endif
 
         // 3. For i from 1 to n
         for (std::size_t i = 0; i <= n - 1; i++) {
@@ -62,6 +87,12 @@ void ParallelClustering::clusterV1(const std::vector<double *> &data,
                 partRow[pi[i]] = std::min(partRow[pi[i]], partRow[i]);
             }
         }
+        
+#ifdef TIMERS
+        thirdTimer.stop();
+        
+        fourthTimer.start();
+#endif
 
         // 4. For i from 1 to n
         for (std::size_t i = 0; i <= n - 1; i++) {
@@ -71,31 +102,199 @@ void ParallelClustering::clusterV1(const std::vector<double *> &data,
                 pi[i] = n;
             }
         }
+        
+#ifdef TIMERS
+        fourthTimer.stop();
+#endif
+#ifdef PRINT_ITERATIONS
+        if (n % 1000 == 0) {
+            std::cout << n << std::endl;
+        }
+#endif
     }
+    
+#ifdef TIMERS
+    std::cout << "Stage 1: ";
+    firstTimer.print();
+    std::cout << "Stage 2: ";
+    secondTimer.print();
+    std::cout << "Stage 3: ";
+    thirdTimer.print();
+    std::cout << "Stage 4: ";
+    fourthTimer.print();
+    std::cout << "Total  : ";
+    (firstTimer + secondTimer + thirdTimer + fourthTimer).print();
+#endif
 }
 
 void ParallelClustering::clusterV2(const std::vector<double *> &data,
                                    std::size_t dimension,
                                    std::vector<std::size_t> &pi,
                                    std::vector<double> &lambda) noexcept {
-
+    
+    std::size_t dataSize = data.size();
+    
     // Initializes pi and lambda vectors
-    pi.resize(data.size());
-    lambda.resize(data.size());
+    pi.resize(dataSize);
+    lambda.resize(dataSize);
 
     // Initializes the distance matrix
     std::vector<double> m{};
-    m.resize(data.size());
+    m.resize(dataSize);
 
     // 1. Set pi(0) to 0, lambda(0) to infinity
     pi[0] = 0;
     lambda[0] = std::numeric_limits<double>::infinity();
+    
+#ifdef TIMERS
+    Timer firstTimer{};
+    Timer secondTimer{};
+    Timer thirdTimer{};
+    Timer fourthTimer{};
+#endif
 
-    for (std::size_t n = 1; n < data.size(); n++) {
+    for (std::size_t n = 1; n < dataSize; n++) {
+    
+#ifdef TIMERS
+        firstTimer.start();
+#endif
 
         // 1. Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
         pi[n] = n;
         lambda[n] = std::numeric_limits<double>::infinity();
+        
+#ifdef TIMERS
+        firstTimer.stop();
+        
+        secondTimer.start();
+#endif
+
+        // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
+
+        std::size_t quotient = 1 + ((dimension - 1) / 4);
+        
+        
+
+#pragma omp parallel for default(none) shared(n, data, dimension, m, quotient) \
+        num_threads(ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT)
+        for (std::size_t i = 0; i <= n - 1; i++) {
+            double sum = 0;
+            for (std::size_t j = 0; j < quotient; j++) {
+                __m128d dataI = _mm_load_pd(data[i]);  // data[i]{0, 1}
+                __m128d dataN = _mm_load_pd(data[n]);  // data[n]{0, 1}
+                
+                __m128d sub = _mm_sub_pd(dataI, dataN);
+                __m128d square = _mm_mul_pd(sub, sub);
+                
+                sum += _mm_hadd_pd(square, square)[0];
+            }
+            m[i] = sqrt(sum);
+        }
+        
+#ifdef TIMERS
+        secondTimer.stop();
+        
+        thirdTimer.start();
+#endif
+
+        // 3. For i from 1 to n
+        for (std::size_t i = 0; i <= n - 1; i++) {
+            // if lambda(i) >= M(i)
+            if (lambda[i] >= m[i]) {
+                // set M(pi(i)) to min { M(pi(i)), lambda(i) }
+                m[pi[i]] = std::min(m[pi[i]], lambda[i]);
+                // set lambda(i) to M(i)
+                lambda[i] = m[i];
+                // set pi(i) to n + 1
+                pi[i] = n;
+            }
+            // if lambda(i) < M(i)
+            if (lambda[i] < m[i]) {
+                // set M(pi(i)) to min { M(pi(i)), M(i) }
+                m[pi[i]] = std::min(m[pi[i]], m[i]);
+            }
+        }
+        
+#ifdef TIMERS
+        thirdTimer.stop();
+        
+        fourthTimer.start();
+#endif
+
+        // 4. For i from 1 to n
+        for (std::size_t i = 0; i <= n - 1; i++) {
+            // if lambda(i) >= lambda(pi(i))
+            if (lambda[i] >= lambda[pi[i]]) {
+                // set pi(i) to n + 1
+                pi[i] = n;
+            }
+        }
+        
+#ifdef TIMERS
+        fourthTimer.stop();
+#endif
+#ifdef PRINT_ITERATIONS
+        if (n % 1000 == 0) {
+            std::cout << n << std::endl;
+        }
+#endif
+    }
+    
+#ifdef TIMERS
+    std::cout << "Stage 1: ";
+    firstTimer.print();
+    std::cout << "Stage 2: ";
+    secondTimer.print();
+    std::cout << "Stage 3: ";
+    thirdTimer.print();
+    std::cout << "Stage 4: ";
+    fourthTimer.print();
+    std::cout << "Total  : ";
+    (firstTimer + secondTimer + thirdTimer + fourthTimer).print();
+#endif
+}
+
+void ParallelClustering::clusterV3(const std::vector<double *> &data,
+                                   std::size_t dimension,
+                                   std::vector<std::size_t> &pi,
+                                   std::vector<double> &lambda) noexcept {
+    
+    std::size_t dataSize = data.size();
+    
+    // Initializes pi and lambda vectors
+    pi.resize(dataSize);
+    lambda.resize(dataSize);
+
+    // Initializes the distance matrix
+    std::vector<double> m{};
+    m.resize(dataSize);
+
+    // 1. Set pi(0) to 0, lambda(0) to infinity
+    pi[0] = 0;
+    lambda[0] = std::numeric_limits<double>::infinity();
+    
+#ifdef TIMERS
+    Timer firstTimer{};
+    Timer secondTimer{};
+    Timer thirdTimer{};
+    Timer fourthTimer{};
+#endif
+
+    for (std::size_t n = 1; n < dataSize; n++) {
+    
+#ifdef TIMERS
+        firstTimer.start();
+#endif
+
+        // 1. Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
+        pi[n] = n;
+        lambda[n] = std::numeric_limits<double>::infinity();
+        
+#ifdef TIMERS
+        firstTimer.stop();
+        
+        secondTimer.start();
+#endif
 
         // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
 
@@ -129,6 +328,12 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
 
             // partRow[i] = ParallelClustering::distance(data[i], data[n], dimension);
         }
+        
+#ifdef TIMERS
+        secondTimer.stop();
+        
+        thirdTimer.start();
+#endif
 
         // 3. For i from 1 to n
         for (std::size_t i = 0; i <= n - 1; i++) {
@@ -148,6 +353,12 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
             }
         }
 
+#ifdef TIMERS
+        thirdTimer.stop();
+        
+        fourthTimer.start();
+#endif
+        
         // 4. For i from 1 to n
         for (std::size_t i = 0; i <= n - 1; i++) {
             // if lambda(i) >= lambda(pi(i))
@@ -156,12 +367,34 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
                 pi[i] = n;
             }
         }
+        
+#ifdef TIMERS
+        fourthTimer.stop();
+#endif
+#ifdef PRINT_ITERATIONS
+        if (n % 1000 == 0) {
+            std::cout << n << std::endl;
+        }
+#endif
     }
+    
+#ifdef TIMERS
+    std::cout << "Stage 1: ";
+    firstTimer.print();
+    std::cout << "Stage 2: ";
+    secondTimer.print();
+    std::cout << "Stage 3: ";
+    thirdTimer.print();
+    std::cout << "Stage 4: ";
+    fourthTimer.print();
+    std::cout << "Total  : ";
+    (firstTimer + secondTimer + thirdTimer + fourthTimer).print();
+#endif
 }
 
-void ParallelClustering::clusterV3(double *data,
-                                   std::size_t dimension,
-                                   std::size_t dataSize,
+void ParallelClustering::clusterV4(double *data,
+                                   const std::size_t dimension,
+                                   const std::size_t dataSize,
                                    std::vector<std::size_t> &pi,
                                    std::vector<double> &lambda) noexcept {
 
@@ -273,7 +506,9 @@ void ParallelClustering::clusterV3(double *data,
         }
 #ifdef TIMERS
         fourthTimer.stop();
-        if (n%1000 == 0) {
+#endif
+#ifdef PRINT_ITERATIONS
+        if (n % 1000 == 0) {
             std::cout << n << std::endl;
         }
 #endif

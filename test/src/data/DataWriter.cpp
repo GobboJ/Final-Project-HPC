@@ -17,16 +17,16 @@ bool DataWriter::createOutputFile(const std::filesystem::path &outputPath,
                                   const std::vector<size_t> &pi,
                                   const std::vector<double> &lambda) {
 
+    using namespace std::literals::string_literals;
+
     std::ofstream file{outputPath};
     if (file) {
-        int index = 0;
-        std::size_t pointIndex = 1;
+        std::size_t pointIndex = 0;
         std::unordered_map<std::string, std::string> names{};
         // Print the points
         for (const double *element : data) {
-            std::string s{"P"};
-            s += std::to_string(index);
-            file << s << ": \"" << std::to_string(pointIndex) << "\" ";
+            std::string pointName = "P"s + std::to_string(pointIndex);
+            file << pointName << ": \"" << std::to_string(pointIndex + 1) << "\" ";
             for (std::size_t i = 0; i < dimension; i++) {
                 file << element[i];
                 if (i == (dimension - 1)) {
@@ -35,9 +35,8 @@ bool DataWriter::createOutputFile(const std::filesystem::path &outputPath,
                     file << ' ';
                 }
             }
-            names[s] = std::to_string(pointIndex);
+            names[pointName] = std::to_string(pointIndex + 1);
             pointIndex++;
-            index++;
         }
         // Merge pi and lambda
         std::vector<std::size_t> result{};
@@ -52,11 +51,11 @@ bool DataWriter::createOutputFile(const std::filesystem::path &outputPath,
                       return lambda[first] < lambda[second];
                   });
 
+        // Initialize the clusters
         std::unordered_map<std::size_t, std::pair<std::string, std::string>> clusters{};
         for (std::size_t i = 0; i < pi.size(); i++) {
-            std::string s{"P"};
-            s += std::to_string(i);
-            clusters[i] = {s, names[s]};
+            std::string firstPointName = "P" + std::to_string(i);
+            clusters[i] = {firstPointName, names[firstPointName]};
         }
 
         std::size_t clusterIndex = 0;
@@ -113,13 +112,14 @@ bool DataWriter::createMathematicaOutputFile(const std::filesystem::path &output
 
         file << "Needs[\"HierarchicalClustering`\"]\n";
         for (std::size_t i = 0; i < ordered.size() - 1; i++) {
-            const auto &[index, pi, lambda] = ordered[i];
-            file << "c" << i << " = Cluster[" << map[index].first << ", " << map[pi].first << ", "
-                 << lambda << ", " << map[index].second << ", " << map[index].second << "]\n";
-            map[pi].first = "c"s + std::to_string(i);
-            map[pi].second += map[index].second;
+            const auto &[index, piValue, lambdaValue] = ordered[i];
+            file << "c" << i << " = Cluster[" << map[index].first << ", " << map[piValue].first
+                 << ", " << lambdaValue << ", " << map[index].second << ", " << map[index].second
+                 << "]\n";
+            map[piValue].first = "c"s + std::to_string(i);
+            map[piValue].second += map[index].second;
             map[index].first = "c"s + std::to_string(i);
-            map[index].second += map[pi].second;
+            map[index].second += map[piValue].second;
         }
         file << "DendrogramPlot[c" << ordered.size() - 2 << ", LeafLabels ->(#&)]\n";
 
