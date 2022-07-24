@@ -105,7 +105,7 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
 #ifdef TIMERS
         fourthTimer.stop();
         if (n%1000 == 0) {
-            std::cout << n << std::endl;
+            std::cout << "Processed" << ' ' << n << " rows" << std::endl;
         }
 #endif
     }

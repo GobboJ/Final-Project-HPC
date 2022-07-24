@@ -108,7 +108,7 @@ void ParallelClustering::clusterV1(const std::vector<double *> &data,
 #endif
 #ifdef PRINT_ITERATIONS
         if (n % 1000 == 0) {
-            std::cout << n << std::endl;
+            std::cout << "Processed" << ' ' << n << " " << std::endl;
         }
 #endif
     }
@@ -171,17 +171,15 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
 
         // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
 
-        std::size_t quotient = 1 + ((dimension - 1) / 4);
+        std::size_t quotient = 1 + ((dimension - 1) / 2);
         
-        
-
 #pragma omp parallel for default(none) shared(n, data, dimension, m, quotient) \
         num_threads(ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT)
         for (std::size_t i = 0; i <= n - 1; i++) {
             double sum = 0;
             for (std::size_t j = 0; j < quotient; j++) {
-                __m128d dataI = _mm_load_pd(data[i]);  // data[i]{0, 1}
-                __m128d dataN = _mm_load_pd(data[n]);  // data[n]{0, 1}
+                __m128d dataI = _mm_load_pd(&(data[i][j * 2]));  // data[i]{0, 1}
+                __m128d dataN = _mm_load_pd(&(data[n][j * 2]));  // data[n]{0, 1}
                 
                 __m128d sub = _mm_sub_pd(dataI, dataN);
                 __m128d square = _mm_mul_pd(sub, sub);
@@ -235,7 +233,7 @@ void ParallelClustering::clusterV2(const std::vector<double *> &data,
 #endif
 #ifdef PRINT_ITERATIONS
         if (n % 1000 == 0) {
-            std::cout << n << std::endl;
+            std::cout << "Processed" << ' ' << n << " rows" << std::endl;
         }
 #endif
     }
@@ -373,7 +371,7 @@ void ParallelClustering::clusterV3(const std::vector<double *> &data,
 #endif
 #ifdef PRINT_ITERATIONS
         if (n % 1000 == 0) {
-            std::cout << n << std::endl;
+            std::cout << "Processed" << ' ' << n << " rows" << std::endl;
         }
 #endif
     }
@@ -509,7 +507,7 @@ void ParallelClustering::clusterV4(double *data,
 #endif
 #ifdef PRINT_ITERATIONS
         if (n % 1000 == 0) {
-            std::cout << n << std::endl;
+            std::cout << "Processed" << ' ' << n << " rows" << std::endl;
         }
 #endif
     }
@@ -572,15 +570,15 @@ void ParallelClustering::clusterV5(const std::vector<double *> &data,
 
         // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
 
-        std::size_t quotient = 1 + ((dimension - 1) / 4);
+        std::size_t quotient = 1 + ((dimension - 1) / 2);
 
 #pragma omp parallel for default(none) shared(n, data, dimension, m, quotient) \
         num_threads(ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT)
         for (std::size_t i = 0; i <= n - 1; i++) {
             double sum = 0;
             for (std::size_t j = 0; j < quotient; j++) {
-                __m128d dataI = _mm_load_pd(data[i]);  // data[i]{0, 1}
-                __m128d dataN = _mm_load_pd(data[n]);  // data[n]{0, 1}
+                __m128d dataI = _mm_load_pd(&(data[i][j * 2]));  // data[i]{0, 1}
+                __m128d dataN = _mm_load_pd(&(data[n][j * 2]));  // data[n]{0, 1}
 
                 __m128d sub = _mm_sub_pd(dataI, dataN);
                 __m128d square = _mm_mul_pd(sub, sub);
@@ -636,7 +634,7 @@ void ParallelClustering::clusterV5(const std::vector<double *> &data,
 #endif
 #ifdef PRINT_ITERATIONS
         if (n % 1000 == 0) {
-            std::cout << n << std::endl;
+            std::cout << "Processed" << ' ' << n << " rows" << std::endl;
         }
 #endif
     }

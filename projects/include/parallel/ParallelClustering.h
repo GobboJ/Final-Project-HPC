@@ -14,8 +14,8 @@
 class ParallelClustering {
 
 public:
-    static const constexpr int DISTANCE_PARALLEL_THREADS_COUNT = 4;
-    static const constexpr int STAGE_4_PARALLEL_THREADS_COUNT = 4;
+    static const constexpr int DISTANCE_PARALLEL_THREADS_COUNT = 6;
+    static const constexpr int STAGE_4_PARALLEL_THREADS_COUNT = 6;
     
     static void clusterV1(const std::vector<double *> &data,
                    std::size_t dimension,

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include "data/DataReader.h"
 #include "SequentialClustering.h"
 #include "ParallelClustering.h"
@@ -125,12 +126,14 @@ int main(int arcg, char *argv[]) {
         return 1;
     }
 
-    std::vector<double *> data = DataReader::readData(0, 1, fileName);
+    std::filesystem::path resourcesPath{".."};
+    resourcesPath = resourcesPath / ".." / "test" / "resources";
+    std::vector<double *> data = DataReader::readData(0, 1, resourcesPath / fileName);
 
     std::vector<std::size_t> pi{};
     std::vector<double> lambda{};
 
-    ParallelClustering::clusterV2(data, 2, pi, lambda);
+    ParallelClustering::clusterV5(data, 2, pi, lambda);
 
     std::vector<std::pair<std::size_t, double>> result{};
     for (std::size_t i = 0; i < pi.size(); i++) {
