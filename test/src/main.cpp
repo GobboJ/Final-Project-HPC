@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
         std::size_t bytes = newDimension * sizeof(double);
 
         if (version != 1) {
-            if (version == 2 || version == 3 || version == 5) {
+            if (version == 2 || version == 3 || version == 5 || version == 6 || version == 7) {
                 for (std::size_t i = 0; i < data.size(); i++) {
                     auto *reallocated = static_cast<double *>(
                             _mm_malloc(bytes, numberOfDoubles * sizeof(double)));
@@ -213,6 +213,20 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
             case 5:
                 clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
                     ParallelClustering::cluster<DistanceComputers::SSE,
+                                                std::vector<double *>,
+                                                true>(data, data.size(), dimension, pi, lambda);
+                };
+                break;
+            case 6:
+                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::SSE_OPTIMIZED,
+                                                std::vector<double *>,
+                                                true>(data, data.size(), dimension, pi, lambda);
+                };
+                break;
+            case 7:
+                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED,
                                                 std::vector<double *>,
                                                 true>(data, data.size(), dimension, pi, lambda);
                 };

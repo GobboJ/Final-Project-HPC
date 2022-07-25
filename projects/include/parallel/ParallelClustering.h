@@ -20,8 +20,10 @@ private:
     static const constexpr std::size_t SSE_PACK_SIZE = 2;
     static const constexpr std::size_t AVX_PACK_SIZE = 4;
 
+    template <typename ...> static constexpr std::false_type always_false{};
+    
 public:
-    enum class DistanceComputers { CLASSICAL, SSE, AVX };
+    enum class DistanceComputers { CLASSICAL, SSE, AVX, SSE_OPTIMIZED, AVX_OPTIMIZED };
     static const constexpr int DISTANCE_PARALLEL_THREADS_COUNT = 6;
     static const constexpr int STAGE_4_PARALLEL_THREADS_COUNT = 6;
 
@@ -31,9 +33,9 @@ public:
                         std::size_t dimension,
                         std::vector<std::size_t> &pi,
                         std::vector<double> &lambda) {
-        
+
         Timer::initTimers();
-        
+
         // Initializes pi and lambda vectors
         pi.resize(dataSize);
         lambda.resize(dataSize);
@@ -76,9 +78,17 @@ public:
                         C == DistanceComputers::AVX && std::is_same_v<D, std::vector<double *>>) {
                     m[i] = ParallelClustering::distanceAvx(data[i], data[n], avxBlocksCount);
                 } else if constexpr (C == DistanceComputers::AVX && std::is_same_v<D, double *>) {
-                    m[i] = ParallelClustering::distanceAvx(&(data[i * AVX_PACK_SIZE * avxBlocksCount]),
-                                                           &(data[n * AVX_PACK_SIZE * avxBlocksCount]),
-                                                           avxBlocksCount);
+                    m[i] = ParallelClustering::distanceAvx(
+                            &(data[i * AVX_PACK_SIZE * avxBlocksCount]),
+                            &(data[n * AVX_PACK_SIZE * avxBlocksCount]),
+                            avxBlocksCount);
+                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED && std::is_same_v<D, std::vector<double *>>) {
+                    m[i] = ParallelClustering::distanceSseOptimized(data[i], data[n], sseBlocksCount);
+                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED && std::is_same_v<D, std::vector<double *>>) {
+                    m[i] = ParallelClustering::distanceAvxOptimized(data[i], data[n], avxBlocksCount);
+                } else {
+                    // https://stackoverflow.com/a/53945549
+                    static_assert(always_false<D>, "Unknown distance computer");
                 }
             }
 
@@ -146,9 +156,9 @@ private:
      * @return The distance between the two points.
      */
     static double distance(const double *__restrict__ const firstPoint,
-                                        const double *__restrict__ const secondPoint,
-                                        const std::size_t dimension) noexcept {
-        
+                           const double *__restrict__ const secondPoint,
+                           const std::size_t dimension) noexcept {
+
         double sum = 0;
         for (std::size_t i = 0; i < dimension; i++) {
             sum += pow(firstPoint[i] - secondPoint[i], 2.0);
@@ -168,8 +178,8 @@ private:
     }
 
     static double distanceSse(const double *__restrict__ const firstPoint,
-                                           const double *__restrict__ const secondPoint,
-                                           std::size_t blocksCount) noexcept {
+                              const double *__restrict__ const secondPoint,
+                              std::size_t blocksCount) noexcept {
 
         double sum = 0;
 
@@ -181,14 +191,57 @@ private:
             __m128d square = _mm_mul_pd(sub, sub);
 
             sum += _mm_hadd_pd(square, square)[0];
+
+            /**
+             * {a,b,c,d}
+             * {e,f,g,h}
+             *
+             * {a, b}   {e, f}
+             * {a-e, b-f}
+             * {(a-e)^2, (b-f)^2}
+             * {(a-e)^2 + (b-f)^2, (a-e)^2 + (b-f)^2}
+             * //sum += (a-e)^2 + (b-f)^2
+             *
+             * {c, d}  {g, h}
+             * {c-g, d-h}
+             * {(c-g)^2, (d-h)^2}
+             * {(c-g)^2 + (d-h)^2, (c-g)^2 + (d-h)^2}
+             * sum += (c-g)^2 + (d-h)^2
+             *
+             *
+             *
+             * r = {(a-e)^2 + (b-f)^2, (a-e)^2 + (b-f)^2} + {(c-g)^2 + (d-h)^2, (c-g)^2 + (d-h)^2}
+             *
+             * sum = r[0]
+             */
         }
 
         return sqrt(sum);
     }
 
+    static double distanceSseOptimized(const double *__restrict__ const firstPoint,
+                                       const double *__restrict__ const secondPoint,
+                                       std::size_t blocksCount) noexcept {
+
+        __m128d accumulator = _mm_setzero_pd();
+
+        for (std::size_t j = 0; j < blocksCount; j++) {
+            __m128d dataI = _mm_load_pd(&(firstPoint[j * SSE_PACK_SIZE]));   // data[i]{0, 1}
+            __m128d dataN = _mm_load_pd(&(secondPoint[j * SSE_PACK_SIZE]));  // data[n]{0, 1}
+
+            __m128d sub = _mm_sub_pd(dataI, dataN);
+            __m128d square = _mm_mul_pd(sub, sub);  // x^2 y^2
+
+            accumulator = _mm_add_pd(accumulator, square);
+        }
+
+        __m128d horizontalSum = _mm_hadd_pd(accumulator, accumulator);
+        return sqrt(horizontalSum[0]);
+    }
+
     static double distanceAvx(const double *__restrict__ const firstPoint,
-                                           const double *__restrict__ const secondPoint,
-                                           std::size_t blocksCount) noexcept {
+                              const double *__restrict__ const secondPoint,
+                              std::size_t blocksCount) noexcept {
 
         double sum = 0;
         for (std::size_t j = 0; j < blocksCount; j++) {
@@ -197,14 +250,42 @@ private:
 
             __m256d sub = _mm256_sub_pd(dataI, dataN);
             __m256d square = _mm256_mul_pd(sub, sub);  // x^2, y^2, z^2, a^2
+
             __m256d squareSum = _mm256_hadd_pd(square, square);
             // extract upper 128 bits of result
-            __m128d sum_high = _mm256_extractf128_pd(squareSum, 1);
+            __m128d sumHighBits = _mm256_extractf128_pd(squareSum, 1);
+            __m128d sumLowBits = _mm256_castpd256_pd128(squareSum);
             // add upper 128 bits of sum to its lower 128 bits
-            sum += _mm_add_pd(sum_high, _mm256_castpd256_pd128(squareSum))[0];
+            sum += _mm_add_pd(sumHighBits, sumLowBits)[0];
         }
 
         return sqrt(sum);
+    }
+
+    static double distanceAvxOptimized(const double *__restrict__ const firstPoint,
+                                       const double *__restrict__ const secondPoint,
+                                       std::size_t blocksCount) noexcept {
+
+        __m256d accumulator = _mm256_setzero_pd();
+
+        for (std::size_t j = 0; j < blocksCount; j++) {
+            __m256d dataI = _mm256_load_pd(&(firstPoint[j * AVX_PACK_SIZE]));
+            __m256d dataN = _mm256_load_pd(&(secondPoint[j * AVX_PACK_SIZE]));
+
+            __m256d sub = _mm256_sub_pd(dataI, dataN);
+            __m256d square = _mm256_mul_pd(sub, sub);  // x^2, y^2, z^2, a^2
+
+            accumulator = _mm256_add_pd(accumulator, square);
+        }
+
+        __m256d horizontalSum = _mm256_hadd_pd(accumulator, accumulator);
+
+        // Extract upper 128 bits of result
+        __m128d sumHighBits = _mm256_extractf128_pd(horizontalSum, 1);
+        __m128d sumLowBits = _mm256_castpd256_pd128(horizontalSum);
+
+        // Add upper 128 bits of sum to its lower 128 bits
+        return sqrt(_mm_add_pd(sumHighBits, sumLowBits)[0]);
     }
 };
 

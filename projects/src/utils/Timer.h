@@ -10,6 +10,7 @@
 #include <chrono>
 #include <iostream>
 #include <iomanip>
+#include <array>
 
 class Timer {
 

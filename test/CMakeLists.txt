@@ -62,7 +62,7 @@ set(testList)
 #list(APPEND testList "two-points" "samples" "same-distance" "slide" "iris" "birm")
 list(APPEND testList "iris")
 
-foreach (i RANGE 1 5)
+foreach (i RANGE 1 7)
     foreach (testName IN LISTS testList)
         add_test("${testName}-parallel-v${i}" Final_Project_HPC_Main -t -p ${i} "${testName}")
     endforeach ()
