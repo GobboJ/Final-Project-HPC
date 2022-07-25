@@ -8,6 +8,7 @@
 #include <functional>
 #include <cstring>
 #include <xmmintrin.h>
+#include <atomic>
 #include "data/DataReader.h"
 #include "SequentialClustering.h"
 #include "data/DataWriter.h"
@@ -33,6 +34,8 @@ bool parseSizeT(char *string, std::size_t &result);
  * @since version date
  */
 int main(int argc, char *argv[]) {
+
+    using DistanceComputers = ParallelClustering::DistanceComputers;
 
     if (argc < 3) {
         std::cerr << "Too few arguments" << std::endl;
@@ -148,25 +151,32 @@ int main(int argc, char *argv[]) {
         std::size_t newDimension = numberOfDoubles * quotient;
         std::size_t bytes = newDimension * sizeof(double);
 
-        if (version == 2 || version == 3 || version == 5) {
-            for (std::size_t i = 0; i < data.size(); i++) {
-                auto *reallocated =
-                        static_cast<double *>(_mm_malloc(bytes, numberOfDoubles * sizeof(double)));
-                memcpy(reallocated, data[i], dimension * sizeof(double));
-                memset(&(reallocated[dimension]), 0, (newDimension - dimension) * sizeof(double));
-                delete data[i];
-                data[i] = reallocated;
-            }
-        } else if (version == 4) {
-            reallocatedData = static_cast<double *>(
-                    _mm_malloc(bytes * data.size(), numberOfDoubles * sizeof(double)));
-            memset(reallocatedData, 0, bytes * data.size());
+        if (version != 1) {
+            if (version == 2 || version == 3 || version == 5) {
+                for (std::size_t i = 0; i < data.size(); i++) {
+                    auto *reallocated = static_cast<double *>(
+                            _mm_malloc(bytes, numberOfDoubles * sizeof(double)));
+                    memcpy(reallocated, data[i], dimension * sizeof(double));
+                    memset(&(reallocated[dimension]),
+                           0,
+                           (newDimension - dimension) * sizeof(double));
+                    delete data[i];
+                    data[i] = reallocated;
+                }
+            } else if (version == 4) {
+                reallocatedData = static_cast<double *>(
+                        _mm_malloc(bytes * data.size(), numberOfDoubles * sizeof(double)));
+                memset(reallocatedData, 0, bytes * data.size());
 
-            std::size_t start = 0;
-            for (std::size_t i = 0; i < data.size(); i++) {
-                memcpy(&(reallocatedData[start]), data[i], dimension * sizeof(double));
-                delete data[i];
-                start += newDimension;
+                std::size_t start = 0;
+                for (std::size_t i = 0; i < data.size(); i++) {
+                    memcpy(&(reallocatedData[start]), data[i], dimension * sizeof(double));
+                    delete data[i];
+                    start += newDimension;
+                }
+            } else {
+                std::cerr << "Warning: Possibly unaligned data" << std::endl;
+                sleep(20);
             }
         }
     }
@@ -178,29 +188,34 @@ int main(int argc, char *argv[]) {
         switch (version) {
             case 1:
                 clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::clusterV1(data, dimension, pi, lambda);
+                    ParallelClustering::cluster<DistanceComputers::CLASSICAL>(
+                            data, data.size(), dimension, pi, lambda);
                 };
                 break;
             case 2:
                 clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::clusterV2(data, dimension, pi, lambda);
+                    ParallelClustering::cluster<DistanceComputers::SSE>(
+                            data, data.size(), dimension, pi, lambda);
                 };
                 break;
             case 3:
                 clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::clusterV3(data, dimension, pi, lambda);
+                    ParallelClustering::cluster<DistanceComputers::AVX>(
+                            data, data.size(), dimension, pi, lambda);
                 };
                 break;
             case 4:
                 clusteringAlgorithm = [&data, &dimension, reallocatedData](
                                               auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::clusterV4(
-                            reallocatedData, dimension, data.size(), pi, lambda);
+                    ParallelClustering::cluster<DistanceComputers::AVX>(
+                            reallocatedData, data.size(), dimension, pi, lambda);
                 };
                 break;
             case 5:
                 clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::clusterV5(data, dimension, pi, lambda);
+                    ParallelClustering::cluster<DistanceComputers::SSE,
+                                                std::vector<double *>,
+                                                true>(data, data.size(), dimension, pi, lambda);
                 };
                 break;
             default:
@@ -217,14 +232,14 @@ int main(int argc, char *argv[]) {
     } else {
         std::cout << "Sequential clustering";
     }
-    
+
     std::cout << " of '" << fileName << "' (columns from " << startColumnIndex << " to "
               << endColumnIndex << ')';
-    
+
     std::time_t t = std::time(nullptr);
     std::tm tm = *std::localtime(&t);
     std::cout << " started at" << ' ' << std::put_time(&tm, "%H:%M:%S");
-    
+
     if (isParallel) {
         std::cout << " with:" << std::endl;
         std::cout << "    " << ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT << " thread";
@@ -240,8 +255,6 @@ int main(int argc, char *argv[]) {
             std::cout << " to execute the stage 4" << std::endl;
         }
     }
-    
-    
 
     auto start = std::chrono::high_resolution_clock::now();
 

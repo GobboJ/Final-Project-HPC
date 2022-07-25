@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.21)
 project(Final_Project_HPC_Test CXX)
 set(CMAKE_CXX_STANDARD 20)
 
+add_compile_definitions(TIMERS)
+add_compile_definitions(PRINT_ITERATIONS)
+
 # Include the headers
 include_directories(${SEQUENTIAL_IMPLEMENTATION_INCLUDE_DIR})
 include_directories(${PARALLEL_IMPLEMENTATION_INCLUDE_DIR})
