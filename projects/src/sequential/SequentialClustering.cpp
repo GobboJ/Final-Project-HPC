@@ -25,7 +25,9 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
                                    std::size_t dimension,
                                    std::vector<std::size_t> &pi,
                                    std::vector<double> &lambda) noexcept {
-
+    
+    Timer::initTimers();
+    
     std::size_t dataSize = data.size();
 
     // Initializes pi and lambda vectors

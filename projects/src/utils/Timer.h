@@ -46,7 +46,7 @@ public:
     }
 
     template <std::size_t N>
-    static inline void print() {
+    static void print() {
 
         static_assert(N < TIMERS_COUNT, "Invalid timer index");
 

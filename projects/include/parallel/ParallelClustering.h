@@ -31,7 +31,9 @@ public:
                         std::size_t dimension,
                         std::vector<std::size_t> &pi,
                         std::vector<double> &lambda) {
-
+        
+        Timer::initTimers();
+        
         // Initializes pi and lambda vectors
         pi.resize(dataSize);
         lambda.resize(dataSize);
@@ -195,7 +197,11 @@ private:
 
             __m256d sub = _mm256_sub_pd(dataI, dataN);
             __m256d square = _mm256_mul_pd(sub, sub);  // x^2, y^2, z^2, a^2
-            sum += _mm256_hadd_pd(square, square)[0];  // (x^2 + y^2 + z^2 + a^2) ...
+            __m256d squareSum = _mm256_hadd_pd(square, square);
+            // extract upper 128 bits of result
+            __m128d sum_high = _mm256_extractf128_pd(squareSum, 1);
+            // add upper 128 bits of sum to its lower 128 bits
+            sum += _mm_add_pd(sum_high, _mm256_castpd256_pd128(squareSum))[0];
         }
 
         return sqrt(sum);

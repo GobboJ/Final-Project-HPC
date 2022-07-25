@@ -13,6 +13,7 @@
 #include "SequentialClustering.h"
 #include "data/DataWriter.h"
 #include "ParallelClustering.h"
+#include "cli/CliArgumentsParser.h"
 
 template <typename C, typename D>
 void printElapsedTime(std::chrono::time_point<C, D> start, std::chrono::time_point<C, D> end);
@@ -22,9 +23,27 @@ void printValues(const std::vector<double *> &data,
                  const std::vector<std::size_t> &pi,
                  const std::vector<double> &lambda);
 
-void usage();
+std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getClusteringAlgorithm(
+        bool isParallel,
+        std::size_t version,
+        std::vector<double *> &data,
+        double *reallocatedData,
+        std::size_t dimension);
 
-bool parseSizeT(char *string, std::size_t &result);
+bool checkTest(const std::filesystem::path &filePath,
+               const std::vector<double *> &data,
+               const std::size_t dimension,
+               const std::vector<std::size_t> &pi,
+               const std::vector<double> &lambda);
+
+bool areAlmostLess(const double first, const double second);
+
+bool areAlmostEqual(const double first, const double second);
+
+bool check(std::vector<std::pair<std::size_t, double>> &expected,
+           std::vector<std::pair<std::size_t, double>> &result);
+
+using DistanceComputers = ParallelClustering::DistanceComputers;
 
 /*
  * Description.
@@ -35,115 +54,18 @@ bool parseSizeT(char *string, std::size_t &result);
  */
 int main(int argc, char *argv[]) {
 
-    using DistanceComputers = ParallelClustering::DistanceComputers;
-
-    if (argc < 3) {
-        std::cerr << "Too few arguments" << std::endl;
-        usage();
-        return 1;
-    }
-
-    std::filesystem::path resourcesPath{".."};
-    resourcesPath = resourcesPath / ".." / "test" / "resources";
-
-    std::unordered_map<std::string, std::tuple<std::string, std::size_t, std::size_t>> tests = {
-            // Sequential :  6 s 362.728.561 ns
-            // Parallel v1:  3 s 984.201.053 ns
-            // Parallel v2:  3 s 910.884.877 ns
-            // Parallel v3:  3 s 932.660.255 ns
-            {"birm", {"Parking Birmingham.data", 2, 3}},
-            {"slide", {"slide.data", 1, 2}},
-            // Sequential: 122.690 ns
-            {"iris", {"iris.data", 1, 4}},
-            // Sequential :  2 m 10 s 448.206.284 ns
-            // Parallel v1:  1 m 44 s 508.938.089 ns
-            // Parallel v2:  1 m 38 s 773.972.452 ns
-            // Parallel v3:  1 m 33 s 123.307.274 ns
-            {"acc", {"accelerometer.csv", 3, 5}},
-            {"gen", {"generated.data", 1, 32}}};
-
-    std::string option{argv[1]};
-    std::size_t version = 0;
-    std::string fileName{};
-    // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-    bool isParallel;
-
-    if (option == "-p") {
-        if (argc < 4) {
-            std::cerr << "Too few arguments for option -p" << std::endl;
-            usage();
-            return 1;
-        }
-        if (!parseSizeT(argv[2], version)) {
-            std::cerr << "Wrong version number" << std::endl;
-            usage();
-            return 1;
-        }
-        fileName = argv[3];
-        isParallel = true;
-    } else if (option == "-s") {
-        fileName = argv[2];
-        isParallel = false;
-    } else {
-        std::cerr << "Unknown option" << ' ' << option << std::endl;
-        usage();
-        return 1;
-    }
-
-    std::size_t startColumnIndex = 0;
-    std::size_t endColumnIndex = 0;
-
-    if (tests.contains(fileName)) {
-        std::tuple<std::string, std::size_t, std::size_t> test = tests[fileName];
-        fileName = std::get<0>(test);
-        startColumnIndex = std::get<1>(test);
-        endColumnIndex = std::get<2>(test);
-    } else {
-        // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-        char *start;
-        // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-        char *end;
-
-        if (isParallel) {
-            if (argc < 6) {
-                std::cerr << "Too few arguments for start and end" << std::endl;
-                return 1;
-            }
-            start = argv[4];
-            end = argv[5];
-        } else {
-            if (argc < 5) {
-                std::cerr << "Too few arguments for start and end" << std::endl;
-                return 1;
-            }
-            start = argv[3];
-            end = argv[4];
-        }
-
-        if (!parseSizeT(start, startColumnIndex)) {
-            std::cerr << "Wrong start column index" << std::endl;
-            usage();
-            return 1;
-        }
-        if (!parseSizeT(end, endColumnIndex)) {
-            std::cerr << "Wrong end column index" << std::endl;
-            usage();
-            return 1;
-        }
-
-        if (endColumnIndex < startColumnIndex) {
-            std::cerr << "Wrong start and end column index" << std::endl;
-            return 1;
-        }
-    }
-
-    std::size_t dimension = endColumnIndex - startColumnIndex + 1;
+    CliArgumentsParser::CliArguments arguments = CliArgumentsParser::parseArguments(argc, argv);
+    std::size_t dimension = arguments.getEndColumnIndex() - arguments.getStartColumnIndex() + 1;
 
     // Read the data
-    std::vector<double *> data = DataReader::readData(
-            startColumnIndex - 1, endColumnIndex - 1, resourcesPath / fileName);
+    std::vector<double *> data = DataReader::readData(arguments.getStartColumnIndex(),
+                                                      arguments.getEndColumnIndex(),
+                                                      arguments.getFilePath());
 
     double *reallocatedData = nullptr;
+
+    bool isParallel = arguments.isParallel();
+    std::size_t version = arguments.getParallelVersion();
 
     if (isParallel) {
         std::size_t numberOfDoubles = (version == 2) ? 2 : 4;
@@ -171,7 +93,6 @@ int main(int argc, char *argv[]) {
                 std::size_t start = 0;
                 for (std::size_t i = 0; i < data.size(); i++) {
                     memcpy(&(reallocatedData[start]), data[i], dimension * sizeof(double));
-                    delete data[i];
                     start += newDimension;
                 }
             } else {
@@ -182,59 +103,17 @@ int main(int argc, char *argv[]) {
     }
 
     // Decide the clustering algorithm
-    std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm;
+    std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm =
+            getClusteringAlgorithm(isParallel, version, data, reallocatedData, dimension);
 
-    if (isParallel) {
-        switch (version) {
-            case 1:
-                clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::CLASSICAL>(
-                            data, data.size(), dimension, pi, lambda);
-                };
-                break;
-            case 2:
-                clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::SSE>(
-                            data, data.size(), dimension, pi, lambda);
-                };
-                break;
-            case 3:
-                clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::AVX>(
-                            data, data.size(), dimension, pi, lambda);
-                };
-                break;
-            case 4:
-                clusteringAlgorithm = [&data, &dimension, reallocatedData](
-                                              auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::AVX>(
-                            reallocatedData, data.size(), dimension, pi, lambda);
-                };
-                break;
-            case 5:
-                clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::SSE,
-                                                std::vector<double *>,
-                                                true>(data, data.size(), dimension, pi, lambda);
-                };
-                break;
-            default:
-                std::cerr << "Unknown version" << ' ' << version << std::endl;
-                return 1;
-        }
-    } else {
-        clusteringAlgorithm = [&data, &dimension](auto &pi, auto &lambda) noexcept -> void {
-            SequentialClustering::cluster(data, dimension, pi, lambda);
-        };
-    }
     if (isParallel) {
         std::cout << "Parallel clustering version" << ' ' << version;
     } else {
         std::cout << "Sequential clustering";
     }
-
-    std::cout << " of '" << fileName << "' (columns from " << startColumnIndex << " to "
-              << endColumnIndex << ')';
+    std::cout << " of '" << arguments.getFilePath().filename().string() << "' (columns from "
+              << arguments.getStartColumnIndex() + 1 << " to " << arguments.getEndColumnIndex() + 1
+              << ')';
 
     std::time_t t = std::time(nullptr);
     std::tm tm = *std::localtime(&t);
@@ -271,13 +150,21 @@ int main(int argc, char *argv[]) {
     // Print the elapsed time
     printElapsedTime(start, end);
 
+    if (arguments.isTestEnabled()) {
+        if (!checkTest(arguments.getFilePath(), data, dimension, pi, lambda)) {
+            return 1;
+        }
+    }
+
     // Output the files
     std::cout << "Outputting result: ";
-    if (data.size() < 100) {
+    if (arguments.isOutputEnabled()) {
         std::cout << "yes" << std::endl;
         std::filesystem::path outputDirectory{".."};
         outputDirectory = outputDirectory / ".." / "out";
-
+        
+        auto a = std::filesystem::absolute(outputDirectory);
+        
         DataWriter::createOutputFile(outputDirectory / "out.txt", data, dimension, pi, lambda);
         DataWriter::createMathematicaOutputFile(outputDirectory / "mat.txt", pi, lambda);
     } else {
@@ -287,11 +174,60 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void usage() {
+std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getClusteringAlgorithm(
+        bool isParallel,
+        std::size_t version,
+        std::vector<double *> &data,
+        double *reallocatedData,
+        std::size_t dimension) {
 
-    std::cout << "Usage" << std::endl;
-    std::cout << "main -s FILENAME [START END] " << std::endl;
-    std::cout << "main -p VERSION FILENAME [START END] " << std::endl;
+    std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm;
+
+    if (isParallel) {
+        switch (version) {
+            case 1:
+                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::CLASSICAL>(
+                            data, data.size(), dimension, pi, lambda);
+                };
+                break;
+            case 2:
+                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::SSE>(
+                            data, data.size(), dimension, pi, lambda);
+                };
+                break;
+            case 3:
+                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::AVX>(
+                            data, data.size(), dimension, pi, lambda);
+                };
+                break;
+            case 4:
+                clusteringAlgorithm = [&data, dimension, reallocatedData](
+                                              auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::AVX>(
+                            reallocatedData, data.size(), dimension, pi, lambda);
+                };
+                break;
+            case 5:
+                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::SSE,
+                                                std::vector<double *>,
+                                                true>(data, data.size(), dimension, pi, lambda);
+                };
+                break;
+            default:
+                std::cerr << "Unknown version" << ' ' << version << std::endl;
+                exit(1);
+        }
+    } else {
+        clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
+            SequentialClustering::cluster(data, dimension, pi, lambda);
+        };
+    }
+
+    return clusteringAlgorithm;
 }
 
 template <typename C, typename D>
@@ -368,15 +304,130 @@ void printValues(const std::vector<double *> &data,
     }
 }
 
-bool parseSizeT(char *string, std::size_t &result) {
+bool checkTest(const std::filesystem::path &filePath,
+               const std::vector<double *> &data,
+               const std::size_t dimension,
+               const std::vector<std::size_t> &pi,
+               const std::vector<double> &lambda) {
 
-    char *nextNonParsedIndex = string;
-    std::size_t convertedValue = std::strtoul(string, &nextNonParsedIndex, 10);
+    std::vector<std::pair<std::size_t, double>> expectedResult{};
 
-    if (nextNonParsedIndex == string) {
-        return false;
+    std::string fileName{filePath.filename()};
+
+    if (fileName == "two-points.data") {
+        expectedResult = {{1, 3.6055}, {1, INFINITY}};
+    } else if (fileName == "samples.data") {
+        expectedResult = {
+                {1, 0.4472},   // A
+                {4, 0.8944},   // B
+                {3, 0.4},      // C
+                {4, 0.7211},   // D
+                {5, 1.2806},   // E
+                {5, INFINITY}  // F
+        };
+    } else if (fileName == "same-distance.data") {
+        expectedResult = {
+                {3, 2.2360},   // A
+                {2, 1.4142},   // B
+                {3, 2.2360},   // C
+                {3, INFINITY}  // D
+        };
+    } else if (fileName == "slide.data") {
+        expectedResult = {
+                {1, 0.7071},   // 1
+                {5, 2.5},      // 2
+                {5, 1.4142},   // 3,
+                {5, 0.5},      // 4
+                {5, 1},        // 5
+                {5, INFINITY}  // 6
+        };
+    } else {
+        std::vector<std::size_t> expectedPi{};
+        std::vector<double> expectedLambda{};
+
+        std::cout << "Running sequential implementation of '" << fileName
+                  << "' to check the results" << std::endl;
+        SequentialClustering::cluster(data, dimension, expectedPi, expectedLambda);
+
+        for (std::size_t i = 0; i < expectedPi.size(); i++) {
+            expectedResult.emplace_back(std::make_pair(expectedPi[i], expectedLambda[i]));
+        }
     }
 
-    result = convertedValue;
+    std::vector<std::pair<std::size_t, double>> result{};
+    for (std::size_t i = 0; i < pi.size(); i++) {
+        result.emplace_back(std::make_pair(pi[i], lambda[i]));
+    }
+    
+    return check(expectedResult, result);
+}
+
+bool check(std::vector<std::pair<std::size_t, double>> &expected,
+           std::vector<std::pair<std::size_t, double>> &result) {
+
+    std::vector<std::size_t> orderedIndexes{};
+    for (std::size_t i = 0; i < expected.size(); i++) {
+        orderedIndexes.push_back(i);
+    }
+    std::sort(orderedIndexes.begin(),
+              orderedIndexes.end(),
+              [&expected](const auto &a, const auto &b) -> bool {
+                  return expected[a].second < expected[b].second;
+              });
+
+    std::vector<std::size_t> orderedExpectedIndexes{};
+    for (std::size_t i = 0; i < result.size(); i++) {
+        orderedExpectedIndexes.push_back(i);
+    }
+    std::sort(orderedExpectedIndexes.begin(),
+              orderedExpectedIndexes.end(),
+              [&result](const auto &a, const auto &b) -> bool {
+                  return result[a].second < result[b].second;
+              });
+
+    auto orderedExpectedIndexesIterator = orderedExpectedIndexes.cbegin();
+    for (std::size_t index : orderedIndexes) {
+
+        std::size_t piToCheck = result[index].first;
+        double lambdaToCheck = result[index].second;
+
+        std::vector<std::size_t>::difference_type back = 0;
+        bool continueSearch = true;
+        while (areAlmostLess(expected[*orderedExpectedIndexesIterator].second, lambdaToCheck)) {
+            ++orderedExpectedIndexesIterator;
+        }
+
+        while (areAlmostEqual(lambdaToCheck, expected[*orderedExpectedIndexesIterator].second) &&
+               continueSearch) {
+            if (piToCheck != expected[*orderedExpectedIndexesIterator].first) {
+                ++orderedExpectedIndexesIterator;
+                back++;
+            } else {
+                continueSearch = false;
+            }
+        }
+
+        if (continueSearch) {
+            std::cerr << "Expected" << ' ' << index << " being in the cluster" << ' ' << piToCheck
+                      << " at distance" << ' ' << lambdaToCheck << " but it is not";
+            return false;
+        }
+        orderedExpectedIndexesIterator -= back;
+    }
+
     return true;
+}
+
+[[gnu::const]] bool areAlmostLess(const double first, const double second) {
+
+    return (first - second) < -0.0001;
+}
+
+[[gnu::const]] bool areAlmostEqual(const double first, const double second) {
+
+    if (first > std::numeric_limits<double>::max() && second > std::numeric_limits<double>::max()) {
+        return true;
+    }
+
+    return fabs(first - second) < 0.0001;
 }
