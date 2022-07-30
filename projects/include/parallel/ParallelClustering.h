@@ -5,6 +5,7 @@
 #include <limits>
 #include <immintrin.h>
 #include <cmath>
+#include <omp.h>
 #include "../../src/utils/Timer.h"
 
 /**
@@ -25,20 +26,21 @@ private:
 
 public:
     enum class DistanceComputers { CLASSICAL, SSE, AVX, SSE_OPTIMIZED, AVX_OPTIMIZED };
-    static const constexpr int DISTANCE_PARALLEL_THREADS_COUNT = 6;
-    static const constexpr int STAGE_4_PARALLEL_THREADS_COUNT = 6;
 
     template <DistanceComputers C, typename D, bool S4 = false>
     static void cluster(const D &data,
                         std::size_t dataSize,
                         std::size_t dimension,
                         std::vector<std::size_t> &pi,
-                        std::vector<double> &lambda) {
+                        std::vector<double> &lambda,
+                        std::size_t distanceComputationThreadsCount = 0,
+                        std::size_t stage4ThreadsCount = 0) {
 
         Timer::initTimers();
 
 #ifdef PRINT_ITERATIONS
         const std::size_t dataSizeLength = ParallelClustering::computeNumberDigits(dataSize);
+        std::size_t lastPrintedN = 0;
 #endif
 
         // Initializes pi and lambda vectors
@@ -71,7 +73,7 @@ public:
 
 #pragma omp parallel for default(none)                                \
         shared(n, data, dimension, m, sseBlocksCount, avxBlocksCount) \
-                num_threads(ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT)
+                num_threads(distanceComputationThreadsCount)
             for (std::size_t i = 0; i <= n - 1; i++) {
                 if constexpr (C == DistanceComputers::CLASSICAL &&
                               std::is_same_v<D, std::vector<double *>>) {
@@ -138,8 +140,7 @@ public:
             Timer::start<3>();
 
             // 4. For i from 1 to n
-#pragma omp parallel for default(none) shared(n, lambda, pi) \
-        num_threads(ParallelClustering::STAGE_4_PARALLEL_THREADS_COUNT) if (S4)
+#pragma omp parallel for default(none) shared(n, lambda, pi) num_threads(stage4ThreadsCount) if (S4)
             for (std::size_t i = 0; i <= n - 1; i++) {
                 // if lambda(i) >= lambda(pi(i))
                 if (lambda[i] >= lambda[pi[i]]) {
@@ -150,20 +151,24 @@ public:
             Timer::stop<3>();
 #ifdef PRINT_ITERATIONS
             if (n == 1) {
-                std::cout << "Processed 0 /" << dataSize << " rows" << "\033[" << (5 + dataSizeLength + 4) << "D";
+                std::cout << "Processed 0 / " << dataSize << " rows";
                 std::cout.flush();
+                lastPrintedN = 1;
             } else if (n % 1000 == 0) {
-                std::size_t nLength = ParallelClustering::computeNumberDigits(n);
+                std::size_t nLength = ParallelClustering::computeNumberDigits(lastPrintedN);
                 // "\033[<N>D"  dataSizeLength
-                std::cout << ' ' << n << " / " << dataSize << " rows"
-                        << "\033[" << (5 + dataSizeLength + 3 + nLength + 1) << "D";
+                std::cout << "\033[" << (5 + dataSizeLength + 3 + nLength) << "D" << n << " / "
+                          << dataSize << " rows";
+                lastPrintedN = n;
                 std::cout.flush();
             }
 #endif
         }
-        
+
 #ifdef PRINT_ITERATIONS
-        std::cout << ' ' << dataSize << " / " << dataSize << " rows" << std::endl;
+        std::size_t nLength = ParallelClustering::computeNumberDigits(lastPrintedN);
+        std::cout << "\033[" << (5 + dataSizeLength + 3 + nLength) << "D" << dataSize << " / "
+                  << dataSize << " rows" << std::endl;
 #endif
         std::cout << "Stage 1: ";
         Timer::print<0>();
@@ -321,7 +326,7 @@ private:
 
 #ifdef PRINT_ITERATIONS
     static inline std::size_t computeNumberDigits(std::size_t number) {
-        
+
         if (number == 0) {
             return 1;
         }
@@ -330,7 +335,7 @@ private:
             digits++;
             number /= 10;
         }
-        
+
         return digits;
     }
 #endif

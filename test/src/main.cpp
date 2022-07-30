@@ -26,13 +26,15 @@ void printValues(const std::vector<double *> &data,
 std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getClusteringAlgorithm(
         bool isParallel,
         std::size_t version,
+        std::size_t distanceComputationThreadsCount,
+        std::size_t stage4ThreadsCount,
         std::vector<double *> &data,
         double *reallocatedData,
         std::size_t dimension);
 
 bool checkTest(const std::filesystem::path &filePath,
                const std::vector<double *> &data,
-               const std::size_t dimension,
+               std::size_t dimension,
                const std::vector<std::size_t> &pi,
                const std::vector<double> &lambda);
 
@@ -66,6 +68,8 @@ int main(int argc, char *argv[]) {
 
     bool isParallel = arguments.isParallel();
     std::size_t version = arguments.getParallelVersion();
+    std::size_t distanceComputationThreadsCount = arguments.getDistanceComputationThreadsCount();
+    std::size_t stage4ThreadsCount = arguments.getStage4ThreadsCount();
 
     if (isParallel) {
         std::size_t numberOfDoubles = (version == 2) ? 2 : 4;
@@ -104,7 +108,13 @@ int main(int argc, char *argv[]) {
 
     // Decide the clustering algorithm
     std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm =
-            getClusteringAlgorithm(isParallel, version, data, reallocatedData, dimension);
+            getClusteringAlgorithm(isParallel,
+                                   version,
+                                   distanceComputationThreadsCount,
+                                   stage4ThreadsCount,
+                                   data,
+                                   reallocatedData,
+                                   dimension);
 
     if (isParallel) {
         std::cout << "Parallel clustering version" << ' ' << version;
@@ -120,16 +130,25 @@ int main(int argc, char *argv[]) {
     std::cout << " started at" << ' ' << std::put_time(&tm, "%H:%M:%S");
 
     if (isParallel) {
-        std::cout << " with:" << std::endl;
-        std::cout << "    " << ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT << " thread";
-        if constexpr (ParallelClustering::DISTANCE_PARALLEL_THREADS_COUNT != 1) {
-            std::cout << 's';
+        std::cout << " with:" << std::endl << "    ";
+        if (distanceComputationThreadsCount == 0) {
+            std::cout << "all the available CPU core threads";
+        } else {
+            std::cout << distanceComputationThreadsCount << " thread";
+            if (distanceComputationThreadsCount != 1) {
+                std::cout << 's';
+            }
         }
         std::cout << " to compute the distance" << std::endl;
         if (version >= 5) {
-            std::cout << "    " << ParallelClustering::STAGE_4_PARALLEL_THREADS_COUNT << " thread";
-            if constexpr (ParallelClustering::STAGE_4_PARALLEL_THREADS_COUNT != 1) {
-                std::cout << 's';
+            std::cout << "    ";
+            if (stage4ThreadsCount == 0) {
+                std::cout << "all the available CPU core threads";
+            } else {
+                std::cout << stage4ThreadsCount << " thread";
+                if (stage4ThreadsCount != 1) {
+                    std::cout << 's';
+                }
             }
             std::cout << " to execute the stage 4" << std::endl;
         }
@@ -180,74 +199,154 @@ int main(int argc, char *argv[]) {
 }
 
 std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getClusteringAlgorithm(
-        bool isParallel,
-        std::size_t version,
+        const bool isParallel,
+        const std::size_t version,
+        const std::size_t distanceComputationThreadsCount,
+        const std::size_t stage4ThreadsCount,
         std::vector<double *> &data,
         double *reallocatedData,
-        std::size_t dimension) {
+        const std::size_t dimension) {
 
     std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm;
 
     if (isParallel) {
         switch (version) {
             case 1:
-                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::CLASSICAL>(
-                            data, data.size(), dimension, pi, lambda);
-                };
+                clusteringAlgorithm =
+                        [&data, dimension, distanceComputationThreadsCount, stage4ThreadsCount](
+                                auto &pi, auto &lambda) noexcept -> void {
+                            ParallelClustering::cluster<DistanceComputers::CLASSICAL>(
+                                    data,
+                                    data.size(),
+                                    dimension,
+                                    pi,
+                                    lambda,
+                                    distanceComputationThreadsCount,
+                                    stage4ThreadsCount);
+                        };
                 break;
             case 2:
-                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::SSE>(
-                            data, data.size(), dimension, pi, lambda);
-                };
+                clusteringAlgorithm =
+                        [&data, dimension, distanceComputationThreadsCount, stage4ThreadsCount](
+                                auto &pi, auto &lambda) noexcept -> void {
+                            ParallelClustering::cluster<DistanceComputers::SSE>(
+                                    data,
+                                    data.size(),
+                                    dimension,
+                                    pi,
+                                    lambda,
+                                    distanceComputationThreadsCount,
+                                    stage4ThreadsCount);
+                        };
                 break;
             case 3:
-                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::AVX>(
-                            data, data.size(), dimension, pi, lambda);
-                };
+                clusteringAlgorithm =
+                        [&data, dimension, distanceComputationThreadsCount, stage4ThreadsCount](
+                                auto &pi, auto &lambda) noexcept -> void {
+                            ParallelClustering::cluster<DistanceComputers::AVX>(
+                                    data,
+                                    data.size(),
+                                    dimension,
+                                    pi,
+                                    lambda,
+                                    distanceComputationThreadsCount,
+                                    stage4ThreadsCount);
+                        };
                 break;
             case 4:
-                clusteringAlgorithm = [&data, dimension, reallocatedData](
-                                              auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::AVX>(
-                            reallocatedData, data.size(), dimension, pi, lambda);
-                };
+                clusteringAlgorithm = [&data,
+                                       dimension,
+                                       reallocatedData,
+                                       distanceComputationThreadsCount,
+                                       stage4ThreadsCount](auto &pi, auto &lambda) noexcept
+                                      -> void {
+                                          ParallelClustering::cluster<DistanceComputers::AVX>(
+                                                  reallocatedData,
+                                                  data.size(),
+                                                  dimension,
+                                                  pi,
+                                                  lambda,
+                                                  distanceComputationThreadsCount,
+                                                  stage4ThreadsCount);
+                                      };
                 break;
             case 5:
-                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::SSE,
-                                                std::vector<double *>,
-                                                true>(data, data.size(), dimension, pi, lambda);
-                };
+                clusteringAlgorithm =
+                        [&data, dimension, distanceComputationThreadsCount, stage4ThreadsCount](
+                                auto &pi, auto &lambda) noexcept -> void {
+                            ParallelClustering::cluster<DistanceComputers::SSE,
+                                                        std::vector<double *>,
+                                                        true>(data,
+                                                              data.size(),
+                                                              dimension,
+                                                              pi,
+                                                              lambda,
+                                                              distanceComputationThreadsCount,
+                                                              stage4ThreadsCount);
+                        };
                 break;
             case 6:
-                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::SSE_OPTIMIZED,
-                                                std::vector<double *>,
-                                                true>(data, data.size(), dimension, pi, lambda);
-                };
+                clusteringAlgorithm =
+                        [&data, dimension, distanceComputationThreadsCount, stage4ThreadsCount](
+                                auto &pi, auto &lambda) noexcept -> void {
+                            ParallelClustering::cluster<DistanceComputers::SSE_OPTIMIZED,
+                                                        std::vector<double *>,
+                                                        true>(data,
+                                                              data.size(),
+                                                              dimension,
+                                                              pi,
+                                                              lambda,
+                                                              distanceComputationThreadsCount,
+                                                              stage4ThreadsCount);
+                        };
                 break;
             case 7:
-                clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
-                    ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED,
-                                                std::vector<double *>,
-                                                true>(data, data.size(), dimension, pi, lambda);
-                };
+                clusteringAlgorithm =
+                        [&data, dimension, distanceComputationThreadsCount, stage4ThreadsCount](
+                                auto &pi, auto &lambda) noexcept -> void {
+                            ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED,
+                                                        std::vector<double *>,
+                                                        true>(data,
+                                                              data.size(),
+                                                              dimension,
+                                                              pi,
+                                                              lambda,
+                                                              distanceComputationThreadsCount,
+                                                              stage4ThreadsCount);
+                        };
                 break;
             case 8:
-                clusteringAlgorithm = [&data, dimension, reallocatedData](
-                                              auto &pi, auto &lambda) noexcept -> void {
+                clusteringAlgorithm = [&data,
+                                       dimension,
+                                       reallocatedData,
+                                       distanceComputationThreadsCount,
+                                       stage4ThreadsCount](auto &pi,
+                                                           auto &lambda) noexcept -> void {
                     ParallelClustering::cluster<DistanceComputers::SSE_OPTIMIZED, double *, true>(
-                            reallocatedData, data.size(), dimension, pi, lambda);
+                            reallocatedData,
+                            data.size(),
+                            dimension,
+                            pi,
+                            lambda,
+                            distanceComputationThreadsCount,
+                            stage4ThreadsCount);
                 };
                 break;
             case 9:
-                clusteringAlgorithm = [&data, dimension, reallocatedData](
-                                              auto &pi, auto &lambda) noexcept -> void {
+                clusteringAlgorithm = [&data,
+                                       dimension,
+                                       reallocatedData,
+                                       distanceComputationThreadsCount,
+                                       stage4ThreadsCount](auto &pi,
+                                                           auto &lambda) noexcept -> void {
                     ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED, double *, true>(
-                            reallocatedData, data.size(), dimension, pi, lambda);
+                            reallocatedData,
+                            data.size(),
+                            dimension,
+                            pi,
+                            lambda,
+                            distanceComputationThreadsCount,
+                            stage4ThreadsCount);
                 };
                 break;
             default:

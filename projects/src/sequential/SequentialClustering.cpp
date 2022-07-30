@@ -32,6 +32,7 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
 
 #ifdef PRINT_ITERATIONS
     const std::size_t dataSizeLength = SequentialClustering::computeNumberDigits(dataSize);
+    std::size_t lastPrintedN = 0;
 #endif
 
     // Initializes pi and lambda vectors
@@ -99,21 +100,24 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
 
 #ifdef PRINT_ITERATIONS
         if (n == 1) {
-            std::cout << "Processed 0 /" << dataSize << " rows"
-                      << "\033[" << (5 + dataSizeLength + 4) << "D";
+            std::cout << "Processed 0 / " << dataSize << " rows";
             std::cout.flush();
+            lastPrintedN = 1;
         } else if (n % 1000 == 0) {
-            std::size_t nLength = SequentialClustering::computeNumberDigits(n);
+            std::size_t nLength = SequentialClustering::computeNumberDigits(lastPrintedN);
             // "\033[<N>D"  dataSizeLength
-            std::cout << ' ' << n << " / " << dataSize << " rows"
-                      << "\033[" << (5 + dataSizeLength + 3 + nLength + 1) << "D";
+            std::cout << "\033[" << (5 + dataSizeLength + 3 + nLength) << "D" << n << " / "
+                      << dataSize << " rows";
+            lastPrintedN = n;
             std::cout.flush();
         }
 #endif
     }
     
 #ifdef PRINT_ITERATIONS
-    std::cout << ' ' << dataSize << " / " << dataSize << " rows" << std::endl;
+    std::size_t nLength = SequentialClustering::computeNumberDigits(lastPrintedN);
+    std::cout << "\033[" << (5 + dataSizeLength + 3 + nLength) << "D" << dataSize << " / "
+              << dataSize << " rows" << std::endl;
 #endif
     std::cout << "Stage 1: ";
     Timer::print<0>();
