@@ -76,7 +76,7 @@ public:
     }
     
     template <typename ...N>
-    static inline void printTotal(N... ids) {
+    static void printTotal(N... ids) {
         
         
         using namespace std::literals::chrono_literals;

@@ -49,7 +49,8 @@ void CliArgumentsParser::CliArguments::setEndColumnIndex(std::size_t endColumnIn
     CliArguments::endColumnIndex = endColumnIndex;
 }
 
-[[gnu::pure]] const std::filesystem::path &CliArgumentsParser::CliArguments::getFilePath() const {
+[[gnu::pure]] const std::filesystem::path &
+CliArgumentsParser::CliArguments::getFilePath() const {
     return filePath;
 }
 
@@ -57,7 +58,7 @@ void CliArgumentsParser::CliArguments::setFilePath(const std::filesystem::path &
     CliArguments::filePath = filePath;
 }
 
-bool CliArgumentsParser::CliArguments::isOutputEnabled() const {
+[[gnu::pure]] bool CliArgumentsParser::CliArguments::isOutputEnabled() const {
     return outputEnabled;
 }
 
@@ -89,16 +90,25 @@ CliArgumentsParser::CliArguments CliArgumentsParser::parseArguments(int argc, ch
 
     CliArguments result{};
 
-    std::size_t nextOptionIndex = CliArgumentsParser::parseTestOption(argc, argv, 1, result);
-    nextOptionIndex = CliArgumentsParser::parseOutputOption(argc, argv, nextOptionIndex, result);
-    nextOptionIndex = CliArgumentsParser::parseParallelOption(argc, argv, nextOptionIndex, result);
-    CliArgumentsParser::parseFileName(argc, argv, nextOptionIndex, result);
+    if (argc < 0) {
+        std::cout << "Wrong value for 'argc'." << std::endl;
+        exit(1);
+    }
+    auto convertedArgc = static_cast<std::size_t>(argc);
+
+    std::size_t nextOptionIndex =
+            CliArgumentsParser::parseTestOption(convertedArgc, argv, 1, result);
+    nextOptionIndex =
+            CliArgumentsParser::parseOutputOption(convertedArgc, argv, nextOptionIndex, result);
+    nextOptionIndex =
+            CliArgumentsParser::parseParallelOption(convertedArgc, argv, nextOptionIndex, result);
+    CliArgumentsParser::parseFileName(convertedArgc, argv, nextOptionIndex, result);
 
     return result;
 }
 
 std::size_t CliArgumentsParser::parseTestOption(
-        int argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result) {
+        std::size_t argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result) {
 
     if (argc <= nextOptionIndex) {
         std::cerr << "Error while parsing -t option: Too few arguments." << std::endl;
@@ -117,7 +127,7 @@ std::size_t CliArgumentsParser::parseTestOption(
     return nextOptionIndex;
 }
 
-std::size_t CliArgumentsParser::parseOutputOption(int argc,
+std::size_t CliArgumentsParser::parseOutputOption(std::size_t argc,
                                                   char **argv,
                                                   std::size_t nextOptionIndex,
                                                   CliArgumentsParser::CliArguments &result) {
@@ -126,7 +136,7 @@ std::size_t CliArgumentsParser::parseOutputOption(int argc,
         usage();
         exit(1);
     }
-    
+
     std::string option{argv[nextOptionIndex]};
 
     if (option == "-o") {
@@ -138,9 +148,7 @@ std::size_t CliArgumentsParser::parseOutputOption(int argc,
     return nextOptionIndex;
 }
 
-
-
-std::size_t CliArgumentsParser::parseParallelOption(int argc,
+std::size_t CliArgumentsParser::parseParallelOption(std::size_t argc,
                                                     char **argv,
                                                     std::size_t nextOptionIndex,
                                                     CliArgumentsParser::CliArguments &result) {
@@ -180,7 +188,7 @@ std::size_t CliArgumentsParser::parseParallelOption(int argc,
     exit(1);
 }
 
-std::size_t CliArgumentsParser::parseFileName(int argc,
+std::size_t CliArgumentsParser::parseFileName(std::size_t argc,
                                               char **argv,
                                               std::size_t nextOptionIndex,
                                               CliArgumentsParser::CliArguments &result) {

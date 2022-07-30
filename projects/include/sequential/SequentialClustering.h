@@ -37,9 +37,11 @@ private:
      * @param dimension The dimension of each point.
      * @return The distance between the two points.
      */
-    static double distance(const double *__restrict__ firstPoint,
+    static inline double distance(const double *__restrict__ firstPoint,
                            const double *__restrict__ secondPoint,
                            std::size_t dimension) noexcept;
+    
+    static inline std::size_t computeNumberDigits(std::size_t number);
 };
 
 #endif  // FINAL_PROJECT_HPC_SEQUENTIALCLUSTERING_H

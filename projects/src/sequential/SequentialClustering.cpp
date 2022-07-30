@@ -25,10 +25,14 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
                                    std::size_t dimension,
                                    std::vector<std::size_t> &pi,
                                    std::vector<double> &lambda) noexcept {
-    
+
     Timer::initTimers();
-    
+
     std::size_t dataSize = data.size();
+
+#ifdef PRINT_ITERATIONS
+    const std::size_t dataSizeLength = SequentialClustering::computeNumberDigits(dataSize);
+#endif
 
     // Initializes pi and lambda vectors
 
@@ -94,12 +98,23 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
         Timer::stop<3>();
 
 #ifdef PRINT_ITERATIONS
-        if (n % 1000 == 0) {
-            std::cout << "Processed" << ' ' << n << " rows" << std::endl;
+        if (n == 1) {
+            std::cout << "Processed 0 /" << dataSize << " rows"
+                      << "\033[" << (5 + dataSizeLength + 4) << "D";
+            std::cout.flush();
+        } else if (n % 1000 == 0) {
+            std::size_t nLength = SequentialClustering::computeNumberDigits(n);
+            // "\033[<N>D"  dataSizeLength
+            std::cout << ' ' << n << " / " << dataSize << " rows"
+                      << "\033[" << (5 + dataSizeLength + 3 + nLength + 1) << "D";
+            std::cout.flush();
         }
 #endif
     }
-
+    
+#ifdef PRINT_ITERATIONS
+    std::cout << ' ' << dataSize << " / " << dataSize << " rows" << std::endl;
+#endif
     std::cout << "Stage 1: ";
     Timer::print<0>();
     std::cout << "Stage 2: ";
@@ -109,7 +124,7 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
     std::cout << "Stage 4: ";
     Timer::print<3>();
     std::cout << "Total  : ";
-    // TODO: Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
+    Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
 }
 
 /**
@@ -120,9 +135,9 @@ void SequentialClustering::cluster(const std::vector<double *> &data,
  * @param dimension Dimension of each point.
  * @return The distance between the points.
  */
-double SequentialClustering::distance(const double *__restrict__ const firstPoint,
-                                      const double *__restrict__ const secondPoint,
-                                      const std::size_t dimension) noexcept {
+inline double SequentialClustering::distance(const double *__restrict__ const firstPoint,
+                                             const double *__restrict__ const secondPoint,
+                                             const std::size_t dimension) noexcept {
 
     double sum = 0;
     for (std::size_t i = 0; i < dimension; i++) {
@@ -131,3 +146,19 @@ double SequentialClustering::distance(const double *__restrict__ const firstPoin
 
     return sqrt(sum);
 }
+
+#ifdef PRINT_ITERATIONS
+inline std::size_t SequentialClustering::computeNumberDigits(std::size_t number) {
+
+    if (number == 0) {
+        return 1;
+    }
+    std::size_t digits = 0;
+    while (number > 0) {
+        digits++;
+        number /= 10;
+    }
+
+    return digits;
+}
+#endif

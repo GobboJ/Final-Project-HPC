@@ -53,10 +53,10 @@ public:
     static CliArguments parseArguments(int argc, char *argv[]);
     
 private:
-    static std::size_t parseTestOption(int argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result);
-    static std::size_t parseOutputOption(int argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result);
-    static std::size_t parseParallelOption(int argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result);
-    static std::size_t parseFileName(int argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result);
+    static std::size_t parseTestOption(std::size_t argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result);
+    static std::size_t parseOutputOption(std::size_t argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result);
+    static std::size_t parseParallelOption(std::size_t argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result);
+    static std::size_t parseFileName(std::size_t argc, char *argv[], std::size_t nextOptionIndex, CliArguments &result);
     static void usage();
     static bool parseSizeT(char *string, std::size_t &result);
 };

@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
                     delete data[i];
                     data[i] = reallocated;
                 }
-            } else if (version == 4) {
+            } else if (version == 4 || version == 8 || version == 9) {
                 reallocatedData = static_cast<double *>(
                         _mm_malloc(bytes * data.size(), numberOfDoubles * sizeof(double)));
                 memset(reallocatedData, 0, bytes * data.size());
@@ -133,6 +133,8 @@ int main(int argc, char *argv[]) {
             }
             std::cout << " to execute the stage 4" << std::endl;
         }
+    } else {
+        std::cout << std::endl;
     }
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -152,7 +154,10 @@ int main(int argc, char *argv[]) {
 
     if (arguments.isTestEnabled()) {
         if (!checkTest(arguments.getFilePath(), data, dimension, pi, lambda)) {
+            std::cerr << "Test failed!" << std::endl;
             return 1;
+        } else {
+            std::cerr << "Test completed successfully" << std::endl;
         }
     }
 
@@ -162,9 +167,9 @@ int main(int argc, char *argv[]) {
         std::cout << "yes" << std::endl;
         std::filesystem::path outputDirectory{".."};
         outputDirectory = outputDirectory / ".." / "out";
-        
+
         auto a = std::filesystem::absolute(outputDirectory);
-        
+
         DataWriter::createOutputFile(outputDirectory / "out.txt", data, dimension, pi, lambda);
         DataWriter::createMathematicaOutputFile(outputDirectory / "mat.txt", pi, lambda);
     } else {
@@ -229,6 +234,20 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                     ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED,
                                                 std::vector<double *>,
                                                 true>(data, data.size(), dimension, pi, lambda);
+                };
+                break;
+            case 8:
+                clusteringAlgorithm = [&data, dimension, reallocatedData](
+                                              auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::SSE_OPTIMIZED, double *, true>(
+                            reallocatedData, data.size(), dimension, pi, lambda);
+                };
+                break;
+            case 9:
+                clusteringAlgorithm = [&data, dimension, reallocatedData](
+                                              auto &pi, auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED, double *, true>(
+                            reallocatedData, data.size(), dimension, pi, lambda);
                 };
                 break;
             default:
@@ -372,7 +391,7 @@ bool checkTest(const std::filesystem::path &filePath,
     for (std::size_t i = 0; i < pi.size(); i++) {
         result.emplace_back(std::make_pair(pi[i], lambda[i]));
     }
-    
+
     return check(expectedResult, result);
 }
 

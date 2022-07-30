@@ -20,8 +20,9 @@ private:
     static const constexpr std::size_t SSE_PACK_SIZE = 2;
     static const constexpr std::size_t AVX_PACK_SIZE = 4;
 
-    template <typename ...> static constexpr std::false_type always_false{};
-    
+    template <typename...>
+    static constexpr std::false_type always_false{};
+
 public:
     enum class DistanceComputers { CLASSICAL, SSE, AVX, SSE_OPTIMIZED, AVX_OPTIMIZED };
     static const constexpr int DISTANCE_PARALLEL_THREADS_COUNT = 6;
@@ -35,6 +36,10 @@ public:
                         std::vector<double> &lambda) {
 
         Timer::initTimers();
+
+#ifdef PRINT_ITERATIONS
+        const std::size_t dataSizeLength = ParallelClustering::computeNumberDigits(dataSize);
+#endif
 
         // Initializes pi and lambda vectors
         pi.resize(dataSize);
@@ -82,10 +87,26 @@ public:
                             &(data[i * AVX_PACK_SIZE * avxBlocksCount]),
                             &(data[n * AVX_PACK_SIZE * avxBlocksCount]),
                             avxBlocksCount);
-                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED && std::is_same_v<D, std::vector<double *>>) {
-                    m[i] = ParallelClustering::distanceSseOptimized(data[i], data[n], sseBlocksCount);
-                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED && std::is_same_v<D, std::vector<double *>>) {
-                    m[i] = ParallelClustering::distanceAvxOptimized(data[i], data[n], avxBlocksCount);
+                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED &&
+                                     std::is_same_v<D, std::vector<double *>>) {
+                    m[i] = ParallelClustering::distanceSseOptimized(
+                            data[i], data[n], sseBlocksCount);
+                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED &&
+                                     std::is_same_v<D, std::vector<double *>>) {
+                    m[i] = ParallelClustering::distanceAvxOptimized(
+                            data[i], data[n], avxBlocksCount);
+                } else if constexpr (
+                        C == DistanceComputers::SSE_OPTIMIZED && std::is_same_v<D, double *>) {
+                    m[i] = ParallelClustering::distanceSseOptimized(
+                            &(data[i * SSE_PACK_SIZE * sseBlocksCount]),
+                            &(data[n * SSE_PACK_SIZE * sseBlocksCount]),
+                            sseBlocksCount);
+                } else if constexpr (
+                        C == DistanceComputers::AVX_OPTIMIZED && std::is_same_v<D, double *>) {
+                    m[i] = ParallelClustering::distanceAvxOptimized(
+                            &(data[i * AVX_PACK_SIZE * avxBlocksCount]),
+                            &(data[n * AVX_PACK_SIZE * avxBlocksCount]),
+                            avxBlocksCount);
                 } else {
                     // https://stackoverflow.com/a/53945549
                     static_assert(always_false<D>, "Unknown distance computer");
@@ -128,12 +149,22 @@ public:
             }
             Timer::stop<3>();
 #ifdef PRINT_ITERATIONS
-            if (n % 1000 == 0) {
-                std::cout << "Processed" << ' ' << n << " " << std::endl;
+            if (n == 1) {
+                std::cout << "Processed 0 /" << dataSize << " rows" << "\033[" << (5 + dataSizeLength + 4) << "D";
+                std::cout.flush();
+            } else if (n % 1000 == 0) {
+                std::size_t nLength = ParallelClustering::computeNumberDigits(n);
+                // "\033[<N>D"  dataSizeLength
+                std::cout << ' ' << n << " / " << dataSize << " rows"
+                        << "\033[" << (5 + dataSizeLength + 3 + nLength + 1) << "D";
+                std::cout.flush();
             }
 #endif
         }
-
+        
+#ifdef PRINT_ITERATIONS
+        std::cout << ' ' << dataSize << " / " << dataSize << " rows" << std::endl;
+#endif
         std::cout << "Stage 1: ";
         Timer::print<0>();
         std::cout << "Stage 2: ";
@@ -143,7 +174,7 @@ public:
         std::cout << "Stage 4: ";
         Timer::print<3>();
         std::cout << "Total  : ";
-        // TODO: Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
+        Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
     }
 
 private:
@@ -155,9 +186,9 @@ private:
      * @param dimension The dimension of each point.
      * @return The distance between the two points.
      */
-    static double distance(const double *__restrict__ const firstPoint,
-                           const double *__restrict__ const secondPoint,
-                           const std::size_t dimension) noexcept {
+    static inline double distance(const double *__restrict__ const firstPoint,
+                                  const double *__restrict__ const secondPoint,
+                                  const std::size_t dimension) noexcept {
 
         double sum = 0;
         for (std::size_t i = 0; i < dimension; i++) {
@@ -167,19 +198,19 @@ private:
         return sqrt(sum);
     }
 
-    static std::size_t computeSseBlocksCount(std::size_t dimension) {
+    static inline std::size_t computeSseBlocksCount(std::size_t dimension) {
 
         return 1 + ((dimension - 1) / SSE_PACK_SIZE);
     }
 
-    static std::size_t computeAvxBlocksCount(std::size_t dimension) {
+    static inline std::size_t computeAvxBlocksCount(std::size_t dimension) {
 
         return 1 + ((dimension - 1) / AVX_PACK_SIZE);
     }
 
-    static double distanceSse(const double *__restrict__ const firstPoint,
-                              const double *__restrict__ const secondPoint,
-                              std::size_t blocksCount) noexcept {
+    static inline double distanceSse(const double *__restrict__ const firstPoint,
+                                     const double *__restrict__ const secondPoint,
+                                     std::size_t blocksCount) noexcept {
 
         double sum = 0;
 
@@ -219,9 +250,9 @@ private:
         return sqrt(sum);
     }
 
-    static double distanceSseOptimized(const double *__restrict__ const firstPoint,
-                                       const double *__restrict__ const secondPoint,
-                                       std::size_t blocksCount) noexcept {
+    static inline double distanceSseOptimized(const double *__restrict__ const firstPoint,
+                                              const double *__restrict__ const secondPoint,
+                                              std::size_t blocksCount) noexcept {
 
         __m128d accumulator = _mm_setzero_pd();
 
@@ -239,9 +270,9 @@ private:
         return sqrt(horizontalSum[0]);
     }
 
-    static double distanceAvx(const double *__restrict__ const firstPoint,
-                              const double *__restrict__ const secondPoint,
-                              std::size_t blocksCount) noexcept {
+    static inline double distanceAvx(const double *__restrict__ const firstPoint,
+                                     const double *__restrict__ const secondPoint,
+                                     std::size_t blocksCount) noexcept {
 
         double sum = 0;
         for (std::size_t j = 0; j < blocksCount; j++) {
@@ -262,9 +293,9 @@ private:
         return sqrt(sum);
     }
 
-    static double distanceAvxOptimized(const double *__restrict__ const firstPoint,
-                                       const double *__restrict__ const secondPoint,
-                                       std::size_t blocksCount) noexcept {
+    static inline double distanceAvxOptimized(const double *__restrict__ const firstPoint,
+                                              const double *__restrict__ const secondPoint,
+                                              std::size_t blocksCount) noexcept {
 
         __m256d accumulator = _mm256_setzero_pd();
 
@@ -287,6 +318,22 @@ private:
         // Add upper 128 bits of sum to its lower 128 bits
         return sqrt(_mm_add_pd(sumHighBits, sumLowBits)[0]);
     }
+
+#ifdef PRINT_ITERATIONS
+    static inline std::size_t computeNumberDigits(std::size_t number) {
+        
+        if (number == 0) {
+            return 1;
+        }
+        std::size_t digits = 0;
+        while (number > 0) {
+            digits++;
+            number /= 10;
+        }
+        
+        return digits;
+    }
+#endif
 };
 
 #endif  // FINAL_PROJECT_HPC_PARALLELCLUSTERING_H
