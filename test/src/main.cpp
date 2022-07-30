@@ -90,7 +90,8 @@ int main(int argc, char *argv[]) {
                     delete data[i];
                     data[i] = reallocated;
                 }
-            } else if (version == 4 || version == 8 || version == 9) {
+            } else if (version == 4 || version == 8 || version == 9 || version == 10 ||
+                       version == 11) {
                 reallocatedData = static_cast<double *>(
                         _mm_malloc(bytes * data.size(), numberOfDoubles * sizeof(double)));
                 memset(reallocatedData, 0, bytes * data.size());
@@ -143,6 +144,18 @@ int main(int argc, char *argv[]) {
         }
         std::cout << " to compute the distance" << std::endl;
         if (version >= 5) {
+            std::cout << "    ";
+            if (stage4ThreadsCount == 0) {
+                std::cout << "all the available CPU core threads";
+            } else {
+                std::cout << stage4ThreadsCount << " thread";
+                if (stage4ThreadsCount != 1) {
+                    std::cout << 's';
+                }
+            }
+            std::cout << " to execute the stage 4" << std::endl;
+        }
+        if (version == 11) {
             std::cout << "    ";
             if (stage4ThreadsCount == 0) {
                 std::cout << "all the available CPU core threads";
@@ -354,6 +367,44 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                             lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
+                };
+                break;
+            case 10:
+                clusteringAlgorithm = [&data,
+                                       dimension,
+                                       reallocatedData,
+                                       distanceComputationThreadsCount,
+                                       stage4ThreadsCount](auto &pi,
+                                                           auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT,
+                                                double *,
+                                                true,
+                                                false>(reallocatedData,
+                                                       data.size(),
+                                                       dimension,
+                                                       pi,
+                                                       lambda,
+                                                       distanceComputationThreadsCount,
+                                                       stage4ThreadsCount);
+                };
+                break;
+            case 11:
+                clusteringAlgorithm = [&data,
+                                       dimension,
+                                       reallocatedData,
+                                       distanceComputationThreadsCount,
+                                       stage4ThreadsCount](auto &pi,
+                                                           auto &lambda) noexcept -> void {
+                    ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT,
+                                                double *,
+                                                true,
+                                                true>(reallocatedData,
+                                                      data.size(),
+                                                      dimension,
+                                                      pi,
+                                                      lambda,
+                                                      distanceComputationThreadsCount,
+                                                      stage4ThreadsCount);
                 };
                 break;
             default:

@@ -25,22 +25,42 @@ private:
     static constexpr std::false_type always_false{};
 
 public:
-    enum class DistanceComputers { CLASSICAL, SSE, AVX, SSE_OPTIMIZED, AVX_OPTIMIZED };
+    enum class DistanceComputers {
+        CLASSICAL,
+        SSE,
+        AVX,
+        SSE_OPTIMIZED,
+        AVX_OPTIMIZED,
+        SSE_OPTIMIZED_NO_SQUARE_ROOT,
+        AVX_OPTIMIZED_NO_SQUARE_ROOT
+    };
 
-    template <DistanceComputers C, typename D, bool S4 = false>
+    template <DistanceComputers C, typename D, bool S4 = false, bool S5 = false>
     static void cluster(const D &data,
                         std::size_t dataSize,
                         std::size_t dimension,
                         std::vector<std::size_t> &pi,
                         std::vector<double> &lambda,
                         std::size_t distanceComputationThreadsCount = 0,
-                        std::size_t stage4ThreadsCount = 0) {
+                        std::size_t stage4ThreadsCount = 0,
+                        std::size_t squareRootThreadsCount = 0) {
 
         Timer::initTimers();
 
 #ifdef PRINT_ITERATIONS
-        const std::size_t dataSizeLength = ParallelClustering::computeNumberDigits(dataSize);
-        std::size_t lastPrintedN = 0;
+        std::cout << "Processed 0 / " << dataSize << " rows" << std::endl;
+        std::cout << "Stage 1: ";
+        Timer::print<0>();
+        std::cout << "Stage 2: ";
+        Timer::print<1>();
+        std::cout << "Stage 3: ";
+        Timer::print<2>();
+        std::cout << "Stage 4: ";
+        Timer::print<3>();
+        std::cout << "Stage 5: ";
+        Timer::print<4>();
+        std::cout << "Total  : ";
+        Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
 #endif
 
         // Initializes pi and lambda vectors
@@ -109,6 +129,18 @@ public:
                             &(data[i * AVX_PACK_SIZE * avxBlocksCount]),
                             &(data[n * AVX_PACK_SIZE * avxBlocksCount]),
                             avxBlocksCount);
+                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT &&
+                                     std::is_same_v<D, double *>) {
+                    m[i] = ParallelClustering::distanceSseOptimizedNoSquareRoot(
+                            &(data[i * SSE_PACK_SIZE * sseBlocksCount]),
+                            &(data[n * SSE_PACK_SIZE * sseBlocksCount]),
+                            sseBlocksCount);
+                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT &&
+                                     std::is_same_v<D, double *>) {
+                    m[i] = ParallelClustering::distanceAvxOptimizedNoSquareRoot(
+                            &(data[i * AVX_PACK_SIZE * avxBlocksCount]),
+                            &(data[n * AVX_PACK_SIZE * avxBlocksCount]),
+                            avxBlocksCount);
                 } else {
                     // https://stackoverflow.com/a/53945549
                     static_assert(always_false<D>, "Unknown distance computer");
@@ -150,24 +182,41 @@ public:
             }
             Timer::stop<3>();
 #ifdef PRINT_ITERATIONS
-            if (n == 1) {
-                std::cout << "Processed 0 / " << dataSize << " rows";
-                std::cout.flush();
-                lastPrintedN = 1;
-            } else if (n % 1000 == 0) {
-                std::size_t nLength = ParallelClustering::computeNumberDigits(lastPrintedN);
-                // "\033[<N>D"  dataSizeLength
-                std::cout << "\033[" << (5 + dataSizeLength + 3 + nLength) << "D" << n << " / "
-                          << dataSize << " rows";
-                lastPrintedN = n;
+            if (n % 1000 == 0) {
+                std::cout << "\033[7AProcessed " << n << " / "
+                          << dataSize << " rows\033[K" << std::endl;
+                std::cout << "Stage 1: ";
+                Timer::print<0>();
+                std::cout << "Stage 2: ";
+                Timer::print<1>();
+                std::cout << "Stage 3: ";
+                Timer::print<2>();
+                std::cout << "Stage 4: ";
+                Timer::print<3>();
+                std::cout << "Stage 5: ";
+                Timer::print<4>();
+                std::cout << "Total  : ";
+                Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
+                
                 std::cout.flush();
             }
 #endif
         }
 
+        // Compute the square roots
+        Timer::start<4>();
+        if constexpr (C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT ||
+                      C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT) {
+#pragma omp parallel for default(none) shared(lambda, dataSize) \
+        num_threads(squareRootThreadsCount) if (S5)
+            for (std::size_t i = 0; i < dataSize - 1; i++) {
+                lambda[i] = sqrt(lambda[i]);
+            }
+        }
+        Timer::stop<4>();
+
 #ifdef PRINT_ITERATIONS
-        std::size_t nLength = ParallelClustering::computeNumberDigits(lastPrintedN);
-        std::cout << "\033[" << (5 + dataSizeLength + 3 + nLength) << "D" << dataSize << " / "
+        std::cout << "\033[7AProcessed " << dataSize << " / "
                   << dataSize << " rows" << std::endl;
 #endif
         std::cout << "Stage 1: ";
@@ -178,6 +227,8 @@ public:
         Timer::print<2>();
         std::cout << "Stage 4: ";
         Timer::print<3>();
+        std::cout << "Stage 5: ";
+        Timer::print<4>();
         std::cout << "Total  : ";
         Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
     }
@@ -227,29 +278,6 @@ private:
             __m128d square = _mm_mul_pd(sub, sub);
 
             sum += _mm_hadd_pd(square, square)[0];
-
-            /**
-             * {a,b,c,d}
-             * {e,f,g,h}
-             *
-             * {a, b}   {e, f}
-             * {a-e, b-f}
-             * {(a-e)^2, (b-f)^2}
-             * {(a-e)^2 + (b-f)^2, (a-e)^2 + (b-f)^2}
-             * //sum += (a-e)^2 + (b-f)^2
-             *
-             * {c, d}  {g, h}
-             * {c-g, d-h}
-             * {(c-g)^2, (d-h)^2}
-             * {(c-g)^2 + (d-h)^2, (c-g)^2 + (d-h)^2}
-             * sum += (c-g)^2 + (d-h)^2
-             *
-             *
-             *
-             * r = {(a-e)^2 + (b-f)^2, (a-e)^2 + (b-f)^2} + {(c-g)^2 + (d-h)^2, (c-g)^2 + (d-h)^2}
-             *
-             * sum = r[0]
-             */
         }
 
         return sqrt(sum);
@@ -273,6 +301,27 @@ private:
 
         __m128d horizontalSum = _mm_hadd_pd(accumulator, accumulator);
         return sqrt(horizontalSum[0]);
+    }
+
+    static inline double distanceSseOptimizedNoSquareRoot(
+            const double *__restrict__ const firstPoint,
+            const double *__restrict__ const secondPoint,
+            std::size_t blocksCount) noexcept {
+
+        __m128d accumulator = _mm_setzero_pd();
+
+        for (std::size_t j = 0; j < blocksCount; j++) {
+            __m128d dataI = _mm_load_pd(&(firstPoint[j * SSE_PACK_SIZE]));   // data[i]{0, 1}
+            __m128d dataN = _mm_load_pd(&(secondPoint[j * SSE_PACK_SIZE]));  // data[n]{0, 1}
+
+            __m128d sub = _mm_sub_pd(dataI, dataN);
+            __m128d square = _mm_mul_pd(sub, sub);  // x^2 y^2
+
+            accumulator = _mm_add_pd(accumulator, square);
+        }
+
+        __m128d horizontalSum = _mm_hadd_pd(accumulator, accumulator);
+        return horizontalSum[0];
     }
 
     static inline double distanceAvx(const double *__restrict__ const firstPoint,
@@ -322,6 +371,33 @@ private:
 
         // Add upper 128 bits of sum to its lower 128 bits
         return sqrt(_mm_add_pd(sumHighBits, sumLowBits)[0]);
+    }
+
+    static inline double distanceAvxOptimizedNoSquareRoot(
+            const double *__restrict__ const firstPoint,
+            const double *__restrict__ const secondPoint,
+            std::size_t blocksCount) noexcept {
+
+        __m256d accumulator = _mm256_setzero_pd();
+
+        for (std::size_t j = 0; j < blocksCount; j++) {
+            __m256d dataI = _mm256_load_pd(&(firstPoint[j * AVX_PACK_SIZE]));
+            __m256d dataN = _mm256_load_pd(&(secondPoint[j * AVX_PACK_SIZE]));
+
+            __m256d sub = _mm256_sub_pd(dataI, dataN);
+            __m256d square = _mm256_mul_pd(sub, sub);  // x^2, y^2, z^2, a^2
+
+            accumulator = _mm256_add_pd(accumulator, square);
+        }
+
+        __m256d horizontalSum = _mm256_hadd_pd(accumulator, accumulator);
+
+        // Extract upper 128 bits of result
+        __m128d sumHighBits = _mm256_extractf128_pd(horizontalSum, 1);
+        __m128d sumLowBits = _mm256_castpd256_pd128(horizontalSum);
+
+        // Add upper 128 bits of sum to its lower 128 bits
+        return _mm_add_pd(sumHighBits, sumLowBits)[0];
     }
 
 #ifdef PRINT_ITERATIONS

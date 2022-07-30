@@ -72,7 +72,7 @@ public:
         }
         int width = (microseconds > 0) ? 3 : 0;
         std::cout << std::setfill('0') << std::setw(width) << nanoseconds.count();
-        std::cout << " ns)" << std::endl;
+        std::cout << " ns)\033[K" << std::endl;
     }
     
     template <typename ...N>

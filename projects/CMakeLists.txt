@@ -11,14 +11,18 @@ add_compile_definitions(PRINT_ITERATIONS)
 
 add_library(
     Final_Project_HPC_Sequential_Library STATIC
-    include/sequential/SequentialClustering.h src/sequential/SequentialClustering.cpp
+    include/sequential/SequentialClustering.h
+    src/sequential/SequentialClustering.cpp
+    src/utils/Timer.cpp
     src/utils/Timer.h
-    src/utils/Timer.cpp)
+)
 
 add_library(
     Final_Project_HPC_Parallel_Library STATIC
-    include/parallel/ParallelClustering.h src/parallel/ParallelClustering.cpp src/utils/Timer.h
-    src/utils/Timer.cpp)
+    include/parallel/ParallelClustering.h
+    src/utils/Timer.cpp
+    src/utils/Timer.h
+)
 target_link_libraries(Final_Project_HPC_Parallel_Library PRIVATE OpenMP::OpenMP_CXX)
 
 # Export the include directory
