@@ -9,6 +9,7 @@
 #include <cstring>
 #include <xmmintrin.h>
 #include <atomic>
+#include <unistd.h>
 #include "data/DataReader.h"
 #include "SequentialClustering.h"
 #include "data/DataWriter.h"
@@ -121,9 +122,10 @@ int main(int argc, char *argv[]) {
     } else {
         std::cout << "Sequential clustering";
     }
-    std::cout << " of '" << arguments.getFilePath().filename().string() << "' (columns from "
-              << arguments.getStartColumnIndex() + 1 << " to " << arguments.getEndColumnIndex() + 1
-              << ')';
+    std::cout << " of '"
+              << std::filesystem::absolute(arguments.getFilePath()).lexically_normal().string()
+              << "' (columns from " << arguments.getStartColumnIndex() + 1 << " to "
+              << arguments.getEndColumnIndex() + 1 << ')';
 
     std::time_t t = std::time(nullptr);
     std::tm tm = *std::localtime(&t);
@@ -172,6 +174,11 @@ int main(int argc, char *argv[]) {
     printElapsedTime(start, end);
 
     if (arguments.isTestEnabled()) {
+        std::cout << std::endl;
+        for (int i = 0; i < 80; i++) {
+            std::cout << '-';
+        }
+        std::cout << std::endl << std::endl;
         if (!checkTest(arguments.getFilePath(), data, dimension, pi, lambda)) {
             std::cerr << "Test failed!" << std::endl;
             return 1;
@@ -444,7 +451,7 @@ bool checkTest(const std::filesystem::path &filePath,
 
     std::vector<std::pair<std::size_t, double>> expectedResult{};
 
-    std::string fileName{filePath.filename()};
+    std::string fileName{filePath.filename().string()};
 
     if (fileName == "two-points.data") {
         expectedResult = {{1, 3.6055}, {1, INFINITY}};

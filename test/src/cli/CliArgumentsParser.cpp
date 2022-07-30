@@ -273,7 +273,7 @@ std::size_t CliArgumentsParser::parseFileName(std::size_t argc,
         startColumnIndex = std::get<1>(test);
         endColumnIndex = std::get<2>(test);
     } else {
-        if (argc <= nextOptionIndex + 2) {
+        if (argc <= nextOptionIndex + 1) {
             std::cerr << "Too few arguments for start and end" << std::endl;
             usage();
             exit(1);
