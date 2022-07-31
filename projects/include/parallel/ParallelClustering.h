@@ -19,10 +19,11 @@
  */
 class ParallelClustering {
 
-private:
+public:
     static const constexpr std::size_t SSE_PACK_SIZE = 2;
     static const constexpr std::size_t AVX_PACK_SIZE = 4;
 
+private:
     template <typename...>
     static constexpr std::false_type always_false{};
 
@@ -38,12 +39,12 @@ public:
     };
 
     template <DistanceComputers C,
-              typename D,
+              ParallelDataIterator D,
               PiIterator P,
               LambdaIterator L,
               bool S4 = false,
               bool S5 = false>
-    static void cluster(const D &data,
+    static void cluster(const D data,
                         std::size_t dataSize,
                         std::size_t dimension,
                         P pi,
@@ -89,52 +90,24 @@ public:
         shared(n, data, dimension, m, sseBlocksCount, avxBlocksCount) \
                 num_threads(distanceComputationThreadsCount)
             for (std::size_t i = 0; i <= n - 1; i++) {
-                if constexpr (C == DistanceComputers::CLASSICAL &&
-                              std::is_same_v<D, std::vector<double *>>) {
+                if constexpr (C == DistanceComputers::CLASSICAL) {
                     m[i] = ParallelClustering::distance(data[i], data[n], dimension);
-                } else if constexpr (
-                        C == DistanceComputers::SSE && std::is_same_v<D, std::vector<double *>>) {
+                } else if constexpr (C == DistanceComputers::SSE) {
                     m[i] = ParallelClustering::distanceSse(data[i], data[n], sseBlocksCount);
-                } else if constexpr (
-                        C == DistanceComputers::AVX && std::is_same_v<D, std::vector<double *>>) {
+                } else if constexpr (C == DistanceComputers::AVX) {
                     m[i] = ParallelClustering::distanceAvx(data[i], data[n], avxBlocksCount);
-                } else if constexpr (C == DistanceComputers::AVX && std::is_same_v<D, double *>) {
-                    m[i] = ParallelClustering::distanceAvx(
-                            &(data[i * AVX_PACK_SIZE * avxBlocksCount]),
-                            &(data[n * AVX_PACK_SIZE * avxBlocksCount]),
-                            avxBlocksCount);
-                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED &&
-                                     std::is_same_v<D, std::vector<double *>>) {
+                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED) {
                     m[i] = ParallelClustering::distanceSseOptimized(
                             data[i], data[n], sseBlocksCount);
-                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED &&
-                                     std::is_same_v<D, std::vector<double *>>) {
+                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED) {
                     m[i] = ParallelClustering::distanceAvxOptimized(
                             data[i], data[n], avxBlocksCount);
-                } else if constexpr (
-                        C == DistanceComputers::SSE_OPTIMIZED && std::is_same_v<D, double *>) {
-                    m[i] = ParallelClustering::distanceSseOptimized(
-                            &(data[i * SSE_PACK_SIZE * sseBlocksCount]),
-                            &(data[n * SSE_PACK_SIZE * sseBlocksCount]),
-                            sseBlocksCount);
-                } else if constexpr (
-                        C == DistanceComputers::AVX_OPTIMIZED && std::is_same_v<D, double *>) {
-                    m[i] = ParallelClustering::distanceAvxOptimized(
-                            &(data[i * AVX_PACK_SIZE * avxBlocksCount]),
-                            &(data[n * AVX_PACK_SIZE * avxBlocksCount]),
-                            avxBlocksCount);
-                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT &&
-                                     std::is_same_v<D, double *>) {
+                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT) {
                     m[i] = ParallelClustering::distanceSseOptimizedNoSquareRoot(
-                            &(data[i * SSE_PACK_SIZE * sseBlocksCount]),
-                            &(data[n * SSE_PACK_SIZE * sseBlocksCount]),
-                            sseBlocksCount);
-                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT &&
-                                     std::is_same_v<D, double *>) {
+                            data[i], data[n], sseBlocksCount);
+                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT) {
                     m[i] = ParallelClustering::distanceAvxOptimizedNoSquareRoot(
-                            &(data[i * AVX_PACK_SIZE * avxBlocksCount]),
-                            &(data[n * AVX_PACK_SIZE * avxBlocksCount]),
-                            avxBlocksCount);
+                            data[i], data[n], avxBlocksCount);
                 } else {
                     // https://stackoverflow.com/a/53945549
                     static_assert(always_false<D>, "Unknown distance computer");
@@ -199,6 +172,16 @@ public:
         delete[] m;
     }
 
+    static inline std::size_t computeSseBlocksCount(std::size_t dimension) {
+
+        return 1 + ((dimension - 1) / SSE_PACK_SIZE);
+    }
+
+    static inline std::size_t computeAvxBlocksCount(std::size_t dimension) {
+
+        return 1 + ((dimension - 1) / AVX_PACK_SIZE);
+    }
+
 private:
     /**
      * Computes the distance between two points.
@@ -218,16 +201,6 @@ private:
         }
 
         return sqrt(sum);
-    }
-
-    static inline std::size_t computeSseBlocksCount(std::size_t dimension) {
-
-        return 1 + ((dimension - 1) / SSE_PACK_SIZE);
-    }
-
-    static inline std::size_t computeAvxBlocksCount(std::size_t dimension) {
-
-        return 1 + ((dimension - 1) / AVX_PACK_SIZE);
     }
 
     static inline double distanceSse(const double *__restrict__ const firstPoint,

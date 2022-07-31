@@ -61,7 +61,7 @@ public:
             // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
             auto *mIterator = &(m[0]);
             D stage2DataIterator = data;
-            double *currentDataN = *currentData;
+            const double *currentDataN = *currentData;
             for (std::size_t i = 0; i <= n - 1; i++) {
                 *mIterator = distance(*stage2DataIterator, currentDataN, dimension);
                 ++mIterator;

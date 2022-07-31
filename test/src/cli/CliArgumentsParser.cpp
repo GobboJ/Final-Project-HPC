@@ -248,7 +248,7 @@ std::size_t CliArgumentsParser::parseParallelThreadsCountOption(
 
         if (argc > nextOptionIndex && strcmp(argv[nextOptionIndex], "-f") != 0) {
             std::size_t stage4ThreadsCount = 0;
-            if (!parseSizeT(argv[nextOptionIndex + 1], stage4ThreadsCount)) {
+            if (!parseSizeT(argv[nextOptionIndex], stage4ThreadsCount)) {
                 std::cerr << "Wrong stage 4 threads count" << std::endl;
                 usage();
                 exit(1);
@@ -257,7 +257,7 @@ std::size_t CliArgumentsParser::parseParallelThreadsCountOption(
             nextOptionIndex++;
             if (argc > nextOptionIndex && strcmp(argv[nextOptionIndex], "-f") != 0) {
                 std::size_t stage5ThreadsCount = 0;
-                if (!parseSizeT(argv[nextOptionIndex + 1], stage5ThreadsCount)) {
+                if (!parseSizeT(argv[nextOptionIndex], stage5ThreadsCount)) {
                     std::cerr << "Wrong stage 5 threads count" << std::endl;
                     usage();
                     exit(1);
