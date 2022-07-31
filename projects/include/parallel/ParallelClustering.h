@@ -9,6 +9,20 @@
 #include "../../src/utils/Timer.h"
 #include "../../src/utils/Logger.h"
 
+template <typename I, typename T>
+concept InputIterator = requires(I iterator, T value) { value = *iterator; };
+
+template <typename I, typename T>
+concept OutputIterator = requires(I iterator, T value) { *iterator = value; };
+
+template <typename I>
+concept PiIterator = std::random_access_iterator<I> && InputIterator<I, std::size_t> &&
+                     OutputIterator<I, std::size_t>;
+
+template <typename I>
+concept LambdaIterator =
+        std::random_access_iterator<I> && InputIterator<I, double> && OutputIterator<I, double>;
+
 /**
  * Description.
  *
@@ -36,12 +50,17 @@ public:
         AVX_OPTIMIZED_NO_SQUARE_ROOT
     };
 
-    template <DistanceComputers C, typename D, bool S4 = false, bool S5 = false>
+    template <DistanceComputers C,
+              typename D,
+              PiIterator P,
+              LambdaIterator L,
+              bool S4 = false,
+              bool S5 = false>
     static void cluster(const D &data,
                         std::size_t dataSize,
                         std::size_t dimension,
-                        std::vector<std::size_t> &pi,
-                        std::vector<double> &lambda,
+                        P pi,
+                        L lambda,
                         std::size_t distanceComputationThreadsCount = 0,
                         std::size_t stage4ThreadsCount = 0,
                         std::size_t squareRootThreadsCount = 0) {
@@ -49,17 +68,17 @@ public:
         Timer::initTimers();
         Logger::startLoggingProgress<0, 1, 2, 3, 4>(dataSize);
 
-        // Initializes pi and lambda vectors
-        pi.resize(dataSize);
-        lambda.resize(dataSize);
-
         // Initializes the distance matrix
-        std::vector<double> m{};
-        m.resize(dataSize);
+        auto* m = new double[dataSize];
 
         // 1. Set pi(0) to 0, lambda(0) to infinity
-        pi[0] = 0;
-        lambda[0] = std::numeric_limits<double>::infinity();
+        P currentPi = pi;
+        L currentLambda = lambda;
+        *currentPi = 0;
+        *currentLambda = std::numeric_limits<double>::infinity();
+
+        ++currentPi;
+        ++currentLambda;
 
         const std::size_t sseBlocksCount = ParallelClustering::computeSseBlocksCount(dimension);
         const std::size_t avxBlocksCount = ParallelClustering::computeAvxBlocksCount(dimension);
@@ -69,8 +88,10 @@ public:
             Timer::start<0>();
 
             // 1. Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
-            pi[n] = n;
-            lambda[n] = std::numeric_limits<double>::infinity();
+            *currentPi = n;
+            *currentLambda = std::numeric_limits<double>::infinity();
+            ++currentPi;
+            ++currentLambda;
 
             Timer::stop<0>();
             Timer::start<1>();
@@ -137,21 +158,27 @@ public:
             Timer::start<2>();
 
             // 3. For i from 1 to n
+            P stage3Pi = pi;
+            L stage3Lambda = lambda;
+            auto *mIterator = &(m[0]);
             for (std::size_t i = 0; i <= n - 1; i++) {
                 // if lambda(i) >= M(i)
-                if (lambda[i] >= m[i]) {
+                if (*stage3Lambda >= *mIterator) {
                     // set M(pi(i)) to min { M(pi(i)), lambda(i) }
-                    m[pi[i]] = std::min(m[pi[i]], lambda[i]);
+                    m[*stage3Pi] = std::min(m[*stage3Pi], *stage3Lambda);
                     // set lambda(i) to M(i)
-                    lambda[i] = m[i];
+                    *stage3Lambda = *mIterator;
                     // set pi(i) to n + 1
-                    pi[i] = n;
+                    *stage3Pi = n;
                 }
                 // if lambda(i) < M(i)
-                if (lambda[i] < m[i]) {
+                if (*stage3Lambda < *mIterator) {
                     // set M(pi(i)) to min { M(pi(i)), M(i) }
-                    m[pi[i]] = std::min(m[pi[i]], m[i]);
+                    m[*stage3Pi] = std::min(m[*stage3Pi], *mIterator);
                 }
+                ++stage3Pi;
+                ++stage3Lambda;
+                ++mIterator;
             }
 
             Timer::stop<2>();
@@ -182,6 +209,7 @@ public:
         }
         Timer::stop<4>();
         Logger::logProgress<1, 0, 1, 2, 3, 4>(dataSize, dataSize);
+        delete[] m;
     }
 
 private:
