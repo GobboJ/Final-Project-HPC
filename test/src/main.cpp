@@ -434,7 +434,7 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
         }
     } else {
         clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
-            SequentialClustering::cluster(data, dimension, pi, lambda);
+            SequentialClustering::cluster(data, data.size(), dimension, pi.begin(), lambda.begin());
         };
     }
 
@@ -554,11 +554,14 @@ bool checkTest(const std::filesystem::path &filePath,
         };
     } else {
         std::vector<std::size_t> expectedPi{};
+        expectedPi.resize(data.size());
         std::vector<double> expectedLambda{};
+        expectedLambda.resize(data.size());
 
         std::cout << "Running sequential implementation of '" << fileName
                   << "' to check the results" << std::endl;
-        SequentialClustering::cluster(data, dimension, expectedPi, expectedLambda);
+        SequentialClustering::cluster(
+                data, data.size(), dimension, expectedPi.begin(), expectedLambda.begin());
 
         for (std::size_t i = 0; i < expectedPi.size(); i++) {
             expectedResult.emplace_back(std::make_pair(expectedPi[i], expectedLambda[i]));
@@ -620,7 +623,7 @@ bool check(std::vector<std::pair<std::size_t, double>> &expected,
 
         if (continueSearch) {
             std::cerr << "Expected" << ' ' << index << " being in the cluster" << ' ' << piToCheck
-                      << " at distance" << ' ' << lambdaToCheck << " but it is not";
+                      << " at distance" << ' ' << lambdaToCheck << " but it is not" << std::endl;
             return false;
         }
         orderedExpectedIndexesIterator -= back;

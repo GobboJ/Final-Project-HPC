@@ -8,20 +8,7 @@
 #include <omp.h>
 #include "../../src/utils/Timer.h"
 #include "../../src/utils/Logger.h"
-
-template <typename I, typename T>
-concept InputIterator = requires(I iterator, T value) { value = *iterator; };
-
-template <typename I, typename T>
-concept OutputIterator = requires(I iterator, T value) { *iterator = value; };
-
-template <typename I>
-concept PiIterator = std::random_access_iterator<I> && InputIterator<I, std::size_t> &&
-                     OutputIterator<I, std::size_t>;
-
-template <typename I>
-concept LambdaIterator =
-        std::random_access_iterator<I> && InputIterator<I, double> && OutputIterator<I, double>;
+#include "../../include/utils/Types.h"
 
 /**
  * Description.
@@ -69,7 +56,7 @@ public:
         Logger::startLoggingProgress<0, 1, 2, 3, 4>(dataSize);
 
         // Initializes the distance matrix
-        auto* m = new double[dataSize];
+        auto *m = new double[dataSize];
 
         // 1. Set pi(0) to 0, lambda(0) to infinity
         P currentPi = pi;

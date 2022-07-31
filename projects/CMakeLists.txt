@@ -12,7 +12,7 @@ add_compile_definitions(PRINT_ITERATIONS)
 add_library(
     Final_Project_HPC_Sequential_Library STATIC
     include/sequential/SequentialClustering.h
-    src/sequential/SequentialClustering.cpp
+    include/utils/Types.h
     src/utils/Logger.h
     src/utils/Timer.cpp
     src/utils/Timer.h
@@ -21,6 +21,7 @@ add_library(
 add_library(
     Final_Project_HPC_Parallel_Library STATIC
     include/parallel/ParallelClustering.h
+    include/utils/Types.h
     src/utils/Logger.h
     src/utils/Timer.cpp
     src/utils/Timer.h
