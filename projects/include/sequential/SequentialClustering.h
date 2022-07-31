@@ -26,12 +26,9 @@ public:
      * @param lambda Reference to the vector that will be filled with the distance between each
      * point and the cluster it belongs to.
      */
-    template <PiIterator P, LambdaIterator L>
-    static void cluster(const std::vector<double *> &data,
-                        std::size_t dataSize,
-                        std::size_t dimension,
-                        P pi,
-                        L lambda) noexcept {
+    template <DataIterator D, PiIterator P, LambdaIterator L>
+    static void cluster(
+            D data, std::size_t dataSize, std::size_t dimension, P pi, L lambda) noexcept {
 
         Timer::initTimers();
         Logger::startLoggingProgress<0, 1, 2, 3, 4>(dataSize);
@@ -40,12 +37,14 @@ public:
         auto *m = new double[dataSize];
         P currentPi = pi;
         L currentLambda = lambda;
+        D currentData = data;
 
         // 1. Set pi(0) to 0, lambda(0) to infinity
         *currentPi = 0;
         *currentLambda = std::numeric_limits<double>::infinity();
         ++currentPi;
         ++currentLambda;
+        ++currentData;
 
         for (std::size_t n = 1; n < dataSize; n++) {
 
@@ -61,10 +60,14 @@ public:
             Timer::start<1>();
             // 2. Set M(i) to d(i, n + 1) for i = 1,..,n
             auto *mIterator = &(m[0]);
+            D stage2DataIterator = data;
+            double *currentDataN = *currentData;
             for (std::size_t i = 0; i <= n - 1; i++) {
-                *mIterator = distance(data[i], data[n], dimension);
+                *mIterator = distance(*stage2DataIterator, currentDataN, dimension);
                 ++mIterator;
+                ++stage2DataIterator;
             }
+            ++currentData;
 
             Timer::stop<1>();
             Timer::start<2>();

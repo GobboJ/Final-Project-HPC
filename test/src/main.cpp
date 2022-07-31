@@ -434,7 +434,8 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
         }
     } else {
         clusteringAlgorithm = [&data, dimension](auto &pi, auto &lambda) noexcept -> void {
-            SequentialClustering::cluster(data, data.size(), dimension, pi.begin(), lambda.begin());
+            SequentialClustering::cluster(
+                    data.begin(), data.size(), dimension, pi.begin(), lambda.begin());
         };
     }
 
@@ -561,7 +562,7 @@ bool checkTest(const std::filesystem::path &filePath,
         std::cout << "Running sequential implementation of '" << fileName
                   << "' to check the results" << std::endl;
         SequentialClustering::cluster(
-                data, data.size(), dimension, expectedPi.begin(), expectedLambda.begin());
+                data.begin(), data.size(), dimension, expectedPi.begin(), expectedLambda.begin());
 
         for (std::size_t i = 0; i < expectedPi.size(); i++) {
             expectedResult.emplace_back(std::make_pair(expectedPi[i], expectedLambda[i]));
