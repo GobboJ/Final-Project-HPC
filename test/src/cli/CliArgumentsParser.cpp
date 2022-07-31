@@ -25,12 +25,12 @@ void CliArgumentsParser::CliArguments::setParallel(bool parallel) {
     CliArguments::parallel = parallel;
 }
 
-[[gnu::pure]] std::size_t CliArgumentsParser::CliArguments::getParallelVersion() const {
-    return parallelVersion;
+[[gnu::pure]] std::size_t CliArgumentsParser::CliArguments::getVersion() const {
+    return version;
 }
 
-void CliArgumentsParser::CliArguments::setParallelVersion(std::size_t parallelVersion) {
-    CliArguments::parallelVersion = parallelVersion;
+void CliArgumentsParser::CliArguments::setVersion(std::size_t version) {
+    CliArguments::version = version;
 }
 
 [[gnu::pure]] std::size_t CliArgumentsParser::CliArguments::getStartColumnIndex() const {
@@ -81,6 +81,14 @@ void CliArgumentsParser::CliArguments::setDistanceComputationThreadsCount(
 
 void CliArgumentsParser::CliArguments::setStage4ThreadsCount(std::size_t stage4ThreadsCount) {
     CliArguments::stage4ThreadsCount = stage4ThreadsCount;
+}
+
+[[gnu::pure]] std::size_t CliArgumentsParser::CliArguments::getStage5ThreadsCount() const {
+    return stage5ThreadsCount;
+}
+
+void CliArgumentsParser::CliArguments::setStage5ThreadsCount(std::size_t stage5ThreadsCount) {
+    CliArguments::stage5ThreadsCount = stage5ThreadsCount;
 }
 
 const std::unordered_map<std::string, std::tuple<std::string, std::size_t, std::size_t>>
@@ -170,7 +178,7 @@ std::size_t CliArgumentsParser::parseParallelOption(std::size_t argc,
                                                     std::size_t nextOptionIndex,
                                                     CliArgumentsParser::CliArguments &result) {
 
-    if (argc <= nextOptionIndex) {
+    if (argc <= nextOptionIndex + 1) {
         std::cerr << "Unable to parse options -p/-s: Too few arguments." << std::endl;
         usage();
         exit(1);
@@ -181,24 +189,25 @@ std::size_t CliArgumentsParser::parseParallelOption(std::size_t argc,
     std::size_t version = 0;
 
     if (option == "-p") {
-        if (argc <= nextOptionIndex) {
-            std::cerr << "Too few arguments for option -p." << std::endl;
-            usage();
-            return 1;
-        }
         if (!parseSizeT(argv[nextOptionIndex], version)) {
             std::cerr << "Wrong version number for option -p." << std::endl;
             usage();
             return 1;
         }
         result.setParallel(true);
-        result.setParallelVersion(version);
+        result.setVersion(version);
         return CliArgumentsParser::parseParallelThreadsCountOption(
                 argc, argv, nextOptionIndex + 1, result);
     }
     if (option == "-s") {
+        if (!parseSizeT(argv[nextOptionIndex], version)) {
+            std::cerr << "Wrong version number for option -s." << std::endl;
+            usage();
+            return 1;
+        }
         result.setParallel(false);
-        return nextOptionIndex;
+        result.setVersion(version);
+        return nextOptionIndex + 1;
     }
 
     std::cerr << "Unknown option" << ' ' << option << std::endl;
@@ -222,7 +231,7 @@ std::size_t CliArgumentsParser::parseParallelThreadsCountOption(
 
     if (option == "-n") {
         nextOptionIndex++;
-        if (argc <= nextOptionIndex + 1) {
+        if (argc <= nextOptionIndex) {
             std::cerr << "Error while parsing -n option: Too few arguments." << std::endl;
             usage();
             exit(1);
@@ -233,16 +242,31 @@ std::size_t CliArgumentsParser::parseParallelThreadsCountOption(
             usage();
             exit(1);
         }
-        std::size_t stage4ThreadsCount = 0;
-        if (!parseSizeT(argv[nextOptionIndex + 1], stage4ThreadsCount)) {
-            std::cerr << "Wrong stage 4 threads count" << std::endl;
-            usage();
-            exit(1);
+        result.setDistanceComputationThreadsCount(distanceComputationThreadsCount);
+        nextOptionIndex++;
+
+        if (argc > nextOptionIndex && strcmp(argv[nextOptionIndex], "-f") != 0) {
+            std::size_t stage4ThreadsCount = 0;
+            if (!parseSizeT(argv[nextOptionIndex + 1], stage4ThreadsCount)) {
+                std::cerr << "Wrong stage 4 threads count" << std::endl;
+                usage();
+                exit(1);
+            }
+            result.setStage4ThreadsCount(stage4ThreadsCount);
+            nextOptionIndex++;
+            if (argc > nextOptionIndex && strcmp(argv[nextOptionIndex], "-f") != 0) {
+                std::size_t stage5ThreadsCount = 0;
+                if (!parseSizeT(argv[nextOptionIndex + 1], stage5ThreadsCount)) {
+                    std::cerr << "Wrong stage 5 threads count" << std::endl;
+                    usage();
+                    exit(1);
+                }
+                result.setStage5ThreadsCount(stage5ThreadsCount);
+                nextOptionIndex++;
+            }
         }
 
-        result.setDistanceComputationThreadsCount(distanceComputationThreadsCount);
-        result.setStage4ThreadsCount(stage4ThreadsCount);
-        return nextOptionIndex + 2;
+        return nextOptionIndex;
     }
 
     result.setDistanceComputationThreadsCount(0);
@@ -256,7 +280,20 @@ std::size_t CliArgumentsParser::parseFileName(std::size_t argc,
                                               CliArgumentsParser::CliArguments &result) {
 
     if (argc <= nextOptionIndex) {
-        std::cerr << "Unable to parse file name: Too few arguments." << std::endl;
+        std::cerr << "Unable to parse -f option: Too few arguments." << std::endl;
+        usage();
+        exit(1);
+    }
+
+    std::string option{argv[nextOptionIndex]};
+    if (option != "-f") {
+        std::cerr << "Unable to parse -f option: Wrong argument." << std::endl;
+        usage();
+        exit(1);
+    }
+    nextOptionIndex++;
+    if (argc <= nextOptionIndex) {
+        std::cerr << "Unable to parse -f option: Missing file name." << std::endl;
         usage();
         exit(1);
     }
@@ -299,7 +336,7 @@ std::size_t CliArgumentsParser::parseFileName(std::size_t argc,
 
     std::filesystem::path resourcesPath{".."};
     resourcesPath = resourcesPath / ".." / "test" / "resources";
-
+    
     result.setFilePath(resourcesPath / fileName);
     result.setStartColumnIndex(startColumnIndex - 1);
     result.setEndColumnIndex(endColumnIndex - 1);
@@ -323,8 +360,9 @@ bool CliArgumentsParser::parseSizeT(char *string, std::size_t &result) {
 void CliArgumentsParser::usage() {
 
     std::cout << "Usage" << std::endl;
-    std::cout << "main [-t] [-o] -s FILENAME [START END] " << std::endl;
-    std::cout << "main [-t] [-o] -p VERSION [-n DISTANCE_THREADS STAGE_4_THREADS] FILENAME [START "
-                 "END] "
-              << std::endl;
+    std::cout << "main [-t] [-o] -s VERSION -f FILENAME [START END] " << std::endl;
+    std::cout
+            << "main [-t] [-o] -p VERSION [-n DISTANCE_THREADS STAGE_4_THREADS] -f FILENAME [START "
+               "END] "
+            << std::endl;
 }
