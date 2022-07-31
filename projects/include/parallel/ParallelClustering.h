@@ -7,6 +7,7 @@
 #include <cmath>
 #include <omp.h>
 #include "../../src/utils/Timer.h"
+#include "../../src/utils/Logger.h"
 
 /**
  * Description.
@@ -46,22 +47,7 @@ public:
                         std::size_t squareRootThreadsCount = 0) {
 
         Timer::initTimers();
-
-#ifdef PRINT_ITERATIONS
-        std::cout << "Processed 0 / " << dataSize << " rows" << std::endl;
-        std::cout << "Stage 1: ";
-        Timer::print<0>();
-        std::cout << "Stage 2: ";
-        Timer::print<1>();
-        std::cout << "Stage 3: ";
-        Timer::print<2>();
-        std::cout << "Stage 4: ";
-        Timer::print<3>();
-        std::cout << "Stage 5: ";
-        Timer::print<4>();
-        std::cout << "Total  : ";
-        Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
-#endif
+        Logger::startLoggingProgress<0, 1, 2, 3, 4>(dataSize);
 
         // Initializes pi and lambda vectors
         pi.resize(dataSize);
@@ -181,26 +167,7 @@ public:
                 }
             }
             Timer::stop<3>();
-#ifdef PRINT_ITERATIONS
-            if (n % 1000 == 0) {
-                std::cout << "\033[7AProcessed " << n << " / "
-                          << dataSize << " rows\033[K" << std::endl;
-                std::cout << "Stage 1: ";
-                Timer::print<0>();
-                std::cout << "Stage 2: ";
-                Timer::print<1>();
-                std::cout << "Stage 3: ";
-                Timer::print<2>();
-                std::cout << "Stage 4: ";
-                Timer::print<3>();
-                std::cout << "Stage 5: ";
-                Timer::print<4>();
-                std::cout << "Total  : ";
-                Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
-                
-                std::cout.flush();
-            }
-#endif
+            Logger::logProgress<1000, 0, 1, 2, 3, 4>(n, dataSize);
         }
 
         // Compute the square roots
@@ -214,23 +181,7 @@ public:
             }
         }
         Timer::stop<4>();
-
-#ifdef PRINT_ITERATIONS
-        std::cout << "\033[7AProcessed " << dataSize << " / "
-                  << dataSize << " rows" << std::endl;
-#endif
-        std::cout << "Stage 1: ";
-        Timer::print<0>();
-        std::cout << "Stage 2: ";
-        Timer::print<1>();
-        std::cout << "Stage 3: ";
-        Timer::print<2>();
-        std::cout << "Stage 4: ";
-        Timer::print<3>();
-        std::cout << "Stage 5: ";
-        Timer::print<4>();
-        std::cout << "Total  : ";
-        Timer::printTotal(0ULL, 1ULL, 2ULL, 3ULL);
+        Logger::logProgress<1, 0, 1, 2, 3, 4>(dataSize, dataSize);
     }
 
 private:

@@ -51,70 +51,58 @@ public:
 
         static_assert(N < TIMERS_COUNT, "Invalid timer index");
 
-        using namespace std::literals::chrono_literals;
-        TimerDuration duration = durations[N];
-
-        auto nanoseconds = duration % 1us;
-        auto microseconds = (duration % 1ms) / 1us;
-        auto milliseconds = (duration % 1s) / 1ms;
-        auto seconds = (duration % 1min) / 1s;
-        auto minute = duration / 1min;
-
-        std::cout << minute << " minutes " << seconds << " seconds " << milliseconds << " ms (";
-        if (milliseconds > 0) {
-            std::cout << std::setfill('0') << milliseconds;
-            std::cout << ".";
-        }
-        if (microseconds > 0) {
-            int width = (milliseconds > 0) ? 3 : 0;
-            std::cout << std::setfill('0') << std::setw(width) << microseconds;
-            std::cout << ".";
-        }
-        int width = (microseconds > 0) ? 3 : 0;
-        std::cout << std::setfill('0') << std::setw(width) << nanoseconds.count();
-        std::cout << " ns)\033[K" << std::endl;
+        printDuration(durations[N]);
     }
-    
-    template <typename ...N>
-    static void printTotal(N... ids) {
-        
-        
-        using namespace std::literals::chrono_literals;
-        TimerDuration duration = sum(ids...);
 
-        auto nanoseconds = duration % 1us;
-        auto microseconds = (duration % 1ms) / 1us;
-        auto milliseconds = (duration % 1s) / 1ms;
-        auto seconds = (duration % 1min) / 1s;
-        auto minute = duration / 1min;
+    template <std::size_t... Ns>
+    static void printTotal() {
 
-        std::cout << minute << " minutes " << seconds << " seconds " << milliseconds << " ms (";
-        if (milliseconds > 0) {
-            std::cout << std::setfill('0') << milliseconds;
-            std::cout << ".";
-        }
-        if (microseconds > 0) {
-            int width = (milliseconds > 0) ? 3 : 0;
-            std::cout << std::setfill('0') << std::setw(width) << microseconds;
-            std::cout << ".";
-        }
-        int width = (microseconds > 0) ? 3 : 0;
-        std::cout << std::setfill('0') << std::setw(width) << nanoseconds.count();
-        std::cout << " ns)" << std::endl;
+        printDuration(sum<Ns...>());
     }
 
 private:
-    template <typename N, typename ...Ns>
-    static TimerDuration sum(N first, Ns... others) {
-        return durations[first] + sum(others...);
+    static void printDuration(TimerDuration duration) {
+
+        using namespace std::literals::chrono_literals;
+
+        auto nanoseconds = duration % 1us;
+        auto microseconds = (duration % 1ms) / 1us;
+        auto milliseconds = (duration % 1s) / 1ms;
+        auto seconds = (duration % 1min) / 1s;
+        auto minute = duration / 1min;
+
+        std::cout << minute << " minutes " << std::setw(2) << std::setfill(' ') << seconds
+                  << " seconds " << std::setw(3) << std::setfill(' ') << milliseconds << " ms (";
+        if (milliseconds > 0) {
+            std::cout << std::setw(3) << std::setfill(' ') << milliseconds;
+            std::cout << ".";
+        } else {
+            std::cout << "    ";
+        }
+        if (microseconds > 0) {
+            int width = (milliseconds > 0) ? 3 : 0;
+            std::cout << std::setw(width) << std::setfill('0') << microseconds;
+            std::cout << ".";
+        } else {
+            std::cout << "    ";
+        }
+        if (microseconds > 0) {
+            std::cout << std::setw(3) << std::setfill('0') << nanoseconds.count();
+        } else {
+            std::cout << std::setw(3) << std::setfill(' ') << nanoseconds.count();
+        }
+        std::cout << " ns)\033[K" << std::endl;
     }
-    
-    template <typename N>
-    static TimerDuration sum(N first) {
-        return durations[first];
+
+    template <std::size_t N, std::size_t... Ns>
+    static TimerDuration sum() {
+        if constexpr (sizeof...(Ns) == 1) {
+            return durations[N];
+        } else {
+            return durations[N] + sum<Ns...>();
+        }
     }
-    
-    
+
     static std::array<TimerTimePoint, TIMERS_COUNT> lastTimers;
     static std::array<TimerDuration, TIMERS_COUNT> durations;
 #else
@@ -133,6 +121,10 @@ public:
 
     template <std::size_t N>
     static inline void print() {
+    }
+
+    template <typename... N>
+    static void printTotal(N... ids) {
     }
 #endif
 };
