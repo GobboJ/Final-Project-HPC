@@ -55,7 +55,7 @@ class ContiguousDoubleMemoryIterator {
 public:
     using value_type = double *const;
     using reference_type = value_type &;
-    using pointer_type = value_type *;
+    using pointer = value_type *;
     using difference_type = std::ptrdiff_t;
 
     ContiguousDoubleMemoryIterator(double *firstElement, size_t stride) :
@@ -63,17 +63,48 @@ public:
         stride(stride) {
     }
 
-    virtual ~ContiguousDoubleMemoryIterator() {
-        
-        int a = 5;
+    ContiguousDoubleMemoryIterator(const ContiguousDoubleMemoryIterator &other) :
+        currentElement(other.currentElement),
+        stride(other.stride) {
+    }
+
+    ContiguousDoubleMemoryIterator(ContiguousDoubleMemoryIterator &&other) :
+        currentElement(other.currentElement),
+        stride(other.stride) {
+    }
+
+    ContiguousDoubleMemoryIterator &operator= (const ContiguousDoubleMemoryIterator &other) {
+        if (&other != this) {
+            this->currentElement = other.currentElement;
+            this->stride = other.stride;
+        }
+
+        return *this;
+    }
+
+    ContiguousDoubleMemoryIterator &operator= (ContiguousDoubleMemoryIterator &&other) {
+        if (&other != this) {
+            this->currentElement = other.currentElement;
+            this->stride = other.stride;
+        }
+
+        return *this;
     }
 
     reference_type operator* () const {
         return currentElement;
     }
-    
-    pointer_type operator-> () const {
+
+    pointer operator->() const {
         return &currentElement;
+    }
+
+    bool operator== (const ContiguousDoubleMemoryIterator &other) {
+        return currentElement == other.currentElement;
+    }
+
+    bool operator!= (const ContiguousDoubleMemoryIterator &other) {
+        return currentElement != other.currentElement;
     }
 
     ContiguousDoubleMemoryIterator &operator++ () {
@@ -157,15 +188,13 @@ int main(int argc, char *argv[]) {
             }
         }
     } else {
-        ////////// HERE
-        uniqueVectorData = new double[data.size()];
-        std::size_t nextIndex = 0;
-        for (std::size_t i = 0; i < data.size(); i++) {
-            // data = {{3, 4, 5, 6}, {4, 7, 9, 100}}
-            // uniqueData = {3, 4, 5, 6, 4, 7, 9, 100}
-            memcpy(&(uniqueVectorData[nextIndex]), data[i], dimension);
-            nextIndex += dimension;
-            delete data[i];
+        if (version == 2) {
+            uniqueVectorData = new double[data.size() * dimension];
+            std::size_t nextIndex = 0;
+            for (std::size_t i = 0; i < data.size(); i++) {
+                memcpy(&(uniqueVectorData[nextIndex]), data[i], dimension * sizeof(double));
+                nextIndex += dimension;
+            }
         }
     }
 
@@ -281,7 +310,7 @@ int main(int argc, char *argv[]) {
     } else {
         std::cout << "no" << std::endl;
     }
-    
+
     delete[] uniqueVectorData;
     _mm_free(mmAlignedData);
 
@@ -512,12 +541,9 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
             case 2:
                 clusteringAlgorithm = [&data, uniqueArrayData, dimension](
                                               auto &pi, auto &lambda) noexcept -> void {
+                    auto a = ContiguousDoubleMemoryIterator(&(uniqueArrayData[0]), dimension);
                     SequentialClustering::cluster(
-                            ContiguousDoubleMemoryIterator(&(uniqueArrayData[0]), dimension),
-                            data.size(),
-                            dimension,
-                            pi.begin(),
-                            lambda.begin());
+                            a, data.size(), dimension, pi.begin(), lambda.begin());
                 };
                 break;
             default:

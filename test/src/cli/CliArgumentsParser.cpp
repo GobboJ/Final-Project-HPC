@@ -8,6 +8,7 @@
 #include "CliArgumentsParser.h"
 #include <filesystem>
 #include <iostream>
+#include <cstring>
 
 [[gnu::pure]] bool CliArgumentsParser::CliArguments::isTestEnabled() const {
     return testEnabled;
