@@ -32,7 +32,7 @@ public:
         if (currentProgress % I == 0) {
             std::cout << "\033[" << sizeof...(Ns) + 2 << "AProcessed " << currentProgress << " / "
                       << dataSize << " rows\033[K" << std::endl;
-            printStages<1, Ns...>();
+            printStages<0, Ns...>();
             std::cout << "Total  : ";
             Timer::printTotal<Ns...>();
         }
@@ -50,8 +50,12 @@ private:
 
     template <std::size_t S, std::size_t N>
     static inline void printStage() {
-
-        std::cout << "Stage" << ' ' << S << ": ";
+        
+        if constexpr (S == 0) {
+            std::cout << "Init   : ";
+        } else {
+            std::cout << "Stage" << ' ' << S << ": ";
+        }
         Timer::print<N>();
     }
 

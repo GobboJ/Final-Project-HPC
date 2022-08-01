@@ -162,6 +162,7 @@ add_compile_options(
     -msse
     -msse3
     -mavx
+    -march=native
     # Build-type-related options
     $<$<CONFIG:Release>:-O3>
     $<$<CONFIG:Debug>:-O0>

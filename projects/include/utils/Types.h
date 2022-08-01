@@ -19,7 +19,7 @@ concept DataIterator = std::input_iterator<I> && InputIterator<I, const double *
 
 template <typename I>
 concept ParallelDataIterator =
-      //  std::random_access_iterator<I> &&
+        DataIterator<I> &&
         requires(I iterator, const double *value, std::size_t i) { value = iterator[i]; };
 
 template <typename I>

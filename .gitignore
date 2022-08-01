@@ -12,3 +12,6 @@ cmake-build-*
 
 ### Output directories ###
 /out
+
+### Binary files ###
+*.pdf

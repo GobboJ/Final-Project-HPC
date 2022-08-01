@@ -12,8 +12,11 @@ add_compile_definitions(PRINT_ITERATIONS)
 add_library(
     Final_Project_HPC_Sequential_Library STATIC
     include/sequential/SequentialClustering.h
+    include/utils/ContiguousDoubleMemoryDataIterator.h
     include/utils/Types.h
+    src/utils/ContiguousDoubleMemoryDataIterator.cpp
     src/utils/Logger.h
+    src/utils/SimdUtils.h
     src/utils/Timer.cpp
     src/utils/Timer.h
 )
@@ -21,20 +24,25 @@ add_library(
 add_library(
     Final_Project_HPC_Parallel_Library STATIC
     include/parallel/ParallelClustering.h
+    include/utils/ContiguousDoubleMemoryDataIterator.h
     include/utils/Types.h
+    src/utils/ContiguousDoubleMemoryDataIterator.cpp
     src/utils/Logger.h
+    src/utils/SimdUtils.h
     src/utils/Timer.cpp
     src/utils/Timer.h
 )
 target_link_libraries(Final_Project_HPC_Parallel_Library PRIVATE OpenMP::OpenMP_CXX)
 
 # Export the include directory
+get_filename_component(utilsIncludeDirectoryPath "include/utils" ABSOLUTE)
 get_filename_component(sequentialIncludeDirectoryPath "include/sequential" ABSOLUTE)
-set(SEQUENTIAL_IMPLEMENTATION_INCLUDE_DIR ${sequentialIncludeDirectoryPath}
+set(SEQUENTIAL_IMPLEMENTATION_INCLUDE_DIR
+    ${sequentialIncludeDirectoryPath} ${utilsIncludeDirectoryPath}
     CACHE INTERNAL "Sequential implementation include directory" FORCE
 )
 
 get_filename_component(parallelIncludeDirectoryPath "include/parallel" ABSOLUTE)
-set(PARALLEL_IMPLEMENTATION_INCLUDE_DIR ${parallelIncludeDirectoryPath}
+set(PARALLEL_IMPLEMENTATION_INCLUDE_DIR ${parallelIncludeDirectoryPath} ${utilsIncludeDirectoryPath}
     CACHE INTERNAL "Parallel implementations include directory" FORCE
 )

@@ -80,8 +80,7 @@ private:
             std::cout << "    ";
         }
         if (microseconds > 0) {
-            int width = (milliseconds > 0) ? 3 : 0;
-            std::cout << std::setw(width) << std::setfill('0') << microseconds;
+            std::cout << std::setw(3) << std::setfill(' ') << microseconds;
             std::cout << ".";
         } else {
             std::cout << "    ";

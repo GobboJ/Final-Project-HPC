@@ -14,6 +14,7 @@
 #include "SequentialClustering.h"
 #include "data/DataWriter.h"
 #include "ParallelClustering.h"
+#include "ContiguousDoubleMemoryDataIterator.h"
 #include "cli/CliArgumentsParser.h"
 
 template <typename C, typename D>
@@ -50,160 +51,6 @@ bool check(std::vector<std::pair<std::size_t, double>> &expected,
 
 using DistanceComputers = ParallelClustering::DistanceComputers;
 
-class ContiguousDoubleMemoryIterator {
-
-public:
-    using value_type = const double *const;
-    using reference_type = const value_type &;
-    using pointer = value_type *const;
-    using difference_type = std::ptrdiff_t;
-
-    ContiguousDoubleMemoryIterator() : startElement(nullptr), currentElement{nullptr}, stride(0) {
-    }
-
-    ContiguousDoubleMemoryIterator(const double *startElement, size_t stride) :
-        startElement(startElement),
-        currentElement{startElement},
-        stride(stride) {
-    }
-
-    ContiguousDoubleMemoryIterator(const ContiguousDoubleMemoryIterator &other) :
-        startElement(other.startElement),
-        currentElement(other.currentElement),
-        stride(other.stride) {
-    }
-
-    ContiguousDoubleMemoryIterator(ContiguousDoubleMemoryIterator &&other) :
-        startElement(other.startElement),
-        currentElement(other.currentElement),
-        stride(other.stride) {
-    }
-
-    ContiguousDoubleMemoryIterator &operator= (const ContiguousDoubleMemoryIterator &other) {
-        if (&other != this) {
-            this->startElement = other.startElement;
-            this->currentElement = other.currentElement;
-            this->stride = other.stride;
-        }
-
-        return *this;
-    }
-
-    ContiguousDoubleMemoryIterator &operator= (ContiguousDoubleMemoryIterator &&other) noexcept {
-        if (&other != this) {
-            this->startElement = other.startElement;
-            this->currentElement = other.currentElement;
-            this->stride = other.stride;
-        }
-
-        return *this;
-    }
-
-    reference_type operator* () const {
-        return currentElement;
-    }
-
-    pointer operator->() const {
-        return &currentElement;
-    }
-
-    const double * operator[] (difference_type index) const {
-        return startElement + (stride * index);
-    }
-
-    bool operator== (const ContiguousDoubleMemoryIterator &other) const {
-        return currentElement == other.currentElement;
-    }
-
-    bool operator!= (const ContiguousDoubleMemoryIterator &other) const {
-        return currentElement != other.currentElement;
-    }
-
-    bool operator<(const ContiguousDoubleMemoryIterator &other) const {
-        return currentElement < other.currentElement;
-    }
-
-    bool operator> (const ContiguousDoubleMemoryIterator &other) const {
-        return currentElement > other.currentElement;
-    }
-
-    bool operator<= (const ContiguousDoubleMemoryIterator &other) const {
-        return currentElement < other.currentElement;
-    }
-
-    bool operator>= (const ContiguousDoubleMemoryIterator &other) const {
-        return currentElement > other.currentElement;
-    }
-
-    ContiguousDoubleMemoryIterator &operator++ () {
-
-        currentElement += stride;
-        return *this;
-    }
-
-    ContiguousDoubleMemoryIterator operator++ (int) {
-
-        ContiguousDoubleMemoryIterator copy = *this;
-        currentElement += stride;
-        return copy;
-    }
-
-    ContiguousDoubleMemoryIterator &operator-- () {
-
-        currentElement -= stride;
-        return *this;
-    }
-
-    ContiguousDoubleMemoryIterator operator-- (int) {
-
-        ContiguousDoubleMemoryIterator copy = *this;
-        currentElement -= stride;
-        return copy;
-    }
-
-    ContiguousDoubleMemoryIterator &operator+= (difference_type amount) {
-
-        currentElement += amount;
-        return *this;
-    }
-
-    ContiguousDoubleMemoryIterator &operator-= (difference_type amount) {
-
-        currentElement -= amount;
-        return *this;
-    }
-
-    difference_type operator- (const ContiguousDoubleMemoryIterator other) const {
-
-        return currentElement - other.currentElement;
-    }
-
-    ContiguousDoubleMemoryIterator operator+ (difference_type amount) const {
-
-        ContiguousDoubleMemoryIterator copy = *this;
-        copy += amount;
-        return copy;
-    }
-
-    ContiguousDoubleMemoryIterator operator- (difference_type amount) const {
-
-        ContiguousDoubleMemoryIterator copy = *this;
-        copy -= amount;
-        return copy;
-    }
-
-    friend ContiguousDoubleMemoryIterator operator+ (difference_type amount,
-                                                     ContiguousDoubleMemoryIterator other) {
-
-        return other + amount;
-    }
-
-private:
-    const double *startElement;
-    const double *currentElement;
-    std::size_t stride;
-};
-
 /*
  * Description.
  *
@@ -213,7 +60,7 @@ private:
  */
 int main(int argc, char *argv[]) {
 
-   // static_assert(std::random_access_iterator<ContiguousDoubleMemoryIterator>);
+    // static_assert(std::random_access_iterator<ContiguousDoubleMemoryIterator>);
 
     CliArgumentsParser::CliArguments arguments = CliArgumentsParser::parseArguments(argc, argv);
     std::size_t dimension = arguments.getEndColumnIndex() - arguments.getStartColumnIndex() + 1;
@@ -409,15 +256,13 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
 
     std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm;
 
-    auto sseMmAlignedDataIterator = ContiguousDoubleMemoryIterator(
+    auto sseMmAlignedDataIterator = ContiguousDoubleMemoryDataIterator(
             &(mmAlignedData[0]),
-            ParallelClustering::AVX_PACK_SIZE *
-                    ParallelClustering::computeAvxBlocksCount(dimension));
+            ContiguousDoubleMemoryDataIterator::computeSseStride(dimension));
 
-    auto avxMmAlignedDataIterator = ContiguousDoubleMemoryIterator(
+    auto avxMmAlignedDataIterator = ContiguousDoubleMemoryDataIterator(
             &(mmAlignedData[0]),
-            ParallelClustering::AVX_PACK_SIZE *
-                    ParallelClustering::computeAvxBlocksCount(dimension));
+            ContiguousDoubleMemoryDataIterator::computeAvxStride(dimension));
 
     if (isParallel) {
         switch (version) {
@@ -489,6 +334,7 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                                 std::vector<double *>::iterator,
                                                 std::vector<std::size_t>::iterator,
                                                 std::vector<double>::iterator,
+                                                true,
                                                 true>(data.begin(),
                                                       data.size(),
                                                       dimension,
@@ -506,6 +352,7 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                                 std::vector<double *>::iterator,
                                                 std::vector<std::size_t>::iterator,
                                                 std::vector<double>::iterator,
+                                                true,
                                                 true>(data.begin(),
                                                       data.size(),
                                                       dimension,
@@ -523,6 +370,7 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                                 std::vector<double *>::iterator,
                                                 std::vector<std::size_t>::iterator,
                                                 std::vector<double>::iterator,
+                                                true,
                                                 true>(data.begin(),
                                                       data.size(),
                                                       dimension,
@@ -540,9 +388,10 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        stage4ThreadsCount](auto &pi,
                                                            auto &lambda) noexcept -> void {
                     ParallelClustering::cluster<DistanceComputers::SSE_OPTIMIZED,
-                                                ContiguousDoubleMemoryIterator,
+                                                ContiguousDoubleMemoryDataIterator,
                                                 std::vector<std::size_t>::iterator,
                                                 std::vector<double>::iterator,
+                                                true,
                                                 true>(sseMmAlignedDataIterator,
                                                       data.size(),
                                                       dimension,
@@ -560,9 +409,10 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        stage4ThreadsCount](auto &pi,
                                                            auto &lambda) noexcept -> void {
                     ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED,
-                                                ContiguousDoubleMemoryIterator,
+                                                ContiguousDoubleMemoryDataIterator,
                                                 std::vector<std::size_t>::iterator,
                                                 std::vector<double>::iterator,
+                                                true,
                                                 true>(avxMmAlignedDataIterator,
                                                       data.size(),
                                                       dimension,
@@ -580,9 +430,10 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        stage4ThreadsCount](auto &pi,
                                                            auto &lambda) noexcept -> void {
                     ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT,
-                                                ContiguousDoubleMemoryIterator,
+                                                ContiguousDoubleMemoryDataIterator,
                                                 std::vector<std::size_t>::iterator,
                                                 std::vector<double>::iterator,
+                                                true,
                                                 true,
                                                 false>(avxMmAlignedDataIterator,
                                                        data.size(),
@@ -602,9 +453,10 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        stage5ThreadsCount](auto &pi,
                                                            auto &lambda) noexcept -> void {
                     ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT,
-                                                ContiguousDoubleMemoryIterator,
+                                                ContiguousDoubleMemoryDataIterator,
                                                 std::vector<std::size_t>::iterator,
                                                 std::vector<double>::iterator,
+                                                true,
                                                 true,
                                                 true>(avxMmAlignedDataIterator,
                                                       data.size(),
@@ -632,7 +484,7 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                 clusteringAlgorithm = [&data, uniqueArrayData, dimension](
                                               auto &pi, auto &lambda) noexcept -> void {
                     SequentialClustering::cluster(
-                            ContiguousDoubleMemoryIterator(&(uniqueArrayData[0]), dimension),
+                            ContiguousDoubleMemoryDataIterator(&(uniqueArrayData[0]), dimension),
                             data.size(),
                             dimension,
                             pi.begin(),

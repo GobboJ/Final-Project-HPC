@@ -11,4 +11,6 @@ Checks: "
     -mpi-*,
     -objc*,
     -modernize*,
-    -cppcoreguidelines-pro-bounds-pointer-arithmetic"
+    -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+    -bugprone-easily-swappable-parameters,
+    -cppcoreguidelines-owning-memory"
