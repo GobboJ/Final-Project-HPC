@@ -1,9 +1,13 @@
+// Name of the project
 rootProject.name = 'DeB Cluster Visualizer'
+
+// Include the modules
 include ':modules:main'
 include ':modules:model'
 include ':modules:view'
 include ':modules:presenter'
 
+// Fix the names of the modules
 findProject(':main')?.name = 'Main'
 findProject(':model')?.name = 'Model'
 findProject(':view')?.name = 'View'

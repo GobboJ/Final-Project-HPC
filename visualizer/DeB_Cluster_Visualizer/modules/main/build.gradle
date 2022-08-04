@@ -1,35 +1,46 @@
 plugins {
+    // Java executable applications
     id 'application'
+    // Lombok
     id 'io.freefair.lombok' version '6.5.0.2'
 }
 
+// Use the default dependencies and properties
 apply from: '../../base.gradle'
 
-java {
-    modularity.inferModulePath = true
-}
-
-task(runMainGraphPrinter, dependsOn: 'classes', type: JavaExec) {
+/**
+ * Task that runs the main application printing the graph.*/
+task(runGraphPrinter, dependsOn: 'classes', type: JavaExec) {
+    // Set the information of the main application
     mainModule = 'it.debsite.dcv.main'
     mainClass = 'it.debsite.dcv.main.MainGraphPrinter'
     classpath = sourceSets.main.runtimeClasspath
 }
 
-task(runMainDistanceComputer, dependsOn: 'classes', type: JavaExec) {
+/**
+ * Task that runs the main application computing the distance between two points.*/
+task(runDistanceComputer, dependsOn: 'classes', type: JavaExec) {
+    // Forward the streams
+    standardInput = System.in
+    standardOutput = System.out
+    // Set the information of the main application
     mainModule = 'it.debsite.dcv.main'
     mainClass = 'it.debsite.dcv.main.MainDistanceComputer'
     classpath = sourceSets.main.runtimeClasspath
 }
 
-task(runMainDendrogramComputer, dependsOn: 'classes', type: JavaExec) {
+/**
+ * Task that runs the main application printing the dendrogram tree.*/
+task(runDendrogramPrinter, dependsOn: 'classes', type: JavaExec) {
+    // Set the information of the main application
     mainModule = 'it.debsite.dcv.main'
     mainClass = 'it.debsite.dcv.main.MainDendrogramPrinter'
     classpath = sourceSets.main.runtimeClasspath
 }
 
-
+// Add the dependencies on all the other modules
 dependencies {
-    implementation project(":modules:model")
-    implementation project(":modules:view")
-    implementation project(":modules:presenter")
+    implementation project(':modules:model')
+    implementation project(':modules:view')
+    implementation project(':modules:presenter')
 }

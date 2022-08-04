@@ -1,17 +1,13 @@
+// Common plugins
 plugins {
     id 'java'
 }
 
-group 'it.debsite.utt'
-version '1.0-SNAPSHOT'
-
+// Java version
 sourceCompatibility = '16'
 targetCompatibility = '16'
 
-test {
-    useJUnitPlatform()
-}
-
+// Default repositories
 repositories {
     mavenCentral()
 }

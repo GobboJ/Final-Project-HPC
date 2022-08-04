@@ -1,10 +1,13 @@
 plugins {
+    // Lombok plugin
     id 'io.freefair.lombok' version '6.5.0.2'
 }
 
+// Use the default dependencies and properties
 apply from: '../../base.gradle'
 
+// Add the dependency on the model and view classes
 dependencies {
-    implementation project(":modules:model")
-    implementation project(":modules:view")
+    implementation project(':modules:model')
+    implementation project(':modules:view')
 }

@@ -10,5 +10,4 @@ module it.debsite.dcv.model {
     requires static lombok;
     
     exports it.debsite.dcv.model;
-    exports it.debsite.dcv.model.file;
 }

@@ -1,8 +1,7 @@
 plugins {
-    id 'java'
+    // Lombok plugin
     id 'io.freefair.lombok' version '6.5.0.2'
-    id 'idea'
 }
 
-
+// Use the default dependencies and properties
 apply from: '../../base.gradle'

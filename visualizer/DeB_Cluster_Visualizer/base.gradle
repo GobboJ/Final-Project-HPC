@@ -1,6 +1,8 @@
+// Apply common plugins
 apply plugin: 'java'
 apply plugin: 'idea'
 
+// Download JavaDoc and sources when IntelliJ indexes the applications
 idea {
     module {
         downloadJavadoc = true
@@ -8,33 +10,32 @@ idea {
     }
 }
 
+// Java version
 sourceCompatibility = '16'
 targetCompatibility = '16'
+// Group and version of the application
 group 'it.debsite.dcv'
 version '1.0-SNAPSHOT'
 
+// Main repositories
 repositories {
     mavenCentral()
 }
 
+// Set the compiler flags
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
     options.compilerArgs.addAll(['-Xlint:unchecked'])
 }
 
+
+// Infer module paths since java 9+ is used
 java {
     modularity.inferModulePath = true
 }
 
-final String junitVersion = '5.7.1'
-
+// Set the common dependencies
 dependencies {
     
-    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
     implementation 'org.jetbrains:annotations:23.0.0'
-}
-
-test {
-    useJUnitPlatform()
 }

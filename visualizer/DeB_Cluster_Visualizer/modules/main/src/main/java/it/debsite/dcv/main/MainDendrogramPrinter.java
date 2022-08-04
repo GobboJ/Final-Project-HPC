@@ -1,18 +1,13 @@
 package it.debsite.dcv.main;
 
-import it.debsite.dcv.model.Cluster;
-import it.debsite.dcv.model.ClusterPoint;
-import it.debsite.dcv.model.file.ClusterData;
-import it.debsite.dcv.model.file.ClusterFileReader;
-import it.debsite.dcv.model.file.MalformedFileException;
+import it.debsite.dcv.main.CliArgumentsParser.CliArguments;
+import it.debsite.dcv.model.ClusterFileReader;
+import it.debsite.dcv.model.MalformedFileException;
+import it.debsite.dcv.model.ParseResult;
 import it.debsite.dcv.presenter.DendrogramPresenter;
-import it.debsite.dcv.presenter.GraphPresenter;
-import it.debsite.dcv.view.DendrogramPrinter;
-import it.debsite.dcv.view.GraphPrinter;
+import it.debsite.dcv.view.dendrogram.DendrogramPrinter;
 
 import javax.imageio.ImageIO;
-import javax.swing.JFrame;
-import javax.swing.LookAndFeel;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import java.awt.Color;
@@ -21,53 +16,112 @@ import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * Description.
+ * Application that prints a dendrogram tree build starting from the information contained into a
+ * file.
  *
  * @author DeB
- * @version 1.0 2022-07-10
- * @since version date
+ * @version 1.1 2022-08-04
+ * @since 1.0
  */
-public class MainDendrogramPrinter {
+public final class MainDendrogramPrinter {
     
-    public static void main(final String[] args) {
-        
-        EventQueue.invokeLater(MainDendrogramPrinter::start);
+    /**
+     * The constructor is private so to avoid creating objects of this class, which offers only
+     * static methods.
+     */
+    private MainDendrogramPrinter() {
+    
     }
     
-    private static void start() {
+    /**
+     * Main entrypoint of the application.
+     *
+     * @param args Arguments specified via the command line.
+     */
+    @SuppressWarnings("MethodCanBeVariableArityMethod")
+    public static void main(final String[] args) {
+        
+        // Parse the command line arguments
+        final CliArguments arguments =
+            CliArgumentsParser.parseCommandLineArguments(args, MainDendrogramPrinter::usage);
+        
+        // Draw the dendrogram
+        EventQueue.invokeLater(() -> MainDendrogramPrinter.start(arguments));
+    }
+    
+    /**
+     * Start function, called on the AWT thread, that prints the dendrogram onto the image.
+     *
+     * @param parsedArguments Arguments specified on the command line.
+     */
+    @SuppressWarnings({"UseOfSystemOutOrSystemErr", "FeatureEnvy"})
+    private static void start(final CliArguments parsedArguments) {
         
         try {
-            final Path inputPath = Path.of("..", "..", "out", "out.txt");
-            final ClusterFileReader reader = new ClusterFileReader();
-            final ClusterData clusterData = reader.readData(inputPath);
+            // Parse the data of the input file
+            final ParseResult parseResult =
+                ClusterFileReader.parseDataFromFile(parsedArguments.getInputPath());
             
+            // Make the look and feel of the application to match the system one
+            // noinspection DuplicatedCode
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            final BufferedImage image = new BufferedImage(1920, 1080, BufferedImage.TYPE_INT_ARGB);
             
+            // Create a white image
+            final BufferedImage image = new BufferedImage(
+                parsedArguments.getImageWidth(),
+                parsedArguments.getImageHeight(),
+                BufferedImage.TYPE_INT_ARGB
+            );
             final Graphics2D context = image.createGraphics();
             context.setColor(Color.WHITE);
             context.fill(new Rectangle2D.Double(0, 0, image.getWidth(), image.getHeight()));
             
+            // Create the printer that prints teh dendrogram
             final DendrogramPrinter printer = new DendrogramPrinter(image);
-            final DendrogramPresenter presenter = new DendrogramPresenter(image,
-                printer,
-                clusterData.getClusters(),
-                clusterData.getPoints()
-            );
             
-            final Path outputPath = Path.of("..", "..", "out", "dendrogram.png");
-            ImageIO.write(image, "png", outputPath.toAbsolutePath().toFile());
+            // Print the dendrogram
+            final DendrogramPresenter presenter = new DendrogramPresenter(image, printer);
+            presenter.printDendrogram(parseResult.getPoints(), parseResult.getClusters());
+            
+            // Save the image
+            ImageIO.write(image, "png", parsedArguments.getOutputPath().toFile());
         } catch (final MalformedFileException | IOException | ClassNotFoundException |
                        InstantiationException | IllegalAccessException |
                        UnsupportedLookAndFeelException exception) {
-            // TODO: Auto-generated block
-            exception.printStackTrace();
+            // Report any error
+            System.err.println(exception.getMessage());
+            // noinspection CallToSystemExit
+            System.exit(1);
         }
     }
     
+    /**
+     * Utility method that prints the usage of the program.
+     */
+    @SuppressWarnings("UseOfSystemOutOrSystemErr")
+    private static void usage() {
+        
+        // noinspection LongLine
+        System.out.println("""
+                           SYNOPSYS
+                               dendrogram-printer -h
+                               dendrogram-printer INPUT_FILE_PATH OUTPUT_FILE_PATH IMAGE_WIDTH IMAGE_HEIGHT
+                               
+                           DESCRIPTION
+                              Draws the dendrogram tree built from the points and clusters specified in the
+                              INPUT_FILE_PATH file. The dendrogram is drawn onto an image of size
+                              IMAGE_WIDTH x IMAGE_HEIGHT and then saved in the file OUTPUT_FILE_PATH.
+                              
+                           OPTIONS
+                               -h, --help    Prints this help.
+                               
+                           EXIT CODES
+                               0    If the program successfully drawn the dendrogram and saved it to the
+                                    specified file.
+                                    
+                               1    If an error occurred while printing the graph.
+                           """);
+    }
 }
