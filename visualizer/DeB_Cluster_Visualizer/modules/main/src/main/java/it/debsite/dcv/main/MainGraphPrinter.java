@@ -119,7 +119,8 @@ public final class MainGraphPrinter {
                               Draws the graph reporting points and clusters specified in the INPUT_FILE_PATH
                               file. The graph is drawn onto an image of size IMAGE_WIDTH x IMAGE_HEIGHT and
                               then saved in the file OUTPUT_FILE_PATH.
-                              
+                              The INPUT_FILE_PATH and OUTPUT_FILE_PATH can be either absolute or relative.
+                            
                            OPTIONS
                                -h, --help    Prints this help.
                                

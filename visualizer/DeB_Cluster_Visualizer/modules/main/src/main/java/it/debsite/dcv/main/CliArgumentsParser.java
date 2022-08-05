@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 
 /**
@@ -99,7 +98,7 @@ final class CliArgumentsParser {
         final String inputFilePath = args[0];
         // Check its validity
         final Path inputPath = Path.of(inputFilePath).toAbsolutePath().normalize();
-        if (!Files.exists(inputPath, LinkOption.NOFOLLOW_LINKS)) {
+        if (!Files.isRegularFile(inputPath)) {
             // The input file does not exist
             System.err.printf("The input file '%s' does not exist.%n", inputPath);
             usageFunction.usage();
@@ -109,7 +108,7 @@ final class CliArgumentsParser {
         final String outputFilePath = args[1];
         // Check its validity
         final Path outputPath = Path.of(outputFilePath).toAbsolutePath().normalize();
-        if (!Files.exists(outputPath.getParent(), LinkOption.NOFOLLOW_LINKS)) {
+        if (!Files.isDirectory(outputPath.getParent())) {
             // The directory where the output file should be created does not exist
             System.err.printf(
                 "The output file '%s' cannot be created into a non-existent directory '%s'.%n",
@@ -125,9 +124,24 @@ final class CliArgumentsParser {
             // Extract the image width
             final String imageWidthString = args[2];
             final int imageWidth = Integer.parseInt(imageWidthString);
+            // Check its validity
+            if (imageWidth <= 0) {
+                System.err.printf("The specified image width '%d' is non-positive.%n", imageWidth);
+                usageFunction.usage();
+                System.exit(1);
+            }
             // Extract the image height
             final String imageHeightString = args[3];
             final int imageHeight = Integer.parseInt(imageHeightString);
+            // Check its validity
+            if (imageHeight <= 0) {
+                System.err.printf(
+                    "The specified image height '%d' is non-positive.%n",
+                    imageHeight
+                );
+                usageFunction.usage();
+                System.exit(1);
+            }
             
             return new CliArguments(inputPath, outputPath, imageWidth, imageHeight);
         } catch (final NumberFormatException exception) {
