@@ -6,6 +6,7 @@
 #include <iostream>
 #include <mm_malloc.h>
 #include <vector>
+#include <cstring>
 
 using cluster::parallel::ParallelClustering;
 using cluster::sequential::SequentialClustering;
@@ -29,18 +30,16 @@ int main() {
      * acc
      * gen many attributes
      */
-    std::vector<std::tuple<std::string, int, int>> datasets{{"iris.data", 1, 4},
+    std::vector<std::tuple<std::string, int, int>> datasets{
                                                             {"Parking Birmingham.data", 2, 3},
-                                                            {"accelerometer.csv", 3, 5},
-                                                            {"gen1.data", 1, 32},
-                                                            {"gen2.data", 1, 1}};
+                                                            {"generated.data", 1, 32}};
     std::vector<std::size_t> threads{2, 4, 8, 12, 16};
 
     for (auto &dataset : datasets) {
         
-        for (std::size_t i = 0; i < 3; i++) {
+        for (std::size_t iteration = 0; iteration < 3; iteration++) {
             
-            std::cout << "------ Iteration: " << i << " ------" << std::endl;
+            std::cout << "------ Iteration: " << iteration << " ------" << std::endl;
             
             for (std::size_t threadCount : threads) {
                 // Read the data
@@ -68,6 +67,7 @@ int main() {
 
                 std::size_t quotient = 1 + ((dimension - 1) / 2);
                 std::size_t newDimension = 2 * quotient;
+                std::size_t sseStride = newDimension;
 
                 for (std::size_t i = 0; i < data.size(); i += dimension) {
                     auto *reallocatedPoint = static_cast<double *>(
@@ -85,6 +85,7 @@ int main() {
 
                 quotient = 1 + ((dimension - 1) / 4);
                 newDimension = 4 * quotient;
+                std::size_t avxStride = newDimension;
 
                 for (std::size_t i = 0; i < data.size(); i += dimension) {
                     auto *reallocatedPoint = static_cast<double *>(
@@ -131,12 +132,14 @@ int main() {
                 lambda.resize(twoLevels.size());
 
                 // Seq 1: classic sequential
+                std::cout << std::endl << "Seq 1: classic sequential" << std::endl << std::endl;
                 SequentialClustering::cluster(
                         twoLevels.begin(), twoLevels.size(), dimension, pi.begin(), lambda.begin());
                 
                 Timer::reset();
 
                 // Seq 2: classic sequential + Linearized
+                std::cout << std::endl << "Seq 2: classic sequential + Linearized" << std::endl << std::endl;
                 SequentialClustering::cluster(
                         ContiguousDoubleMemoryDataIterator(uniqueVectorData, dimension),
                         twoLevels.size(),
@@ -147,6 +150,7 @@ int main() {
                 Timer::reset();
 
                 // Par 1: multithreaded distance
+                std::cout << std::endl << "Par 1: multithreaded distance" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::CLASSICAL>(twoLevels.begin(),
                                                                           twoLevels.size(),
                                                                           dimension,
@@ -159,6 +163,7 @@ int main() {
                 Timer::reset();
                 
                 // Par 2: sse only
+                std::cout << std::endl << "Par 2: sse only" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::SSE,
                                             std::vector<double *>::iterator,
                                             std::vector<std::size_t>::iterator,
@@ -175,6 +180,7 @@ int main() {
                 Timer::reset();
                 
                 // Par 3: avx only
+                std::cout << std::endl << "Par 3: avx only" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::AVX,
                                             std::vector<double *>::iterator,
                                             std::vector<std::size_t>::iterator,
@@ -191,6 +197,7 @@ int main() {
                 Timer::reset();
             
                 // Par 4: multithreaded distance + SSE
+                std::cout << std::endl << "Par 4: multithreaded distance + SSE" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::SSE,
                                             std::vector<double *>::iterator,
                                             std::vector<std::size_t>::iterator,
@@ -206,6 +213,7 @@ int main() {
                 Timer::reset();
                 
                 // Par 5: multithreaded distance + AVX
+                std::cout << std::endl << "Par 5: multithreaded distance + AVX" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::AVX,
                                             std::vector<double *>::iterator,
                                             std::vector<std::size_t>::iterator,
@@ -221,11 +229,12 @@ int main() {
                 Timer::reset();
             
                 // Par 6: multithreaded distance + SSE + linearized
+                std::cout << std::endl << "Par 6: multithreaded distance + SSE + linearized" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::SSE,
                                             ContiguousDoubleMemoryDataIterator,
                                             std::vector<std::size_t>::iterator,
                                             std::vector<double>::iterator>(
-                        ContiguousDoubleMemoryDataIterator(sseMMAlignedData, dimension),
+                        ContiguousDoubleMemoryDataIterator(sseMMAlignedData, sseStride),
                         sseTwoLevels.size(),
                         dimension,
                         pi.begin(),
@@ -237,11 +246,12 @@ int main() {
                 Timer::reset();
 
                 // Par 7: multithreaded distance + AVX + linearized
+                std::cout << std::endl << "Par 7: multithreaded distance + AVX + linearized" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::AVX,
                                             ContiguousDoubleMemoryDataIterator,
                                             std::vector<std::size_t>::iterator,
                                             std::vector<double>::iterator>(
-                        ContiguousDoubleMemoryDataIterator(avxMMAlignedData, dimension),
+                        ContiguousDoubleMemoryDataIterator(avxMMAlignedData, avxStride),
                         avxTwoLevels.size(),
                         dimension,
                         pi.begin(),
@@ -253,6 +263,7 @@ int main() {
                 Timer::reset();
 
                 // Par 8: multithreaded distance & stage 4 + SSE
+                std::cout << std::endl << "Par 8: multithreaded distance & stage 4 + SSE" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::SSE,
                                             std::vector<double *>::iterator,
                                             std::vector<std::size_t>::iterator,
@@ -270,6 +281,7 @@ int main() {
                 Timer::reset();
             
                 // Par 9: multithreaded distance & stage 4 + AVX
+                std::cout << std::endl << "Par 9: multithreaded distance & stage 4 + AVX" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::AVX,
                                             std::vector<double *>::iterator,
                                             std::vector<std::size_t>::iterator,
@@ -287,6 +299,7 @@ int main() {
                 Timer::reset();
 
                 // Par 10: multithreaded distance & stage 4 + SSE Optimized
+                std::cout << std::endl << "Par 10: multithreaded distance & stage 4 + SSE Optimized" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::SSE_OPTIMIZED,
                                             std::vector<double *>::iterator,
                                             std::vector<std::size_t>::iterator,
@@ -304,6 +317,7 @@ int main() {
                 Timer::reset();
 
                 // Par 11: multithreaded distance & stage 4 + AVX Optimized
+                std::cout << std::endl << "Par 11: multithreaded distance & stage 4 + AVX Optimized" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED,
                                             std::vector<double *>::iterator,
                                             std::vector<std::size_t>::iterator,
@@ -321,13 +335,14 @@ int main() {
                 Timer::reset();
 
                 // Par 12: multithreaded distance & stage 4 + SSE Optimized + Linearized
+                std::cout << std::endl << "Par 12: multithreaded distance & stage 4 + SSE Optimized + Linearized" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::SSE_OPTIMIZED,
                                             ContiguousDoubleMemoryDataIterator,
                                             std::vector<std::size_t>::iterator,
                                             std::vector<double>::iterator,
                                             true,
                                             true>(
-                        ContiguousDoubleMemoryDataIterator(sseMMAlignedData, dimension),
+                        ContiguousDoubleMemoryDataIterator(sseMMAlignedData, sseStride),
                         sseTwoLevels.size(),
                         dimension,
                         pi.begin(),
@@ -339,13 +354,14 @@ int main() {
                 Timer::reset();
 
                 // Par 13: multithreaded distance & stage 4 + AVX Optimized + Linearized
+                std::cout << std::endl << "Par 13: multithreaded distance & stage 4 + AVX Optimized + Linearized" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED,
                                             ContiguousDoubleMemoryDataIterator,
                                             std::vector<std::size_t>::iterator,
                                             std::vector<double>::iterator,
                                             true,
                                             true>(
-                        ContiguousDoubleMemoryDataIterator(avxMMAlignedData, dimension),
+                        ContiguousDoubleMemoryDataIterator(avxMMAlignedData, avxStride),
                         avxTwoLevels.size(),
                         dimension,
                         pi.begin(),
@@ -358,6 +374,7 @@ int main() {
 
                 // Par 14: multithreaded distance & stage 4 + SSE Optimized + Linearized + No Square
                 // root
+                std::cout << std::endl << "Par 14: multithreaded distance & stage 4 + SSE Optimized + Linearized + No Square" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT,
                                             ContiguousDoubleMemoryDataIterator,
                                             std::vector<std::size_t>::iterator,
@@ -365,7 +382,7 @@ int main() {
                                             true,
                                             true,
                                             true>(
-                        ContiguousDoubleMemoryDataIterator(sseMMAlignedData, dimension),
+                        ContiguousDoubleMemoryDataIterator(sseMMAlignedData, sseStride),
                         sseTwoLevels.size(),
                         dimension,
                         pi.begin(),
@@ -378,6 +395,7 @@ int main() {
 
                 // Par 15: multithreaded distance & stage 4 + AVX Optimized + Linearized + No Square
                 // root
+                std::cout << std::endl << "Par 15: multithreaded distance & stage 4 + AVX Optimized + Linearized + No Square" << std::endl << std::endl;
                 ParallelClustering::cluster<DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT,
                                             ContiguousDoubleMemoryDataIterator,
                                             std::vector<std::size_t>::iterator,
@@ -385,7 +403,7 @@ int main() {
                                             true,
                                             true,
                                             true>(
-                        ContiguousDoubleMemoryDataIterator(avxMMAlignedData, dimension),
+                        ContiguousDoubleMemoryDataIterator(avxMMAlignedData, avxStride),
                         avxTwoLevels.size(),
                         dimension,
                         pi.begin(),
