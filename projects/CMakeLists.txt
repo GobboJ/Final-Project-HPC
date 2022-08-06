@@ -15,10 +15,10 @@ add_library(
     include/utils/ContiguousDoubleMemoryDataIterator.h
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp
-    src/utils/Logger.h
+    include/utils/Logger.h
     src/utils/SimdUtils.h
     src/utils/Timer.cpp
-    src/utils/Timer.h
+    include/utils/Timer.h
 )
 
 add_library(
@@ -27,10 +27,10 @@ add_library(
     include/utils/ContiguousDoubleMemoryDataIterator.h
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp
-    src/utils/Logger.h
+    include/utils/Logger.h
     src/utils/SimdUtils.h
     src/utils/Timer.cpp
-    src/utils/Timer.h
+    include/utils/Timer.h
 )
 target_link_libraries(Final_Project_HPC_Parallel_Library PRIVATE OpenMP::OpenMP_CXX)
 

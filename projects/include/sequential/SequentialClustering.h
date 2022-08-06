@@ -1,9 +1,9 @@
 #ifndef FINAL_PROJECT_HPC_SEQUENTIALCLUSTERING_H
 #define FINAL_PROJECT_HPC_SEQUENTIALCLUSTERING_H
 
-#include "../../src/utils/Timer.h"
+#include "Timer.h"
 #include "../../include/utils/Types.h"
-#include "../../src/utils/Logger.h"
+#include "Logger.h"
 
 namespace cluster::sequential {
 

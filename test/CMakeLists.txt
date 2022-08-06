@@ -31,21 +31,21 @@ target_link_libraries(
 )
 
 # Define the measurements main executable
-#add_executable(
-#    Final_Project_HPC_Measurement
-#    src/data/DataReader.cpp
-#    src/data/DataReader.h
-#    src/data/DataWriter.cpp
-#    src/data/DataWriter.h
-#    src/data/MalformedFileException.cpp
-#    src/data/MalformedFileException.h
-#    src/measurements.cpp
-#)
+add_executable(
+    Final_Project_HPC_Measurement
+    src/data/DataReader.cpp
+    src/data/DataReader.h
+    src/data/DataWriter.cpp
+    src/data/DataWriter.h
+    src/data/MalformedFileException.cpp
+    src/data/MalformedFileException.h
+    src/measurements.cpp
+)
 
-#target_link_libraries(
-#    Final_Project_HPC_Measurement Final_Project_HPC_Sequential_Library
-#    Final_Project_HPC_Parallel_Library
-#)
+target_link_libraries(
+    Final_Project_HPC_Measurement Final_Project_HPC_Sequential_Library
+    Final_Project_HPC_Parallel_Library
+)
 
 # Define the data generator main executable
 add_executable(

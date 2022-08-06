@@ -1,9 +1,9 @@
 #ifndef FINAL_PROJECT_HPC_PARALLELCLUSTERING_H
 #define FINAL_PROJECT_HPC_PARALLELCLUSTERING_H
 
-#include "../../src/utils/Timer.h"
+#include "Timer.h"
 #include "../../include/utils/Types.h"
-#include "../../src/utils/Logger.h"
+#include "Logger.h"
 #include "../../src/utils/SimdUtils.h"
 #include <cmath>
 #include <immintrin.h>
@@ -223,12 +223,7 @@ public:
          ******************************************************************************************/
         Timer::start<1>();
 
-        // Set the first element of pi to 0
-        *currentPi = 0;
-        ++currentPi;
-        // Set the first element of lambda to infinity
-        *currentLambda = std::numeric_limits<double>::infinity();
-        ++currentLambda;
+        initializeNewPoint(currentPi, currentLambda, 0);
         Timer::stop<1>();
 
         Timer::start<4>();
@@ -251,12 +246,7 @@ public:
              **************************************************************************************/
             Timer::start<1>();
 
-            // Set pi[n] to n
-            *currentPi = n;
-            ++currentPi;
-            // Set lambda[n] to infinity
-            *currentLambda = std::numeric_limits<double>::infinity();
-            ++currentLambda;
+            initializeNewPoint(currentPi, currentLambda, n);
 
             Timer::stop<1>();
 
@@ -268,39 +258,14 @@ public:
             // Value of the n-th value of the dataset
             const double *__restrict__ const currentDataN = *currentData;
 
-            // Compute the distance between the n-th element of the dataset and all the
-            // already-processed ones
-#pragma omp parallel for default(none)                                                      \
-        shared(n, dataIterator, currentDataN, dimension, m, sseBlocksCount, avxBlocksCount) \
-                num_threads(distanceComputationThreadsCount) if (S2)
-            for (std::size_t i = 0; i <= n - 1; i++) {
-                // Compute the distance by using the requested algorithm
-                if constexpr (C == DistanceComputers::CLASSICAL) {
-                    m[i] = ParallelClustering::distance(dataIterator[i], currentDataN, dimension);
-                } else if constexpr (C == DistanceComputers::SSE) {
-                    m[i] = ParallelClustering::distanceSse(
-                            dataIterator[i], currentDataN, sseBlocksCount);
-                } else if constexpr (C == DistanceComputers::AVX) {
-                    m[i] = ParallelClustering::distanceAvx(
-                            dataIterator[i], currentDataN, avxBlocksCount);
-                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED) {
-                    m[i] = ParallelClustering::distanceSseOptimized(
-                            dataIterator[i], currentDataN, sseBlocksCount);
-                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED) {
-                    m[i] = ParallelClustering::distanceAvxOptimized(
-                            dataIterator[i], currentDataN, avxBlocksCount);
-                } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT) {
-                    m[i] = ParallelClustering::distanceSseOptimizedNoSquareRoot(
-                            dataIterator[i], currentDataN, sseBlocksCount);
-                } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT) {
-                    m[i] = ParallelClustering::distanceAvxOptimizedNoSquareRoot(
-                            dataIterator[i], currentDataN, avxBlocksCount);
-                } else {
-                    // https://stackoverflow.com/a/53945549
-                    static_assert(always_false<D>,
-                                  "The specified distance computer is not supported.");
-                }
-            }
+            computeDistances<C, D, S2>(n,
+                                       dataIterator,
+                                       currentDataN,
+                                       dimension,
+                                       m,
+                                       sseBlocksCount,
+                                       avxBlocksCount,
+                                       distanceComputationThreadsCount);
 
             Timer::stop<2>();
 
@@ -317,70 +282,17 @@ public:
             // Iterator over the first n-1 values of m
             const double *__restrict__ distanceIterator = &(m[0]);
 
-            for (std::size_t i = 0; i <= n - 1; i++) {
-                // Reference to pi[i]
-                std::size_t &piOfI = *iteratorOverPi;
-                // Reference to lambda[i]
-                double &lambdaOfI = *iteratorOverLambda;
-                // Value of m[i]
-                const double mOfI = *distanceIterator;
-                // Reference to m[pi[i]]
-                double &mOfPiOfI = m[piOfI];
+            addNewPoint(iteratorOverPi, iteratorOverLambda, distanceIterator, m, n);
 
-                /***********************************************************************************
-                 * if lambda(i) >= M(i)
-                 **********************************************************************************/
-                if (lambdaOfI >= mOfI) {
-                    /*******************************************************************************
-                     * set M(pi(i)) to min { M(pi(i)), lambda(i) }
-                     ******************************************************************************/
-                    mOfPiOfI = std::min(mOfPiOfI, lambdaOfI);
-
-                    /*******************************************************************************
-                     * set lambda(i) to M(i)
-                     ******************************************************************************/
-                    lambdaOfI = mOfI;
-
-                    /*******************************************************************************
-                     * set pi(i) to n + 1
-                     ******************************************************************************/
-                    piOfI = n;
-                } else {  // if lambda(i) < M(i)
-                    /*******************************************************************************
-                     * set M(pi(i)) to min { M(pi(i)), M(i) }
-                     ******************************************************************************/
-                    mOfPiOfI = std::min(mOfPiOfI, mOfI);
-                }
-                // Move to the next element
-                ++iteratorOverPi;
-                ++iteratorOverLambda;
-                ++distanceIterator;
-            }
             Timer::stop<3>();
 
             /***************************************************************************************
              * 4) For i from 1 to n
              **************************************************************************************/
             Timer::start<4>();
-
-#pragma omp parallel for default(none) shared(n, lambdaIterator, piIterator) \
-        num_threads(stage4ThreadsCount) if (S4)
-            for (std::size_t i = 0; i <= n - 1; i++) {
-                // Reference to pi[i]
-                std::size_t &piOfI = piIterator[i];
-
-                /***********************************************************************************
-                 * if lambda(i) >= lambda(pi(i))
-                 **********************************************************************************/
-                if (lambdaIterator[i] >= lambdaIterator[piOfI]) {
-                    /*******************************************************************************
-                     * set pi(i) to n + 1
-                     ******************************************************************************/
-                    piOfI = n;
-                }
-            }
-
-            // Move to the next data sample
+            
+            fixStructure<P, L, S4>(piIterator, lambdaIterator, n, stage4ThreadsCount);
+                    // Move to the next data sample
             ++currentData;
 
             Timer::stop<4>();
@@ -412,6 +324,131 @@ public:
     }
 
 private:
+    template <typename P, typename L>
+    static inline void initializeNewPoint(P &currentPi, L &currentLambda, std::size_t n) {
+
+        // Set pi[n] to n
+        *currentPi = n;
+        ++currentPi;
+        // Set lambda[n] to infinity
+        *currentLambda = std::numeric_limits<double>::infinity();
+        ++currentLambda;
+    }
+
+    template <DistanceComputers C, ParallelDataIterator D, bool S2>
+    static inline void computeDistances(std::size_t n,
+                                        const D &dataIterator,
+                                        const double *currentDataN,
+                                        std::size_t dimension,
+                                        double *const m,
+                                        std::size_t sseBlocksCount,
+                                        std::size_t avxBlocksCount,
+                                        std::size_t distanceComputationThreadsCount) {
+
+        // Compute the distance between the n-th element of the dataset and all the
+// already-processed ones
+#pragma omp parallel for default(none)                                                      \
+        shared(n, dataIterator, currentDataN, dimension, m, sseBlocksCount, avxBlocksCount) \
+                num_threads(distanceComputationThreadsCount) if (S2)
+        for (std::size_t i = 0; i <= n - 1; i++) {
+            // Compute the distance by using the requested algorithm
+            if constexpr (C == DistanceComputers::CLASSICAL) {
+                m[i] = ParallelClustering::distance(dataIterator[i], currentDataN, dimension);
+            } else if constexpr (C == DistanceComputers::SSE) {
+                m[i] = ParallelClustering::distanceSse(
+                        dataIterator[i], currentDataN, sseBlocksCount);
+            } else if constexpr (C == DistanceComputers::AVX) {
+                m[i] = ParallelClustering::distanceAvx(
+                        dataIterator[i], currentDataN, avxBlocksCount);
+            } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED) {
+                m[i] = ParallelClustering::distanceSseOptimized(
+                        dataIterator[i], currentDataN, sseBlocksCount);
+            } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED) {
+                m[i] = ParallelClustering::distanceAvxOptimized(
+                        dataIterator[i], currentDataN, avxBlocksCount);
+            } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT) {
+                m[i] = ParallelClustering::distanceSseOptimizedNoSquareRoot(
+                        dataIterator[i], currentDataN, sseBlocksCount);
+            } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT) {
+                m[i] = ParallelClustering::distanceAvxOptimizedNoSquareRoot(
+                        dataIterator[i], currentDataN, avxBlocksCount);
+            } else {
+                // https://stackoverflow.com/a/53945549
+                static_assert(always_false<D>, "The specified distance computer is not supported.");
+            }
+        }
+    }
+
+    template <typename P, typename L>
+    static inline void addNewPoint(P iteratorOverPi,
+                                   L iteratorOverLambda,
+                                   const double *distanceIterator,
+                                   double *m,
+                                   std::size_t n) {
+
+        for (std::size_t i = 0; i <= n - 1; i++) {
+            // Reference to pi[i]
+            std::size_t &piOfI = *iteratorOverPi;
+            // Reference to lambda[i]
+            double &lambdaOfI = *iteratorOverLambda;
+            // Value of m[i]
+            const double mOfI = *distanceIterator;
+            // Reference to m[pi[i]]
+            double &mOfPiOfI = m[piOfI];
+
+            /***********************************************************************************
+             * if lambda(i) >= M(i)
+             **********************************************************************************/
+            if (lambdaOfI >= mOfI) {
+                /*******************************************************************************
+                 * set M(pi(i)) to min { M(pi(i)), lambda(i) }
+                 ******************************************************************************/
+                mOfPiOfI = std::min(mOfPiOfI, lambdaOfI);
+
+                /*******************************************************************************
+                 * set lambda(i) to M(i)
+                 ******************************************************************************/
+                lambdaOfI = mOfI;
+
+                /*******************************************************************************
+                 * set pi(i) to n + 1
+                 ******************************************************************************/
+                piOfI = n;
+            } else {  // if lambda(i) < M(i)
+                /*******************************************************************************
+                 * set M(pi(i)) to min { M(pi(i)), M(i) }
+                 ******************************************************************************/
+                mOfPiOfI = std::min(mOfPiOfI, mOfI);
+            }
+            // Move to the next element
+            ++iteratorOverPi;
+            ++iteratorOverLambda;
+            ++distanceIterator;
+        }
+    }
+
+    template <typename P, typename L, bool S4>
+    static inline void fixStructure(
+            const P &piIterator, const L &lambdaIterator, std::size_t n, std::size_t stage4ThreadsCount) {
+
+#pragma omp parallel for default(none) shared(n, lambdaIterator, piIterator) \
+        num_threads(stage4ThreadsCount) if (S4)
+        for (std::size_t i = 0; i <= n - 1; i++) {
+            // Reference to pi[i]
+            std::size_t &piOfI = piIterator[i];
+
+            /***********************************************************************************
+             * if lambda(i) >= lambda(pi(i))
+             **********************************************************************************/
+            if (lambdaIterator[i] >= lambdaIterator[piOfI]) {
+                /*******************************************************************************
+                 * set pi(i) to n + 1
+                 ******************************************************************************/
+                piOfI = n;
+            }
+        }
+    }
+
     /**
      * Computes the Euclidean distance between two points.
      *

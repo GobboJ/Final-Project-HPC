@@ -125,6 +125,13 @@ public:
         printDuration(sum<Ns...>());
     }
 
+    static void reset() {
+
+        for (std::size_t i = 0; i < TIMERS_COUNT; i++) {
+            durations[i] = TimerDuration::zero();
+        }
+    }
+
 private:
     /**
      * Prints to the console the duration of a timer in a human-readable form.
