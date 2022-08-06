@@ -11,7 +11,10 @@
 #include <array>
 #include <cstddef>
 
-class ContiguousDoubleMemoryDataIterator {
+/**
+ * @deprecated
+ */
+class [[deprecated]] ContiguousDoubleMemoryDataIterator {
 
 public:
     using value_type = const double *const;
@@ -56,7 +59,7 @@ public:
     ContiguousDoubleMemoryDataIterator operator++ (int);
 
     static std::size_t computeSseStride(std::size_t dimension);
-    
+
     static std::size_t computeAvxStride(std::size_t dimension);
 
 private:

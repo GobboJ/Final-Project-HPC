@@ -1,15 +1,17 @@
 #ifndef FINAL_PROJECT_HPC_PARALLELCLUSTERING_H
 #define FINAL_PROJECT_HPC_PARALLELCLUSTERING_H
 
-#include <vector>
-#include <limits>
-#include <immintrin.h>
-#include <cmath>
-#include <omp.h>
 #include "../../src/utils/Timer.h"
-#include "../../src/utils/Logger.h"
 #include "../../include/utils/Types.h"
+#include "../../src/utils/Logger.h"
 #include "../../src/utils/SimdUtils.h"
+#include <cmath>
+#include <immintrin.h>
+#include <limits>
+#include <omp.h>
+#include <vector>
+
+namespace cluster::parallel {
 
 /**
  * Class providing a parallel implementation of the clustering algorithm.<br>
@@ -22,6 +24,9 @@
  * @since 1.0
  */
 class ParallelClustering {
+
+    using Logger = utils::Logger;
+    using Timer = utils::Timer;
 
 private:
     /**
@@ -381,7 +386,7 @@ public:
             Timer::stop<4>();
 
             // Log the progress every 1000 samples
-            Logger::logProgress<1000, 0, 1, 2, 3, 4, 5>(n, dataSamplesCount);
+            Logger::updateProgress<1000, 0, 1, 2, 3, 4, 5>(n, dataSamplesCount);
         }
 
         // Compute the square roots, if until now the algorithm has used the squares of the
@@ -403,7 +408,7 @@ public:
         delete[] m;
 
         // Log the final progress
-        Logger::logProgress<1, 0, 1, 2, 3, 4, 5>(dataSamplesCount, dataSamplesCount);
+        Logger::updateProgress<1, 0, 1, 2, 3, 4, 5>(dataSamplesCount, dataSamplesCount);
     }
 
 private:
@@ -673,5 +678,5 @@ private:
         return _mm_add_pd(highBits, lowBits)[0];
     }
 };
-
+}  // namespace cluster::parallel
 #endif  // FINAL_PROJECT_HPC_PARALLELCLUSTERING_H

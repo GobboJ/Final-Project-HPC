@@ -12,63 +12,65 @@ add_compile_definitions(PRINT_ITERATIONS)
 include_directories(${SEQUENTIAL_IMPLEMENTATION_INCLUDE_DIR})
 include_directories(${PARALLEL_IMPLEMENTATION_INCLUDE_DIR})
 
-# Define the test executable
-#add_executable(
-#    Final_Project_HPC_Test
-#    ${testResources}
-#    src/main-test.cpp
-#    src/data/DataReader.cpp
-##    src/data/DataReader.h
-#    src/data/MalformedFileException.cpp
-#    src/data/MalformedFileException.h
-#    src/data/DataWriter.cpp
-#    src/data/DataWriter.h
-#)
-#target_link_libraries(
-#    Final_Project_HPC_Test Final_Project_HPC_Sequential_Library Final_Project_HPC_Parallel_Library
-#)
-
+# Define the main executable
 add_executable(
         Final_Project_HPC_Main
-        ${testResources}
+        src/cli/CliArgumentsParser.cpp
+        src/cli/CliArgumentsParser.h
+        src/cli/CliArguments.cpp src/cli/CliArguments.h
         src/data/DataReader.cpp
         src/data/DataReader.h
         src/data/DataWriter.cpp
         src/data/DataWriter.h
-        src/main.cpp
         src/data/MalformedFileException.cpp
         src/data/MalformedFileException.h
-        src/cli/CliArgumentsParser.cpp
-        src/cli/CliArgumentsParser.h
-)
+        src/main.cpp
+        src/cli/CliArgumentException.cpp src/cli/CliArgumentException.h src/data/IoException.cpp src/data/IoException.h)
 target_link_libraries(
-        Final_Project_HPC_Main Final_Project_HPC_Sequential_Library Final_Project_HPC_Parallel_Library
+    Final_Project_HPC_Main Final_Project_HPC_Sequential_Library Final_Project_HPC_Parallel_Library
 )
 
+# Define the measurements main executable
+#add_executable(
+#    Final_Project_HPC_Measurement
+#    src/data/DataReader.cpp
+#    src/data/DataReader.h
+#    src/data/DataWriter.cpp
+#    src/data/DataWriter.h
+#    src/data/MalformedFileException.cpp
+#    src/data/MalformedFileException.h
+#    src/measurements.cpp
+#)
+
+#target_link_libraries(
+#    Final_Project_HPC_Measurement Final_Project_HPC_Sequential_Library
+#    Final_Project_HPC_Parallel_Library
+#)
+
+# Define the data generator main executable
 add_executable(
-        Data_Generator
-        src/data-generator.cpp
+    Data_Generator
+    src/data-generator.cpp
 )
 
-# add_executable( Final_Project_HPC_Test_Parallel ${testResources} src/data/DataReader.cpp
-# src/data/DataReader.h src/data/DataWriter.cpp src/data/DataWriter.h src/mainParallel.cpp
-# src/data/MalformedFileException.cpp src/data/MalformedFileException.h )
-# target_link_libraries(Final_Project_HPC_Test_Parallel Final_Project_HPC_Parallel)
-
-#
-# Tests
-#
+# Define the automated tests
 set(testList)
-#list(APPEND testList "two-points" "samples" "same-distance" "slide" "iris" "birm")
+# list(APPEND testList "two-points" "samples" "same-distance" "slide" "iris" "birm")
 list(APPEND testList "iris")
 
 foreach (i RANGE 1 7)
     foreach (testName IN LISTS testList)
-        add_test("${testName}-parallel-v${i}" Final_Project_HPC_Main -t -p ${i} "${testName}")
+        add_test(
+            "${testName}-parallel-v${i}"
+            Final_Project_HPC_Main
+            -t
+            -p
+            ${i}
+            "${testName}"
+        )
     endforeach ()
 endforeach ()
 
-#add_test(TwoPoints Final_Project_HPC_Main -t -p 1 two-points)
-#add_test(Samples Final_Project_HPC_Main -t -p 1 samples)
-#add_test(SameDistance Final_Project_HPC_Main -t -p 1 same-distance)
-#add_test(Slide Final_Project_HPC_Main -t -p 1 slide)
+# add_test(TwoPoints Final_Project_HPC_Main -t -p 1 two-points) add_test(Samples
+# Final_Project_HPC_Main -t -p 1 samples) add_test(SameDistance Final_Project_HPC_Main -t -p 1
+# same-distance) add_test(Slide Final_Project_HPC_Main -t -p 1 slide)

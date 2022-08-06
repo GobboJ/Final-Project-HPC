@@ -2,8 +2,10 @@
 #define FINAL_PROJECT_HPC_SEQUENTIALCLUSTERING_H
 
 #include "../../src/utils/Timer.h"
-#include "../../src/utils/Logger.h"
 #include "../../include/utils/Types.h"
+#include "../../src/utils/Logger.h"
+
+namespace cluster::sequential {
 
 /**
  * Class providing a sequential implementation of the clustering algorithm.
@@ -14,6 +16,8 @@
  * @since 1.0
  */
 class SequentialClustering {
+    using Logger = utils::Logger;
+    using Timer = utils::Timer;
 
 public:
     /**
@@ -210,14 +214,14 @@ public:
             Timer::stop<4>();
 
             // Log the progress every 1000 samples
-            Logger::logProgress<1000, 0, 1, 2, 3, 4>(n, dataSamplesCount);
+            Logger::updateProgress<1000, 0, 1, 2, 3, 4>(n, dataSamplesCount);
         }
 
         // Deallocate m, since it is not needed anymore
         delete[] m;
 
         // Log the final progress
-        Logger::logProgress<1, 0, 1, 2, 3, 4>(dataSamplesCount, dataSamplesCount);
+        Logger::updateProgress<1, 0, 1, 2, 3, 4>(dataSamplesCount, dataSamplesCount);
     }
 
 private:
@@ -240,5 +244,5 @@ private:
         return sqrt(sum);
     }
 };
-
+}  // namespace cluster::sequential
 #endif  // FINAL_PROJECT_HPC_SEQUENTIALCLUSTERING_H

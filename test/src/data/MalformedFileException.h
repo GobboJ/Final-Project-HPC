@@ -3,29 +3,33 @@
 
 #include <stdexcept>
 
+namespace cluster::test::data {
 /**
- * Exception thrown when the input data file does not follow the format.
+ * Exception thrown when the input data file does not follow the correct format.
  *
  * @author DeB, Jonathan
- * @version 1.0 2022-07-18
+ * @version 1.1 2022-08-06
  * @since 1.0
  */
 class MalformedFileException : public std::runtime_error {
 
 public:
     /**
-     * Creates the exception with the specified error message.
+     * Creates a new exception, with the specified message, thrown when the input data file does not
+     * follow the correct format.
      *
-     * @param string The error message.
+     * @param message Message of the exception.
      */
-    MalformedFileException(const char *string) noexcept;
+    explicit MalformedFileException(const char *message) noexcept;
 
     /**
-     * Creates the exception with the specified error message.
+     * Creates a new exception, with the specified message, thrown when the input data file does
+     * not follow the correct format.
      *
-     * @param string The error message.
+     * @param message Message of the exception.
      */
-    MalformedFileException(const std::string &string) noexcept;
+    explicit MalformedFileException(const std::string &message) noexcept;
 };
+}  // namespace cluster::test::data
 
 #endif  // FINAL_PROJECT_HPC_MALFORMEDFILEEXCEPTION_H

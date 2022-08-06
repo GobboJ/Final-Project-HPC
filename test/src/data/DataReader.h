@@ -1,34 +1,109 @@
 #ifndef FINAL_PROJECT_HPC_DATAREADER_H
 #define FINAL_PROJECT_HPC_DATAREADER_H
 
+#include <filesystem>
 #include <string>
 #include <vector>
-#include <filesystem>
 
+namespace cluster::test::data {
 /**
- * Reader that reads the data of the points to cluster from a file.
+ * Reader that reads the data from files.
  *
  * @author DeB, Jonathan
- * @version 1.1 2022-07-18
+ * @version 1.2 2022-08-06
  * @since 1.0
  */
 class DataReader {
 
 public:
     /**
-     * Reads the data of the points to cluster from a file.
+     * Reads and parses the data from the specified file.
      *
-     * @param startColumnIndex Index, starting from <code>0</code>, of the first column in the input
-     * file that contains the first coordinate of the points.
-     * @param endColumnIndex Index, starting from <code>0</code>, of the last column in the input
-     * file that contains the last coordinate of the points.
-     * @param fileName Name of the file that contains the data.
-     * @return The read data.
-     * @throws MalformedFileException If the file does not follow the format.
+     * @param inputFilePath Path of the file that contains the data to parse.
+     * @param parsedData Vector where the parsed data will be placed. The coordinates of the points
+     * are stored in the vector one after the other. Moreover, also the points are stored one after
+     * the other. Therefore, if the file contains 3 points <code>(x1, y1, z1)</code>, <code>(x2, y2,
+     * z2)</code> and  <code>(x3, y3, z3)</code>, this vector will contain the following values:
+     * <pre>
+     * [x1, y1, z1, x2, y2, z2, x3, y3, z3]
+     * </pre>
+     * @param firstLineNumber Number of the first row to parse of the file.
+     * @param lastLineNumber Number of the last row to parse of the file.
+     * @param firstColumnNumber Number of the first column of each line to parse as a coordinate of
+     * the point. If not specified, then the first column of the line is parsed as the first
+     * coordinate of the point.
+     * @param lastColumnNumber Number of the last column of each line to parse as a coordinate of
+     * the point. If not specified, then the last column of the line is parsed as the last
+     * coordinate of the point.
+     * @return The dimension of each point.
+     * @throws MalformedFileException If the file does not follow the correct format.
+     * @throws IOException If an I/O error occurs while reading the file.
+     * @throws std::invalid_argument If the specified <code>lastColumnNumber</code> is smaller than
+     * the specified <code>firstColumnNumber</code>, or if the file with the specified path does not
+     * exist.
      */
-    static std::vector<double *> readData(std::size_t startColumnIndex,
-                                          std::size_t endColumnIndex,
-                                          const std::filesystem::path &inputPath);
-};
+    static std::size_t readAndParseData(const std::filesystem::path &inputFilePath,
+                                        std::vector<double> &parsedData,
+                                        std::size_t firstLineNumber,
+                                        std::size_t lastLineNumber,
+                                        std::size_t firstColumnNumber = 0,
+                                        std::size_t lastColumnNumber = 0);
 
+    /**
+     * Reads from the specified file the values of pi and lambda to use in the tests.
+     *
+     * @param inputFilePath Path to read the information from.
+     * @param piVector Vector where the read values of pi will be put.
+     * @param lambdaVector Vector where the read values of lambda will be put.
+     * @throws MalformedFileException If the file does not follow the correct format.
+     * @throws IOException If an I/O error occurs while reading the file.
+     * @throws std::invalid_argument If the file with the specified path does not exist.
+     */
+    static void readPiLambda(const std::filesystem::path &inputFilePath,
+                             std::vector<std::size_t> &piVector,
+                             std::vector<double> &lambdaVector);
+
+private:
+    /**
+     * Parses a line of the data file extracting all the coordinates.
+     *
+     * @param line Line to parse.
+     * @param lineNumber Number of the line.
+     * @param parsedData Vector where the parsed coordinates will be placed.
+     * @param firstColumnNumber Number of the first column of the line to consider as a coordinate.
+     * @param lastColumnNumber Number of the last column of the line to consider as a coordinate.
+     * @return The dimension of the point parsed from the line.
+     * @throws MalformedFileException If the file does not follow the correct format.
+     */
+    static std::size_t parseLine(const std::string &line,
+                                 std::size_t lineNumber,
+                                 std::vector<double> &parsedData,
+                                 std::size_t firstColumnNumber,
+                                 std::size_t lastColumnNumber);
+
+    /**
+     * Extracts a <code>double</code> value from the specified string.
+     *
+     * @param string String where to extract the value.
+     * @param lineNumber Number of the line that contains the string to parse.
+     * @param columnNumber Number of the column that contains the string to parse.
+     * @return The extracted value.
+     * @throws MalformedFileException If some errors occur while parsing the string.
+     */
+    static double parseDouble(
+            const std::string &string, std::size_t lineNumber, std::size_t columnNumber);
+
+    /**
+     * Extracts a <code>std::size_t</code> value from the specified string.
+     *
+     * @param string String where to extract the value.
+     * @param lineNumber Number of the line that contains the string to parse.
+     * @param columnNumber Number of the column that contains the string to parse.
+     * @return The extracted value.
+     * @throws MalformedFileException If some errors occur while parsing the string.
+     */
+    static std::size_t parseSizeT(
+            const std::string &string, std::size_t lineNumber, std::size_t columnNumber);
+};
+}  // namespace cluster::test::data
 #endif  // FINAL_PROJECT_HPC_DATAREADER_H

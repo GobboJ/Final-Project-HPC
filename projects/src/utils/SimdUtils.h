@@ -9,7 +9,7 @@
 #define FINAL_PROJECT_HPC_SIMDUTILS_H
 #include <cstddef>
 
-class SimdUtils {
+class [[deprecated]] SimdUtils {
 
 public:
     static const constexpr std::size_t SSE_PACK_SIZE = 2;
