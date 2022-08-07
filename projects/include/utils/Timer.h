@@ -103,13 +103,13 @@ public:
      * @tparam N Identifier of the timer to print.
      */
     template <std::size_t N>
-    static void print() {
+    static void print(std::size_t mean = 1) {
 
         // Check the validity of the identifier of the timer
         static_assert(N < TIMERS_COUNT, "Invalid timer index");
 
         // Print the duration of the timer
-        printDuration(durations[N]);
+        printDuration(durations[N] / mean);
     }
 
     /**
@@ -119,17 +119,17 @@ public:
      * @tparam Ns Identifiers of the timers whose sum of the durations is printed.
      */
     template <std::size_t... Ns>
-    static void printTotal() {
-
+    static void printTotal(std::size_t mean = 1) {
+        
         // Sum the durations and print the result
-        printDuration(sum<Ns...>());
+        printDuration(sum<Ns...>() / mean);
     }
 
-    static void reset() {
+    static void reset();
 
-        for (std::size_t i = 0; i < TIMERS_COUNT; i++) {
-            durations[i] = TimerDuration::zero();
-        }
+    template <std::size_t N>
+    static TimerDuration getTimerDuration() {
+        return durations[N];
     }
 
 private:
@@ -163,17 +163,16 @@ private:
         }
         // Print the microseconds, properly padded
         if (microseconds > 0) {
-            std::cout << std::setw(3) << std::setfill(' ') << microseconds;
+            char fill = (milliseconds > 0) ? '0' : ' ';
+            std::cout << std::setw(3) << std::setfill(fill) << microseconds;
             std::cout << ".";
         } else {
             std::cout << "    ";
         }
         // Print the nanoseconds, properly padded
-        if (microseconds > 0) {
-            std::cout << std::setw(3) << std::setfill('0') << nanoseconds.count();
-        } else {
-            std::cout << std::setw(3) << std::setfill(' ') << nanoseconds.count();
-        }
+        char fill = (microseconds > 0) ? '0' : ' ';
+        std::cout << std::setw(3) << std::setfill(fill) << nanoseconds.count();
+
         // Clear the remaining part of the line
         std::cout << " ns)\033[K" << std::endl;
     }

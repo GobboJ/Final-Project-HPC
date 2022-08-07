@@ -6,7 +6,7 @@ project(Final_Project_HPC_Test CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 add_compile_definitions(TIMERS)
-add_compile_definitions(PRINT_ITERATIONS)
+#add_compile_definitions(PRINT_ITERATIONS)
 
 # Include the headers
 include_directories(${SEQUENTIAL_IMPLEMENTATION_INCLUDE_DIR})
@@ -14,18 +14,23 @@ include_directories(${PARALLEL_IMPLEMENTATION_INCLUDE_DIR})
 
 # Define the main executable
 add_executable(
-        Final_Project_HPC_Main
-        src/cli/CliArgumentsParser.cpp
-        src/cli/CliArgumentsParser.h
-        src/cli/CliArguments.cpp src/cli/CliArguments.h
-        src/data/DataReader.cpp
-        src/data/DataReader.h
-        src/data/DataWriter.cpp
-        src/data/DataWriter.h
-        src/data/MalformedFileException.cpp
-        src/data/MalformedFileException.h
-        src/main.cpp
-        src/cli/CliArgumentException.cpp src/cli/CliArgumentException.h src/data/IoException.cpp src/data/IoException.h)
+    Final_Project_HPC_Main
+    src/cli/CliArgumentException.cpp
+    src/cli/CliArgumentException.h
+    src/cli/CliArguments.cpp
+    src/cli/CliArguments.h
+    src/cli/CliArgumentsParser.cpp
+    src/cli/CliArgumentsParser.h
+    src/data/DataReader.cpp
+    src/data/DataReader.h
+    src/data/DataWriter.cpp
+    src/data/DataWriter.h
+    src/data/IoException.cpp
+    src/data/IoException.h
+    src/data/MalformedFileException.cpp
+    src/data/MalformedFileException.h
+    src/main.cpp
+)
 target_link_libraries(
     Final_Project_HPC_Main Final_Project_HPC_Sequential_Library Final_Project_HPC_Parallel_Library
 )
@@ -37,6 +42,8 @@ add_executable(
     src/data/DataReader.h
     src/data/DataWriter.cpp
     src/data/DataWriter.h
+    src/data/IoException.cpp
+    src/data/IoException.h
     src/data/MalformedFileException.cpp
     src/data/MalformedFileException.h
     src/measurements.cpp
@@ -46,6 +53,26 @@ target_link_libraries(
     Final_Project_HPC_Measurement Final_Project_HPC_Sequential_Library
     Final_Project_HPC_Parallel_Library
 )
+
+# Define the test types executable
+#add_executable(
+#    Final_Project_HPC_Test_Types
+#    main-test-types.cpp
+#    src/data/DataReader.cpp
+#    src/data/DataReader.h
+#    src/data/DataWriter.cpp
+#    src/data/DataWriter.h
+#    src/data/IoException.cpp
+#    src/data/IoException.h
+#    src/data/MalformedFileException.cpp
+#    src/data/MalformedFileException.h
+#    src/measurements.cpp
+#)
+
+#target_link_libraries(
+#    Final_Project_HPC_Measurement Final_Project_HPC_Sequential_Library
+#    Final_Project_HPC_Parallel_Library
+#)
 
 # Define the data generator main executable
 add_executable(

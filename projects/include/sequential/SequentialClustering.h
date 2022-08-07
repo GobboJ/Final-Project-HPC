@@ -47,7 +47,7 @@ public:
                         const L lambdaIterator) noexcept {
 
         // Initialize the timers and start logging the console output, if requested
-        Timer::initTimers();
+       // Timer::initTimers();
         Logger::startLoggingProgress<0, 1, 2, 3, 4>(dataSamplesCount);
 
         Timer::start<0>();

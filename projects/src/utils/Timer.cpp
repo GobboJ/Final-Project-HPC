@@ -17,4 +17,11 @@ std::array<Timer::TimerTimePoint, Timer::TIMERS_COUNT> Timer::lastTimers{};
  * Array containing the durations held by each timer.
  */
 std::array<Timer::TimerDuration, Timer::TIMERS_COUNT> Timer::durations{};
+
+void Timer::reset() {
+    
+    for (std::size_t i = 0; i < TIMERS_COUNT; i++) {
+        durations[i] = TimerDuration::zero();
+    }
+}
 }  // namespace cluster::utils

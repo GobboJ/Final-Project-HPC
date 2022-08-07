@@ -81,10 +81,10 @@ ContiguousDoubleMemoryDataIterator ContiguousDoubleMemoryDataIterator::operator+
 
 std::size_t ContiguousDoubleMemoryDataIterator::computeSseStride(std::size_t dimension) {
     
-    return SimdUtils::SSE_PACK_SIZE * SimdUtils::computeSseBlocksCount(dimension);
+    return 2 * (1 + ((dimension - 1) / 2));
 }
 
 std::size_t ContiguousDoubleMemoryDataIterator::computeAvxStride(std::size_t dimension) {
     
-    return SimdUtils::AVX_PACK_SIZE * SimdUtils::computeAvxBlocksCount(dimension);
+    return 4 * (1 + ((dimension - 1) / 4));
 }

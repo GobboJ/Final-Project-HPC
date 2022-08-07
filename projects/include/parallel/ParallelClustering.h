@@ -3,8 +3,8 @@
 
 #include "Timer.h"
 #include "../../include/utils/Types.h"
+#include "DistanceComputers.h"
 #include "Logger.h"
-#include "../../src/utils/SimdUtils.h"
 #include <cmath>
 #include <immintrin.h>
 #include <limits>
@@ -23,6 +23,7 @@ namespace cluster::parallel {
  * @version 1.5 2022-08-01
  * @since 1.0
  */
+template <bool S2 = true, bool S4 = false, bool S5 = false>
 class ParallelClustering {
 
     using Logger = utils::Logger;
@@ -38,103 +39,10 @@ private:
     template <typename... Ts>
     static constexpr std::false_type always_false{};
 
+    static const constexpr std::size_t SSE_PACK_SIZE = 2;
+    static const constexpr std::size_t AVX_PACK_SIZE = 4;
+
 public:
-    /**
-     * Enumeration of all the algorithms that can be used to compute the distance between two
-     * samples of the dataset.
-     *
-     * @author DeB
-     * @author Jonathan
-     * @version 1.2 2022-07-30
-     * @since 1.0
-     */
-    enum class DistanceComputers {
-
-        /**
-         * Computes the Euclidean distance between two data samples without using any SIMD
-         * instructions.
-         */
-        CLASSICAL,
-
-        /**
-         * Computes the Euclidean distance between two data samples using SSE instructions.<br>
-         * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-         * be 16 bytes-aligned.<br>
-         * If the number of attributes <i>d</i> of each sample is not multiple of <code>16 /
-         * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-         * many <code>0</code> as needed to reach the closes multiple of <code>16 /
-         * sizeof(double)</code> number of elements.
-         */
-        SSE,
-
-        /**
-         * Computes the Euclidean distance between two data samples using AVX instructions.<br>
-         * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-         * be 32 bytes-aligned.<br>
-         * If the number of attributes <i>d</i> of each sample is not multiple of <code>32 /
-         * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-         * many <code>0</code> as needed to reach the closes multiple of <code>32 /
-         * sizeof(double)</code> number of elements.
-         */
-        AVX,
-
-        /**
-         * Computes the Euclidean distance between two data samples using SSE instructions.<br>
-         * With respect to the <code>DistanceComputers::SSE</code> algorithm, this one does not
-         * store any partial sum into memory, but keeps them in the registers.<br>
-         * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-         * be 16 bytes-aligned.<br>
-         * If the number of attributes <i>d</i> of each sample is not multiple of <code>16 /
-         * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-         * many <code>0</code> as needed to reach the closes multiple of <code>16 /
-         * sizeof(double)</code> number of elements.
-         */
-        SSE_OPTIMIZED,
-
-        /**
-         * Computes the Euclidean distance between two data samples using AVX instructions.<br>
-         * With respect to the <code>DistanceComputers::AVX</code> algorithm, this one does not
-         * store any partial sum into memory, but keeps them in the registers.<br>
-         * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-         * be 32 bytes-aligned.<br>
-         * If the number of attributes <i>d</i> of each sample is not multiple of <code>32 /
-         * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-         * many <code>0</code> as needed to reach the closes multiple of <code>32 /
-         * sizeof(double)</code> number of elements.
-         */
-        AVX_OPTIMIZED,
-
-        /**
-         * Computes the Euclidean distance between two data samples using SSE instructions.<br>
-         * Like the <code>DistanceComputers::SSE_OPTIMIZED</code> algorithm, this one does not
-         * store any partial sum into memory, but keeps them in the registers.<br>
-         * Moreover, this algorithm computes the squares of the distances, avoiding the computation
-         * of the square roots.<br>
-         * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-         * be 16 bytes-aligned.<br>
-         * If the number of attributes <i>d</i> of each sample is not multiple of <code>16 /
-         * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-         * many <code>0</code> as needed to reach the closes multiple of <code>16 /
-         * sizeof(double)</code> number of elements.
-         */
-        SSE_OPTIMIZED_NO_SQUARE_ROOT,
-
-        /**
-         * Computes the Euclidean distance between two data samples using AVX instructions.<br>
-         * Like the <code>DistanceComputers::AVX_OPTIMIZED</code> algorithm, this one does not
-         * store any partial sum into memory, but keeps them in the registers.<br>
-         * Moreover, this algorithm computes the squares of the distances, avoiding the computation
-         * of the square roots.<br>
-         * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-         * be 32 bytes-aligned.<br>
-         * If the number of attributes <i>d</i> of each sample is not multiple of <code>32 /
-         * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-         * many <code>0</code> as needed to reach the closes multiple of <code>32 /
-         * sizeof(double)</code> number of elements.
-         */
-        AVX_OPTIMIZED_NO_SQUARE_ROOT
-    };
-
     /**
      * Parallel implementation of the clustering algorithm.
      *
@@ -182,13 +90,7 @@ public:
      * neither <code>SSE_OPTIMIZED_NO_SQUARE_ROOT</code> nor
      * <code>AVX_OPTIMIZED_NO_SQUARE_ROOT</code>.
      */
-    template <DistanceComputers C,
-              ParallelDataIterator D,
-              PiIterator P,
-              LambdaIterator L,
-              bool S2 = true,
-              bool S4 = false,
-              bool S5 = false>
+    template <DistanceComputers C, ParallelDataIterator D, PiIterator P, LambdaIterator L>
     static void cluster(const D dataIterator,
                         const std::size_t dataSamplesCount,
                         const std::size_t dimension,
@@ -199,8 +101,8 @@ public:
                         const std::size_t squareRootThreadsCount = 0) {
 
         // Initialize the timers and start logging the console output, if requested
-        Timer::initTimers();
-        Logger::startLoggingProgress<0, 1, 2, 3, 4>(dataSamplesCount);
+        //Timer::initTimers();
+        Logger::startLoggingProgress<0, 1, 2, 3, 4, 5>(dataSamplesCount);
 
         Timer::start<0>();
         // Initialize the part-row values
@@ -234,9 +136,9 @@ public:
         Timer::stop<4>();
 
         // Computes the number of SSE registers that are needed to store a data sample
-        const std::size_t sseBlocksCount = SimdUtils::computeSseBlocksCount(dimension);
+        const std::size_t sseBlocksCount = ParallelClustering::computeSseBlocksCount(dimension);
         // Computes the number of AVX registers that are needed to store a data sample
-        const std::size_t avxBlocksCount = SimdUtils::computeAvxBlocksCount(dimension);
+        const std::size_t avxBlocksCount = ParallelClustering::computeAvxBlocksCount(dimension);
 
         // Perform the clustering algorithm for all the remaining data samples
         for (std::size_t n = 1; n < dataSamplesCount; n++) {
@@ -258,14 +160,14 @@ public:
             // Value of the n-th value of the dataset
             const double *__restrict__ const currentDataN = *currentData;
 
-            computeDistances<C, D, S2>(n,
-                                       dataIterator,
-                                       currentDataN,
-                                       dimension,
-                                       m,
-                                       sseBlocksCount,
-                                       avxBlocksCount,
-                                       distanceComputationThreadsCount);
+            computeDistances<C, D>(n,
+                                   dataIterator,
+                                   currentDataN,
+                                   dimension,
+                                   m,
+                                   sseBlocksCount,
+                                   avxBlocksCount,
+                                   distanceComputationThreadsCount);
 
             Timer::stop<2>();
 
@@ -290,9 +192,9 @@ public:
              * 4) For i from 1 to n
              **************************************************************************************/
             Timer::start<4>();
-            
-            fixStructure<P, L, S4>(piIterator, lambdaIterator, n, stage4ThreadsCount);
-                    // Move to the next data sample
+
+            fixStructure<P, L>(piIterator, lambdaIterator, n, stage4ThreadsCount);
+            // Move to the next data sample
             ++currentData;
 
             Timer::stop<4>();
@@ -323,6 +225,16 @@ public:
         Logger::updateProgress<1, 0, 1, 2, 3, 4, 5>(dataSamplesCount, dataSamplesCount);
     }
 
+    static inline std::size_t computeSseBlocksCount(std::size_t dimension) {
+
+        return 1 + ((dimension - 1) / SSE_PACK_SIZE);
+    }
+
+    static inline std::size_t computeAvxBlocksCount(std::size_t dimension) {
+
+        return 1 + ((dimension - 1) / AVX_PACK_SIZE);
+    }
+
 private:
     template <typename P, typename L>
     static inline void initializeNewPoint(P &currentPi, L &currentLambda, std::size_t n) {
@@ -335,7 +247,7 @@ private:
         ++currentLambda;
     }
 
-    template <DistanceComputers C, ParallelDataIterator D, bool S2>
+    template <DistanceComputers C, ParallelDataIterator D>
     static inline void computeDistances(std::size_t n,
                                         const D &dataIterator,
                                         const double *currentDataN,
@@ -427,9 +339,11 @@ private:
         }
     }
 
-    template <typename P, typename L, bool S4>
-    static inline void fixStructure(
-            const P &piIterator, const L &lambdaIterator, std::size_t n, std::size_t stage4ThreadsCount) {
+    template <typename P, typename L>
+    static inline void fixStructure(const P &piIterator,
+                                    const L &lambdaIterator,
+                                    std::size_t n,
+                                    std::size_t stage4ThreadsCount) {
 
 #pragma omp parallel for default(none) shared(n, lambdaIterator, piIterator) \
         num_threads(stage4ThreadsCount) if (S4)
@@ -486,9 +400,9 @@ private:
 
         for (std::size_t j = 0; j < blocksCount; j++) {
             // Load the next 2 coordinates of the first point into an SSE register
-            __m128d dataI = _mm_load_pd(&(firstPoint[j * SimdUtils::SSE_PACK_SIZE]));
+            __m128d dataI = _mm_load_pd(&(firstPoint[j * ParallelClustering::SSE_PACK_SIZE]));
             // Load the next 2 coordinates of the second point into an SSE register
-            __m128d dataN = _mm_load_pd(&(secondPoint[j * SimdUtils::SSE_PACK_SIZE]));
+            __m128d dataN = _mm_load_pd(&(secondPoint[j * ParallelClustering::SSE_PACK_SIZE]));
 
             // Compute the pairwise differences
             __m128d difference = _mm_sub_pd(dataI, dataN);
@@ -521,9 +435,9 @@ private:
 
         for (std::size_t j = 0; j < blocksCount; j++) {
             // Load the next 2 coordinates of the first point into an SSE register
-            __m128d dataI = _mm_load_pd(&(firstPoint[j * SimdUtils::SSE_PACK_SIZE]));
+            __m128d dataI = _mm_load_pd(&(firstPoint[j * ParallelClustering::SSE_PACK_SIZE]));
             // Load the next 2 coordinates of the second point into an SSE register
-            __m128d dataN = _mm_load_pd(&(secondPoint[j * SimdUtils::SSE_PACK_SIZE]));
+            __m128d dataN = _mm_load_pd(&(secondPoint[j * ParallelClustering::SSE_PACK_SIZE]));
 
             // Compute the pairwise differences
             __m128d difference = _mm_sub_pd(dataI, dataN);
@@ -560,9 +474,9 @@ private:
 
         for (std::size_t j = 0; j < blocksCount; j++) {
             // Load the next 2 coordinates of the first point into an SSE register
-            __m128d dataI = _mm_load_pd(&(firstPoint[j * SimdUtils::SSE_PACK_SIZE]));
+            __m128d dataI = _mm_load_pd(&(firstPoint[j * ParallelClustering::SSE_PACK_SIZE]));
             // Load the next 2 coordinates of the second point into an SSE register
-            __m128d dataN = _mm_load_pd(&(secondPoint[j * SimdUtils::SSE_PACK_SIZE]));
+            __m128d dataN = _mm_load_pd(&(secondPoint[j * ParallelClustering::SSE_PACK_SIZE]));
 
             // Compute the pairwise differences
             __m128d difference = _mm_sub_pd(dataI, dataN);
@@ -597,9 +511,9 @@ private:
 
         for (std::size_t j = 0; j < blocksCount; j++) {
             // Load the next 4 coordinates of the first point into an AVX register
-            __m256d dataI = _mm256_load_pd(&(firstPoint[j * SimdUtils::AVX_PACK_SIZE]));
+            __m256d dataI = _mm256_load_pd(&(firstPoint[j * ParallelClustering::AVX_PACK_SIZE]));
             // Load the next 4 coordinates of the second point into an AVX register
-            __m256d dataN = _mm256_load_pd(&(secondPoint[j * SimdUtils::AVX_PACK_SIZE]));
+            __m256d dataN = _mm256_load_pd(&(secondPoint[j * ParallelClustering::AVX_PACK_SIZE]));
 
             // Compute the pairwise differences
             __m256d difference = _mm256_sub_pd(dataI, dataN);
@@ -641,9 +555,9 @@ private:
 
         for (std::size_t j = 0; j < blocksCount; j++) {
             // Load the next 4 coordinates of the first point into an AVX register
-            __m256d dataI = _mm256_load_pd(&(firstPoint[j * SimdUtils::AVX_PACK_SIZE]));
+            __m256d dataI = _mm256_load_pd(&(firstPoint[j * ParallelClustering::AVX_PACK_SIZE]));
             // Load the next 4 coordinates of the second point into an AVX register
-            __m256d dataN = _mm256_load_pd(&(secondPoint[j * SimdUtils::AVX_PACK_SIZE]));
+            __m256d dataN = _mm256_load_pd(&(secondPoint[j * ParallelClustering::AVX_PACK_SIZE]));
 
             // Compute the pairwise differences
             __m256d difference = _mm256_sub_pd(dataI, dataN);
@@ -688,9 +602,9 @@ private:
 
         for (std::size_t j = 0; j < blocksCount; j++) {
             // Load the next 4 coordinates of the first point into an AVX register
-            __m256d dataI = _mm256_load_pd(&(firstPoint[j * SimdUtils::AVX_PACK_SIZE]));
+            __m256d dataI = _mm256_load_pd(&(firstPoint[j * ParallelClustering::AVX_PACK_SIZE]));
             // Load the next 4 coordinates of the second point into an AVX register
-            __m256d dataN = _mm256_load_pd(&(secondPoint[j * SimdUtils::AVX_PACK_SIZE]));
+            __m256d dataN = _mm256_load_pd(&(secondPoint[j * ParallelClustering::AVX_PACK_SIZE]));
 
             // Compute the pairwise differences
             __m256d difference = _mm256_sub_pd(dataI, dataN);

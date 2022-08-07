@@ -13,24 +13,23 @@ add_library(
     Final_Project_HPC_Sequential_Library STATIC
     include/sequential/SequentialClustering.h
     include/utils/ContiguousDoubleMemoryDataIterator.h
+    include/utils/Logger.h
+    include/utils/Timer.h
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp
-    include/utils/Logger.h
-    src/utils/SimdUtils.h
     src/utils/Timer.cpp
-    include/utils/Timer.h
 )
 
 add_library(
     Final_Project_HPC_Parallel_Library STATIC
+    include/parallel/DistanceComputers.h
     include/parallel/ParallelClustering.h
     include/utils/ContiguousDoubleMemoryDataIterator.h
+    include/utils/Logger.h
+    include/utils/Timer.h
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp
-    include/utils/Logger.h
-    src/utils/SimdUtils.h
     src/utils/Timer.cpp
-    include/utils/Timer.h
 )
 target_link_libraries(Final_Project_HPC_Parallel_Library PRIVATE OpenMP::OpenMP_CXX)
 
