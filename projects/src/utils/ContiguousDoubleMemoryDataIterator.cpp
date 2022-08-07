@@ -6,7 +6,6 @@
  * @since version date
  */
 #include "../../include/utils/ContiguousDoubleMemoryDataIterator.h"
-#include "SimdUtils.h"
 
 ContiguousDoubleMemoryDataIterator::ContiguousDoubleMemoryDataIterator() :
     startElement(nullptr),

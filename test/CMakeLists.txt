@@ -47,7 +47,7 @@ add_executable(
     src/data/MalformedFileException.cpp
     src/data/MalformedFileException.h
     src/measurements.cpp
-)
+    src/ResultsChecker.cpp src/ResultsChecker.h)
 
 target_link_libraries(
     Final_Project_HPC_Measurement Final_Project_HPC_Sequential_Library
