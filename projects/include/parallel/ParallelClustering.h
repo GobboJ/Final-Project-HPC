@@ -2,12 +2,15 @@
 #define FINAL_PROJECT_HPC_PARALLELCLUSTERING_H
 
 #include "Timer.h"
-#include "../../include/utils/Types.h"
+#include "../utils/Types.h"
 #include "DistanceComputers.h"
+#include "../utils/DataIteratorUtils.h"
 #include "Logger.h"
+#include "PiLambdaIteratorUtils.h"
 #include <cmath>
 #include <immintrin.h>
 #include <limits>
+#include <memory>
 #include <omp.h>
 #include <vector>
 
@@ -28,6 +31,7 @@ class ParallelClustering {
 
     using Logger = utils::Logger;
     using Timer = utils::Timer;
+    using PiLambdaIteratorUtils = utils::PiLambdaIteratorUtils;
 
 private:
     /**
@@ -65,7 +69,7 @@ public:
      *      <li><code>AVX_OPTIMIZED_NO_SQUARE_ROOT</code>.</li>
      * </ul>
      * In all the other cases, it has no effect.
-     * @param dataIterator Iterator over the set of data samples to cluster.
+     * @param data Iterator over the set of data samples to cluster.
      * @param dataSamplesCount Number of data samples.
      * @param dimension Number of attributes of each sample.
      * @param piIterator Output iterator that will be used to fill the underlying data structure
@@ -90,55 +94,81 @@ public:
      * neither <code>SSE_OPTIMIZED_NO_SQUARE_ROOT</code> nor
      * <code>AVX_OPTIMIZED_NO_SQUARE_ROOT</code>.
      */
-    template <DistanceComputers C, ParallelDataIterator D, PiIterator P, LambdaIterator L>
-    static void cluster(const D dataIterator,
+    template <DistanceComputers C, typename D, utils::PiIterator P, utils::LambdaIterator L>
+    static void cluster(const D &data,
                         const std::size_t dataSamplesCount,
                         const std::size_t dimension,
-                        const P piIterator,
-                        const L lambdaIterator,
+                        P &piIterator,
+                        L &lambdaIterator,
                         const std::size_t distanceComputationThreadsCount = 0,
                         const std::size_t stage4ThreadsCount = 0,
                         const std::size_t squareRootThreadsCount = 0) {
 
-        // Initialize the timers and start logging the console output, if requested
-        //Timer::initTimers();
-        Logger::startLoggingProgress<0, 1, 2, 3, 4, 5>(dataSamplesCount);
-
         Timer::start<0>();
+        // Computes the number of SSE registers that are needed to store a data sample
+        const std::size_t sseDimension =
+                ParallelClustering::computeSseBlocksCount(dimension) * SSE_PACK_SIZE;
+        // Computes the number of AVX registers that are needed to store a data sample
+        const std::size_t avxDimension =
+                ParallelClustering::computeAvxBlocksCount(dimension) * AVX_PACK_SIZE;
+
+        std::size_t pointRealDimension;
+        std::size_t stride;
+        if constexpr (C == DistanceComputers::AVX || C == DistanceComputers::AVX_OPTIMIZED ||
+                      C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT) {
+            pointRealDimension = avxDimension;
+            stride = avxDimension;
+        } else if constexpr (C == DistanceComputers::SSE || C == DistanceComputers::SSE_OPTIMIZED ||
+                             C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT) {
+            pointRealDimension = sseDimension;
+            stride = sseDimension;
+        } else {
+            pointRealDimension = dimension;
+            stride = dimension;
+        }
+
         // Initialize the part-row values
         auto *__restrict__ m = new double[dataSamplesCount];
 
+        const auto piBegin = PiLambdaIteratorUtils::createEfficientIterator<std::size_t, P>(
+                piIterator, "First element of pi");
+        const auto lambdaBegin = PiLambdaIteratorUtils::createEfficientIterator<double, L>(
+                lambdaIterator, "First element of lambda");
+
         // Iterator pointing to pi[i], with i ranging from 0 to dataSamplesCount-1.
         // Initially it points to pi[0], i.e., the first element of pi.
-        P currentPi = piIterator;
+        auto currentPi = piBegin;
         // Iterator pointing to lambda[i], with i ranging from 0 to dataSamplesCount-1.
         // Initially it points to lambda[0], i.e., the first element of lambda.
-        L currentLambda = lambdaIterator;
+        auto currentLambda = lambdaBegin;
+
         // Iterator pointing to the n-th element of the dataset.
         // Initially it points to the first element of the dataset.
-        D currentData = dataIterator;
+        auto currentData =
+                utils::DataIteratorUtils::createEfficientIterator(data, "Current data");
+        auto startData = utils::DataIteratorUtils::createEfficientIterator(data,
+                                                                           "First element of data");
 
         Timer::stop<0>();
+
+        // Initialize the timers and start logging the console output, if requested
+        // Timer::initTimers();
+        Logger::startLoggingProgress<0, 1, 2, 3, 4, 5>(dataSamplesCount);
 
         /*******************************************************************************************
          * 1) Set pi(1) to 0, lambda(1) to infinity
          ******************************************************************************************/
         Timer::start<1>();
 
-        initializeNewPoint(currentPi, currentLambda, 0);
+        initializeNewPoint<P, L>(currentPi, currentLambda, 0);
         Timer::stop<1>();
 
         Timer::start<4>();
         // No more operations need to be performed for the first point, so move to the second
         // element of the dataset
-        ++currentData;
+        utils::DataIteratorUtils::moveNext<D>(currentData, stride);
 
         Timer::stop<4>();
-
-        // Computes the number of SSE registers that are needed to store a data sample
-        const std::size_t sseBlocksCount = ParallelClustering::computeSseBlocksCount(dimension);
-        // Computes the number of AVX registers that are needed to store a data sample
-        const std::size_t avxBlocksCount = ParallelClustering::computeAvxBlocksCount(dimension);
 
         // Perform the clustering algorithm for all the remaining data samples
         for (std::size_t n = 1; n < dataSamplesCount; n++) {
@@ -148,7 +178,7 @@ public:
              **************************************************************************************/
             Timer::start<1>();
 
-            initializeNewPoint(currentPi, currentLambda, n);
+            initializeNewPoint<P, L>(currentPi, currentLambda, n);
 
             Timer::stop<1>();
 
@@ -158,15 +188,17 @@ public:
             Timer::start<2>();
 
             // Value of the n-th value of the dataset
-            const double *__restrict__ const currentDataN = *currentData;
+            const double *__restrict__ const currentDataN =
+                    utils::DataIteratorUtils::getCurrentElement<D>(currentData);
+            // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+            const double *currentDataNEnd = currentDataN + pointRealDimension;
 
             computeDistances<C, D>(n,
-                                   dataIterator,
+                                   startData,
+                                   stride,
                                    currentDataN,
-                                   dimension,
+                                   currentDataNEnd,
                                    m,
-                                   sseBlocksCount,
-                                   avxBlocksCount,
                                    distanceComputationThreadsCount);
 
             Timer::stop<2>();
@@ -176,15 +208,9 @@ public:
              **************************************************************************************/
             Timer::start<3>();
 
-            // Iterator over the first n-1 values of pi
-            P iteratorOverPi = piIterator;
-            // Iterator over the first n-1 values of lambda
-            L iteratorOverLambda = lambdaIterator;
-
             // Iterator over the first n-1 values of m
-            const double *__restrict__ distanceIterator = &(m[0]);
 
-            addNewPoint(iteratorOverPi, iteratorOverLambda, distanceIterator, m, n);
+            addNewPoint<P, L>(piBegin, lambdaBegin, m, n);
 
             Timer::stop<3>();
 
@@ -193,9 +219,9 @@ public:
              **************************************************************************************/
             Timer::start<4>();
 
-            fixStructure<P, L>(piIterator, lambdaIterator, n, stage4ThreadsCount);
+            fixStructure(piBegin, lambdaBegin, n, stage4ThreadsCount);
             // Move to the next data sample
-            ++currentData;
+            utils::DataIteratorUtils::moveNext<D>(currentData, stride);
 
             Timer::stop<4>();
 
@@ -210,10 +236,12 @@ public:
                       C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT) {
 
             // Compute the square root of all the values in lambda
-#pragma omp parallel for default(none) shared(lambdaIterator, dataSamplesCount) \
+#pragma omp parallel for default(none) shared(lambdaBegin, dataSamplesCount) \
         num_threads(squareRootThreadsCount) if (S5)
             for (std::size_t i = 0; i < dataSamplesCount - 1; i++) {
-                lambdaIterator[i] = sqrt(lambdaIterator[i]);
+                double &lambdaToModify =
+                        utils::PiLambdaIteratorUtils::getElementAt<double, L>(lambdaBegin, i);
+                lambdaToModify = sqrt(lambdaToModify);
             }
         }
         Timer::stop<5>();
@@ -236,112 +264,146 @@ public:
     }
 
 private:
-    template <typename P, typename L>
-    static inline void initializeNewPoint(P &currentPi, L &currentLambda, std::size_t n) {
+    static void checkAlignment() {
+        /*
+         * // Check alignment
+if constexpr (C != DistanceComputers::CLASSICAL) {
+    constexpr std::size_t pointSize =
+            (C == DistanceComputers::SSE || C == DistanceComputers::SSE_OPTIMIZED ||
+             C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT)
+                    ? SSE_PACK_SIZE
+                    : AVX_PACK_SIZE;
+    constexpr std::size_t alignment = pointSize * sizeof(double);
 
-        // Set pi[n] to n
-        *currentPi = n;
-        ++currentPi;
-        // Set lambda[n] to infinity
-        *currentLambda = std::numeric_limits<double>::infinity();
-        ++currentLambda;
+D iterator = dataIterator;
+for (std::size_t i = 0; i < dataSamplesCount; i++) {
+    std::size_t remainingSize = 1;
+    const void *pointer = const_cast<double *>(*iterator);
+    if (static_cast<uintptr_t>(pointer) % alignment == 0) {
+        std::string errorMessage{"The element"};
+        errorMessage += " ";
+        errorMessage += std::to_string(i);
+        errorMessage += " is not";
+        errorMessage += " ";
+        errorMessage += std::to_string(alignment);
+        errorMessage += "-bytes aligned";
+        throw std::invalid_argument(errorMessage);
+    }
+    for (int j = 0; j < pointSize; j++) {
+        ++iterator;
+    }
+}
+}
+         */
     }
 
-    template <DistanceComputers C, ParallelDataIterator D>
+    template <typename P, typename L, typename EP, typename EL>
+    static inline void initializeNewPoint(EP &currentPi, EL &currentLambda, std::size_t n) {
+
+        // Set pi[n] to n
+        PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(currentPi) = n;
+        PiLambdaIteratorUtils::moveNext<std::size_t, P>(currentPi);
+
+        // Set lambda[n] to infinity
+        PiLambdaIteratorUtils::getCurrentElement<double, L>(currentLambda) =
+                std::numeric_limits<double>::infinity();
+        PiLambdaIteratorUtils::moveNext<double, L>(currentLambda);
+    }
+
+    template <DistanceComputers C, typename D, typename ED>
     static inline void computeDistances(std::size_t n,
-                                        const D &dataIterator,
-                                        const double *currentDataN,
-                                        std::size_t dimension,
-                                        double *const m,
-                                        std::size_t sseBlocksCount,
-                                        std::size_t avxBlocksCount,
+                                        const ED &dataIterator,
+                                        const std::size_t stride,
+                                        const double *__restrict__ currentDataN,
+                                        const double *__restrict__ currentDataNEnd,
+                                        double *__restrict__ const m,
                                         std::size_t distanceComputationThreadsCount) {
 
         // Compute the distance between the n-th element of the dataset and all the
 // already-processed ones
-#pragma omp parallel for default(none)                                                      \
-        shared(n, dataIterator, currentDataN, dimension, m, sseBlocksCount, avxBlocksCount) \
+#pragma omp parallel for default(none)                                    \
+        shared(n, m, dataIterator, currentDataN, currentDataNEnd, stride) \
                 num_threads(distanceComputationThreadsCount) if (S2)
         for (std::size_t i = 0; i <= n - 1; i++) {
+            const double *const __restrict__ element =
+                    utils::DataIteratorUtils::getElementAt<D>(dataIterator, i, stride);
             // Compute the distance by using the requested algorithm
             if constexpr (C == DistanceComputers::CLASSICAL) {
-                m[i] = ParallelClustering::distance(dataIterator[i], currentDataN, dimension);
+                m[i] = ParallelClustering::distance(currentDataN, currentDataNEnd, element);
             } else if constexpr (C == DistanceComputers::SSE) {
-                m[i] = ParallelClustering::distanceSse(
-                        dataIterator[i], currentDataN, sseBlocksCount);
+                m[i] = ParallelClustering::distanceSse(currentDataN, currentDataNEnd, element);
             } else if constexpr (C == DistanceComputers::AVX) {
-                m[i] = ParallelClustering::distanceAvx(
-                        dataIterator[i], currentDataN, avxBlocksCount);
+                m[i] = ParallelClustering::distanceAvx(currentDataN, currentDataNEnd, element);
             } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED) {
                 m[i] = ParallelClustering::distanceSseOptimized(
-                        dataIterator[i], currentDataN, sseBlocksCount);
+                        currentDataN, currentDataNEnd, element);
             } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED) {
                 m[i] = ParallelClustering::distanceAvxOptimized(
-                        dataIterator[i], currentDataN, avxBlocksCount);
+                        currentDataN, currentDataNEnd, element);
             } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT) {
                 m[i] = ParallelClustering::distanceSseOptimizedNoSquareRoot(
-                        dataIterator[i], currentDataN, sseBlocksCount);
+                        currentDataN, currentDataNEnd, element);
             } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT) {
                 m[i] = ParallelClustering::distanceAvxOptimizedNoSquareRoot(
-                        dataIterator[i], currentDataN, avxBlocksCount);
+                        currentDataN, currentDataNEnd, element);
             } else {
                 // https://stackoverflow.com/a/53945549
-                static_assert(always_false<D>, "The specified distance computer is not supported.");
+                static_assert(always_false<ED>,
+                              "The specified distance computer is not supported.");
             }
         }
     }
 
-    template <typename P, typename L>
-    static inline void addNewPoint(P iteratorOverPi,
-                                   L iteratorOverLambda,
-                                   const double *distanceIterator,
-                                   double *m,
-                                   std::size_t n) {
+    template <typename P, typename L, typename EP, typename EL>
+    static inline void addNewPoint(
+            EP currentPi, EL currentLambda, double *distanceIterator, std::size_t n) {
+
+        double *mBegin = distanceIterator;
 
         for (std::size_t i = 0; i <= n - 1; i++) {
             // Reference to pi[i]
-            std::size_t &piOfI = *iteratorOverPi;
+            std::size_t &piI = PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(currentPi);
             // Reference to lambda[i]
-            double &lambdaOfI = *iteratorOverLambda;
+            double &lambdaI = PiLambdaIteratorUtils::getCurrentElement<double, L>(currentLambda);
             // Value of m[i]
-            const double mOfI = *distanceIterator;
+            const double currentDistance = *distanceIterator;
             // Reference to m[pi[i]]
-            double &mOfPiOfI = m[piOfI];
+            double &mPiI = mBegin[piI];
 
             /***********************************************************************************
              * if lambda(i) >= M(i)
              **********************************************************************************/
-            if (lambdaOfI >= mOfI) {
+            if (lambdaI >= currentDistance) {
                 /*******************************************************************************
                  * set M(pi(i)) to min { M(pi(i)), lambda(i) }
                  ******************************************************************************/
-                mOfPiOfI = std::min(mOfPiOfI, lambdaOfI);
+                mPiI = std::min(mPiI, lambdaI);
 
                 /*******************************************************************************
                  * set lambda(i) to M(i)
                  ******************************************************************************/
-                lambdaOfI = mOfI;
+                lambdaI = currentDistance;
 
                 /*******************************************************************************
                  * set pi(i) to n + 1
                  ******************************************************************************/
-                piOfI = n;
+                piI = n;
             } else {  // if lambda(i) < M(i)
                 /*******************************************************************************
                  * set M(pi(i)) to min { M(pi(i)), M(i) }
                  ******************************************************************************/
-                mOfPiOfI = std::min(mOfPiOfI, mOfI);
+                mPiI = std::min(mPiI, currentDistance);
             }
             // Move to the next element
-            ++iteratorOverPi;
-            ++iteratorOverLambda;
+            PiLambdaIteratorUtils::moveNext<std::size_t, P>(currentPi);
+            PiLambdaIteratorUtils::moveNext<double, L>(currentLambda);
             ++distanceIterator;
         }
     }
 
-    template <typename P, typename L>
-    static inline void fixStructure(const P &piIterator,
-                                    const L &lambdaIterator,
+    template <typename EP, typename EL>
+    static inline void fixStructure(const EP &piIterator,
+                                    const EL &lambdaIterator,
                                     std::size_t n,
                                     std::size_t stage4ThreadsCount) {
 
@@ -371,13 +433,18 @@ private:
      * @param dimension The dimension of each point.
      * @return The distance between the two points.
      */
-    static inline double distance(const double *__restrict__ const firstPoint,
-                                  const double *__restrict__ const secondPoint,
-                                  const std::size_t dimension) noexcept {
+    static inline double distance(const double *__restrict__ const firstPointBegin,
+                                  const double *__restrict__ const firstPointEnd,
+                                  const double *__restrict__ const secondPointBegin) noexcept {
 
         double sum = 0;
-        for (std::size_t i = 0; i < dimension; i++) {
-            sum += pow(firstPoint[i] - secondPoint[i], 2.0);
+        const double *__restrict__ firstPoint = firstPointBegin;
+        const double *__restrict__ secondPoint = secondPointBegin;
+
+        while (firstPoint != firstPointEnd) {
+            sum += pow(*firstPoint - *secondPoint, 2.0);
+            firstPoint++;
+            secondPoint++;
         }
 
         return sqrt(sum);
@@ -391,18 +458,21 @@ private:
      * @param blocksCount Number of SSE registers that are needed to store one of the two points.
      * @return The distance between the two points.
      */
-    static inline double distanceSse(const double *__restrict__ const firstPoint,
-                                     const double *__restrict__ const secondPoint,
-                                     std::size_t blocksCount) noexcept {
+    static inline double distanceSse(const double *__restrict__ const firstPointBegin,
+                                     const double *__restrict__ const firstPointEnd,
+                                     const double *__restrict__ const secondPointBegin) noexcept {
 
         // Initialize the partial sum of squares
         double sum = 0;
 
-        for (std::size_t j = 0; j < blocksCount; j++) {
+        const double *__restrict__ firstPoint = firstPointBegin;
+        const double *__restrict__ secondPoint = secondPointBegin;
+
+        while (firstPoint != firstPointEnd) {
             // Load the next 2 coordinates of the first point into an SSE register
-            __m128d dataI = _mm_load_pd(&(firstPoint[j * ParallelClustering::SSE_PACK_SIZE]));
+            __m128d dataI = _mm_load_pd(firstPoint);
             // Load the next 2 coordinates of the second point into an SSE register
-            __m128d dataN = _mm_load_pd(&(secondPoint[j * ParallelClustering::SSE_PACK_SIZE]));
+            __m128d dataN = _mm_load_pd(secondPoint);
 
             // Compute the pairwise differences
             __m128d difference = _mm_sub_pd(dataI, dataN);
@@ -411,6 +481,9 @@ private:
 
             // Update the partial sum
             sum += _mm_hadd_pd(square, square)[0];
+
+            firstPoint += SSE_PACK_SIZE;
+            secondPoint += SSE_PACK_SIZE;
         }
 
         // Compute the square root of the partial sum
@@ -426,18 +499,22 @@ private:
      * @param blocksCount Number of SSE registers that are needed to store one of the two points.
      * @return The distance between the two points.
      */
-    static inline double distanceSseOptimized(const double *__restrict__ const firstPoint,
-                                              const double *__restrict__ const secondPoint,
-                                              std::size_t blocksCount) noexcept {
+    static inline double distanceSseOptimized(
+            const double *__restrict__ const firstPointBegin,
+            const double *__restrict__ const firstPointEnd,
+            const double *__restrict__ const secondPointBegin) noexcept {
 
         // Initialize the register that accumulates the partial sum of squares
         __m128d accumulator = _mm_setzero_pd();
 
-        for (std::size_t j = 0; j < blocksCount; j++) {
+        const double *__restrict__ firstPoint = firstPointBegin;
+        const double *__restrict__ secondPoint = secondPointBegin;
+
+        while (firstPoint != firstPointEnd) {
             // Load the next 2 coordinates of the first point into an SSE register
-            __m128d dataI = _mm_load_pd(&(firstPoint[j * ParallelClustering::SSE_PACK_SIZE]));
+            __m128d dataI = _mm_load_pd(firstPoint);
             // Load the next 2 coordinates of the second point into an SSE register
-            __m128d dataN = _mm_load_pd(&(secondPoint[j * ParallelClustering::SSE_PACK_SIZE]));
+            __m128d dataN = _mm_load_pd(secondPoint);
 
             // Compute the pairwise differences
             __m128d difference = _mm_sub_pd(dataI, dataN);
@@ -446,6 +523,9 @@ private:
 
             // Update the partial sum
             accumulator = _mm_add_pd(accumulator, square);
+
+            firstPoint += SSE_PACK_SIZE;
+            secondPoint += SSE_PACK_SIZE;
         }
 
         // Compute the final partial sum
@@ -465,18 +545,21 @@ private:
      * @return The square of the distance between the two points.
      */
     static inline double distanceSseOptimizedNoSquareRoot(
-            const double *__restrict__ const firstPoint,
-            const double *__restrict__ const secondPoint,
-            std::size_t blocksCount) noexcept {
+            const double *__restrict__ const firstPointBegin,
+            const double *__restrict__ const firstPointEnd,
+            const double *__restrict__ const secondPointBegin) noexcept {
 
         // Initialize the register that accumulates the partial sum of squares
         __m128d accumulator = _mm_setzero_pd();
 
-        for (std::size_t j = 0; j < blocksCount; j++) {
+        const double *__restrict__ firstPoint = firstPointBegin;
+        const double *__restrict__ secondPoint = secondPointBegin;
+
+        while (firstPoint != firstPointEnd) {
             // Load the next 2 coordinates of the first point into an SSE register
-            __m128d dataI = _mm_load_pd(&(firstPoint[j * ParallelClustering::SSE_PACK_SIZE]));
+            __m128d dataI = _mm_load_pd(firstPoint);
             // Load the next 2 coordinates of the second point into an SSE register
-            __m128d dataN = _mm_load_pd(&(secondPoint[j * ParallelClustering::SSE_PACK_SIZE]));
+            __m128d dataN = _mm_load_pd(secondPoint);
 
             // Compute the pairwise differences
             __m128d difference = _mm_sub_pd(dataI, dataN);
@@ -485,6 +568,9 @@ private:
 
             // Update the partial sum
             accumulator = _mm_add_pd(accumulator, square);
+
+            firstPoint += SSE_PACK_SIZE;
+            secondPoint += SSE_PACK_SIZE;
         }
 
         // Compute the final partial sum
@@ -502,18 +588,21 @@ private:
      * @param blocksCount Number of AVX registers that are needed to store one of the two points.
      * @return The distance between the two points.
      */
-    static inline double distanceAvx(const double *__restrict__ const firstPoint,
-                                     const double *__restrict__ const secondPoint,
-                                     std::size_t blocksCount) noexcept {
+    static inline double distanceAvx(const double *__restrict__ const firstPointBegin,
+                                     const double *__restrict__ const firstPointEnd,
+                                     const double *__restrict__ const secondPointBegin) noexcept {
 
         // Initialize the partial sum of squares
         double sum = 0;
 
-        for (std::size_t j = 0; j < blocksCount; j++) {
+        const double *__restrict__ firstPoint = firstPointBegin;
+        const double *__restrict__ secondPoint = secondPointBegin;
+
+        while (firstPoint != firstPointEnd) {
             // Load the next 4 coordinates of the first point into an AVX register
-            __m256d dataI = _mm256_load_pd(&(firstPoint[j * ParallelClustering::AVX_PACK_SIZE]));
+            __m256d dataI = _mm256_load_pd(firstPoint);
             // Load the next 4 coordinates of the second point into an AVX register
-            __m256d dataN = _mm256_load_pd(&(secondPoint[j * ParallelClustering::AVX_PACK_SIZE]));
+            __m256d dataN = _mm256_load_pd(secondPoint);
 
             // Compute the pairwise differences
             __m256d difference = _mm256_sub_pd(dataI, dataN);
@@ -531,6 +620,9 @@ private:
             __m128d lowBits = _mm256_castpd256_pd128(squaresSum);
             // Sum the upper 128 bits to the lower 128 ones, and then update the partial sum
             sum += _mm_add_pd(highBits, lowBits)[0];
+
+            firstPoint += AVX_PACK_SIZE;
+            secondPoint += AVX_PACK_SIZE;
         }
 
         // Compute the square root of the partial sum
@@ -546,18 +638,22 @@ private:
      * @param blocksCount Number of AVX registers that are needed to store one of the two points.
      * @return The distance between the two points.
      */
-    static inline double distanceAvxOptimized(const double *__restrict__ const firstPoint,
-                                              const double *__restrict__ const secondPoint,
-                                              std::size_t blocksCount) noexcept {
+    static inline double distanceAvxOptimized(
+            const double *__restrict__ const firstPointBegin,
+            const double *__restrict__ const firstPointEnd,
+            const double *__restrict__ const secondPointBegin) noexcept {
 
         // Initialize the register that accumulates the partial sum of squares
         __m256d accumulator = _mm256_setzero_pd();
 
-        for (std::size_t j = 0; j < blocksCount; j++) {
+        const double *__restrict__ firstPoint = firstPointBegin;
+        const double *__restrict__ secondPoint = secondPointBegin;
+
+        while (firstPoint != firstPointEnd) {
             // Load the next 4 coordinates of the first point into an AVX register
-            __m256d dataI = _mm256_load_pd(&(firstPoint[j * ParallelClustering::AVX_PACK_SIZE]));
+            __m256d dataI = _mm256_load_pd(firstPoint);
             // Load the next 4 coordinates of the second point into an AVX register
-            __m256d dataN = _mm256_load_pd(&(secondPoint[j * ParallelClustering::AVX_PACK_SIZE]));
+            __m256d dataN = _mm256_load_pd(secondPoint);
 
             // Compute the pairwise differences
             __m256d difference = _mm256_sub_pd(dataI, dataN);
@@ -566,6 +662,9 @@ private:
 
             // Update the partial sum
             accumulator = _mm256_add_pd(accumulator, square);
+
+            firstPoint += AVX_PACK_SIZE;
+            secondPoint += AVX_PACK_SIZE;
         }
 
         // Sum adjacent double values, i.e., it sums the first value with the second, and stores
@@ -593,18 +692,21 @@ private:
      * @return The square of the distance between the two points.
      */
     static inline double distanceAvxOptimizedNoSquareRoot(
-            const double *__restrict__ const firstPoint,
-            const double *__restrict__ const secondPoint,
-            std::size_t blocksCount) noexcept {
+            const double *__restrict__ const firstPointBegin,
+            const double *__restrict__ const firstPointEnd,
+            const double *__restrict__ const secondPointBegin) noexcept {
 
         // Initialize the register that accumulates the partial sum of squares
         __m256d accumulator = _mm256_setzero_pd();
 
-        for (std::size_t j = 0; j < blocksCount; j++) {
+        const double *__restrict__ firstPoint = firstPointBegin;
+        const double *__restrict__ secondPoint = secondPointBegin;
+
+        while (firstPoint != firstPointEnd) {
             // Load the next 4 coordinates of the first point into an AVX register
-            __m256d dataI = _mm256_load_pd(&(firstPoint[j * ParallelClustering::AVX_PACK_SIZE]));
+            __m256d dataI = _mm256_load_pd(firstPoint);
             // Load the next 4 coordinates of the second point into an AVX register
-            __m256d dataN = _mm256_load_pd(&(secondPoint[j * ParallelClustering::AVX_PACK_SIZE]));
+            __m256d dataN = _mm256_load_pd(secondPoint);
 
             // Compute the pairwise differences
             __m256d difference = _mm256_sub_pd(dataI, dataN);
@@ -613,6 +715,9 @@ private:
 
             // Update the partial sum
             accumulator = _mm256_add_pd(accumulator, square);
+
+            firstPoint += AVX_PACK_SIZE;
+            secondPoint += AVX_PACK_SIZE;
         }
 
         // Sum adjacent double values, i.e., it sums the first value with the second, and stores

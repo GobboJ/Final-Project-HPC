@@ -162,7 +162,7 @@ private:
             std::cout << "    ";
         }
         // Print the microseconds, properly padded
-        if (microseconds > 0) {
+        if (milliseconds > 0 || microseconds > 0) {
             char fill = (milliseconds > 0) ? '0' : ' ';
             std::cout << std::setw(3) << std::setfill(fill) << microseconds;
             std::cout << ".";
