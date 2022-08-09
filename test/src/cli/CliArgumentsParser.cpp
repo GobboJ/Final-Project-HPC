@@ -91,6 +91,9 @@ CliArguments CliArgumentsParser::parseArguments() {
         } else if (argument == "-t") {
             this->nextArgumentIndex++;
             this->parseTestOption(result);
+        } else if (argument == "--test-results-path") {
+            this->nextArgumentIndex++;
+            this->parseTestResultsPath(result);
         } else {
             this->parseInputFilePath(result);
         }
@@ -294,27 +297,30 @@ void CliArgumentsParser::parseAlgorithmVersion(CliArguments &result, bool isPara
  */
 void CliArgumentsParser::parseTestOption(CliArguments &result) {
 
-    // Check if the path has been specified
-    const std::string textResultsPathString = this->peekCurrentArgument();
-    if (!isOption(textResultsPathString) && !textResultsPathString.empty()) {
-        // Normalize the path
-        std::filesystem::path textResultsPath{textResultsPathString};
-        textResultsPath = absolute(textResultsPath).lexically_normal();
-
-        // Check the path
-        using namespace std::literals::string_literals;
-        requireFilePathValidity(
-                textResultsPath,
-                "The directory"s + ' ' + textResultsPath.parent_path().string() +
-                        " where the test results file will be generated does not exist",
-                "The test results file path"s + ' ' + textResultsPath.string() +
-                        " refers to a non-regular file");
-        // Set the path
-        result.setPreviousTestResultsToBeUsed(true);
-        result.setTestResultsFilePath(textResultsPath);
-    }
     // Enable the test mode
     result.setTestModeEnabled(true);
+}
+
+void CliArgumentsParser::parseTestResultsPath(CliArguments &result) {
+
+    // Extract the path
+    const std::string textResultsPathString = this->getCurrentArgumentAndMoveNext(
+            "The test file results path is missing in the --test-results-path option.");
+
+    // Normalize the path
+    std::filesystem::path textResultsPath{textResultsPathString};
+    textResultsPath = absolute(textResultsPath).lexically_normal();
+
+    // Check the path
+    using namespace std::literals::string_literals;
+    requireFilePathValidity(textResultsPath,
+                            "The directory"s + ' ' + textResultsPath.parent_path().string() +
+                                    " where the test results file will be generated does not exist",
+                            "The test results file path"s + ' ' + textResultsPath.string() +
+                                    " refers to a non-regular file");
+    // Set the path
+    result.setPreviousTestResultsToBeUsed(true);
+    result.setTestResultsFilePath(textResultsPath);
 }
 
 /**

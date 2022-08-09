@@ -128,12 +128,12 @@ void DataReader::readPiLambda(const std::filesystem::path &inputFilePath,
         std::getline(file, line);
         if (file.good() || file.eof()) {
             // Parse the first line
-            std::stringstream lineValuesStream{line};
+            std::stringstream firstLineValueStream{line};
             std::string value;
             std::size_t columnNumber = 1;
             // Parse the first line
             columnNumber = 1;
-            while (std::getline(lineValuesStream, value, ',')) {
+            while (std::getline(firstLineValueStream, value, ',')) {
                 piVector.push_back(parseSizeT(value, 1, columnNumber));
                 columnNumber++;
             }
@@ -141,9 +141,10 @@ void DataReader::readPiLambda(const std::filesystem::path &inputFilePath,
             // Read the second line of the file
             std::getline(file, line);
             if (file.good() || file.eof()) {
+                std::stringstream secondLineValueStream{line};
                 // Parse the second line
                 columnNumber = 1;
-                while (std::getline(lineValuesStream, value, ',')) {
+                while (std::getline(secondLineValueStream, value, ',')) {
                     lambdaVector.push_back(parseDouble(value, 2, columnNumber));
                     columnNumber++;
                 }

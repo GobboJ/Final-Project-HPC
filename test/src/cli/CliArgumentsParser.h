@@ -106,6 +106,8 @@ private:
      */
     void parseTestOption(CliArguments &result);
 
+    void parseTestResultsPath(CliArguments &result);
+    
     /**
      * Parses the input file path.
      *
@@ -206,6 +208,7 @@ private:
      * Vector containing the command line arguments.
      */
     const char *const *argumentsVector;
+    
 };
 }  // namespace cluster::test::cli
 #endif  // FINAL_PROJECT_HPC_CLIARGUMENTSPARSER_H
