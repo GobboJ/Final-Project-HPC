@@ -76,13 +76,13 @@ add_executable(
         src/types/CollectionCreator.h
         src/types/PointerWrapper.h
         src/types/CollectionContainer.h
-        src/types/ArrayCollectionContainer.h src/types/LinearCollectionContainer.h)
+        src/types/ArrayCollectionContainer.h src/types/LinearCollectionContainer.h src/types/PiLambdaTypesTester.h src/types/TypesPrinter.h)
 
 target_link_libraries(
         Final_Project_HPC_Test_Types Final_Project_HPC_Sequential_Library
         Final_Project_HPC_Parallel_Library
 )
-
+#target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE TIMERS PRINT_ITERATIONS)
 #TODO: target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY)
 
 # Define the data generator main executable

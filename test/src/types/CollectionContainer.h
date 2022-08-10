@@ -26,23 +26,32 @@ private:
 
 public:
     std::pair<std::string, C<double *>> cArray;
-    std::pair<std::string, typename C<double *>::const_iterator> cArrayIterator;
+    std::pair<std::string, typename C<double *>::iterator> cArrayIterator;
+    std::pair<std::string, typename C<double *>::const_iterator> cArrayConstIterator;
 
     std::pair<std::string, C<std::array<double, D>>> array;
-    std::pair<std::string, typename C<std::array<double, D>>::const_iterator> arrayIterator;
-    std::pair<std::string, C<typename std::array<double, D>::const_iterator>> iteratorArray;
+    std::pair<std::string, typename C<std::array<double, D>>::iterator> arraysIterator;
+    std::pair<std::string, typename C<std::array<double, D>>::const_iterator> arraysConstIterator;
+    std::pair<std::string, C<typename std::array<double, D>::iterator>> iteratorsArray;
+    std::pair<std::string, C<typename std::array<double, D>::const_iterator>> constIteratorsArray;
 
     std::pair<std::string, C<std::vector<double>>> vector;
-    std::pair<std::string, typename C<std::vector<double>>::const_iterator> vectorIterator;
-    std::pair<std::string, C<std::vector<double>::const_iterator>> iteratorVector;
+    std::pair<std::string, typename C<std::vector<double>>::iterator> vectorsIterator;
+    std::pair<std::string, typename C<std::vector<double>>::const_iterator> vectorsConstIterator;
+    std::pair<std::string, C<std::vector<double>::iterator>> iteratorsVector;
+    std::pair<std::string, C<std::vector<double>::const_iterator>> constIteratorsVector;
 
     std::pair<std::string, C<std::list<double>>> list;
-    std::pair<std::string, typename C<std::list<double>>::const_iterator> listIterator;
-    std::pair<std::string, C<std::list<double>::const_iterator>> iteratorList;
+    std::pair<std::string, typename C<std::list<double>>::iterator> listsIterator;
+    std::pair<std::string, typename C<std::list<double>>::const_iterator> listsConstIterator;
+    std::pair<std::string, C<std::list<double>::iterator>> iteratorsList;
+    std::pair<std::string, C<std::list<double>::const_iterator>> constIteratorsList;
 
     std::pair<std::string, C<std::deque<double>>> deque;
-    std::pair<std::string, typename C<std::deque<double>>::const_iterator> dequeIterator;
-    std::pair<std::string, C<std::deque<double>::const_iterator>> iteratorDeque;
+    std::pair<std::string, typename C<std::deque<double>>::iterator> dequesIterator;
+    std::pair<std::string, typename C<std::deque<double>>::const_iterator> dequesConstIterator;
+    std::pair<std::string, C<std::deque<double>::iterator>> iteratorsDeque;
+    std::pair<std::string, C<std::deque<double>::const_iterator>> constIteratorsDeque;
 
     std::pair<std::string, C<AlignedArray<double, D, SSE_ALIGNMENT>>> sseAlignedArray;
     std::pair<std::string, C<AlignedArray<double, D, AVX_ALIGNMENT>>> avxAlignedArray;

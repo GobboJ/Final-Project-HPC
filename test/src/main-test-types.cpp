@@ -5,15 +5,17 @@
  * @version 1.0 2022-08-07
  * @since version date
  */
-#include "data/DataReader.h"
+#include "ContiguousDoubleMemoryDataIterator.h"
 #include "ParallelClustering.h"
 #include "ResultsChecker.h"
 #include "SequentialClustering.h"
-#include "ContiguousDoubleMemoryDataIterator.h"
+#include "data/DataReader.h"
 #include "data/DataWriter.h"
 #include "types/ArrayCollectionContainer.h"
 #include "types/CollectionContainer.h"
 #include "types/CollectionCreator.h"
+#include "types/TypesPrinter.h"
+#include "types/PiLambdaTypesTester.h"
 #include <deque>
 #include <list>
 
@@ -28,6 +30,8 @@ using cluster::test::types::ArrayCollectionContainer;
 using cluster::test::types::CollectionContainer;
 using cluster::test::types::CollectionCreator;
 using cluster::test::types::LinearCollectionContainer;
+using cluster::test::types::PiLambdaTypesTester;
+using cluster::test::types::TypesPrinter;
 using cluster::utils::ConstIterable;
 using cluster::utils::ContiguousConstIterable;
 using cluster::utils::ContiguousIterable;
@@ -38,6 +42,7 @@ using cluster::utils::OutputIterator;
 using cluster::utils::ParallelDataIterator;
 using cluster::utils::RandomIterable;
 using cluster::utils::RandomIterator;
+using IteratorType = PiLambdaTypesTester<std::vector<double>>::IteratorType;
 
 const std::size_t ELEMENTS = 35717;
 const std::size_t COORDINATES = 2;
@@ -48,9 +53,12 @@ ParallelDataIterator<D>;
 
 class Tester {
 public:
-    Tester(const std::vector<std::size_t> &expectedPi, const std::vector<double> &expectedLambda) :
+    Tester(const std::vector<std::size_t> &expectedPi,
+           const std::vector<double> &expectedLambda,
+           const int maxTypeNameLength) :
         expectedPi(expectedPi),
-        expectedLambda(expectedLambda) {
+        expectedLambda(expectedLambda),
+        maxTypeNameLength(maxTypeNameLength) {
     }
 
     template <ParallelDataIterator D>
@@ -64,6 +72,10 @@ public:
         std::vector<std::size_t>::iterator piIterator = pi.begin();
         std::vector<double>::iterator lambdaIterator = lambda.begin();
 
+        std::cout << std::setfill(' ') << std::setw(this->maxTypeNameLength) << data.first;
+        std::cout << " | ";
+        std::cout.flush();
+
         ParallelClustering<true, true, true>::cluster<DistanceComputers::CLASSICAL>(
                 data.second, ELEMENTS, COORDINATES, piIterator, lambdaIterator, 6, 6, 6);
 
@@ -75,14 +87,13 @@ public:
                                                    this->expectedPi.cend(),
                                                    this->expectedLambda.cbegin(),
                                                    this->expectedLambda.cend());
-        std::cout << data.first << " : " << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m"
-                  << std::endl;
+        std::cout << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m" << std::endl;
     }
 
     template <typename D>
     void performNotCompilableParallelTest(std::pair<std::string, D> &data) {
 
-        staticCheck(data.first, data.second);
+        staticCheck(data.first, data.second, this->maxTypeNameLength);
     }
 
     template <typename D, typename... Ps, typename... NPs, typename... Ls, typename... NLs>
@@ -202,10 +213,12 @@ private:
     }
 
     template <NotParallelDataIterator D>
-    static void staticCheck(const std::string &name, const D &data) {
+    static void staticCheck(const std::string &name, const D &data, int maxTypeNameLength) {
 
-        std::cout << name << " : "
-                  << "OK" << std::endl;
+        std::cout << std::setfill(' ') << std::setw(maxTypeNameLength) << name;
+        std::cout << " | ";
+        std::cout << ((!NotParallelDataIterator<D>) ? "\033[34mOK" : "\033[31mError") << "\033[0m"
+                  << std::endl;
     }
 
     template <bool C, typename D, typename P, std::size_t LI, typename... Ls>
@@ -324,14 +337,10 @@ private:
 
     const std::vector<std::size_t> &expectedPi;
     const std::vector<double> &expectedLambda;
+    const int maxTypeNameLength;
 };
 
-template <typename T>
-concept A = requires(T iterator) {
-                { iterator.begin() } -> std::contiguous_iterator<>;
-            };
-
-void performPiLambdaTest(Tester &tester, const std::vector<double> &data);
+void performPiLambdaTest(PiLambdaTypesTester<std::vector<double>> &tester);
 void performContainersTest(const std::vector<double> &parsedData, Tester &tester);
 
 int main() {
@@ -357,17 +366,61 @@ int main() {
     expectedLambda.resize(ELEMENTS);
 
     std::cout << "Running sequential implementation to check the results" << std::endl;
-    SequentialClustering::cluster(
+    /*SequentialClustering::cluster(
             ContiguousDoubleMemoryDataIterator(&(parsedData.cbegin()[0]), COORDINATES),
             ELEMENTS,
             COORDINATES,
             expectedPi.begin(),
-            expectedLambda.begin());
-    // TODO:DataReader::readPiLambda("../../out/birm-p-11-results.txt", expectedPi, expectedLambda);
-    Tester tester{expectedPi, expectedLambda};
+            expectedLambda.begin());*/
+    DataReader::readPiLambda("../../out/birm-p-11-results.txt", expectedPi, expectedLambda);
+
+    // Longest type: std::array<std::size_t, ELEMENTS>::const_iterator
+    const constexpr int maxPiLength = 49;
+    // Longest type: std::array<double, ELEMENTS>::const_iterator
+    const constexpr int maxLambdaLength = 44;
+
+    std::cout << std::endl;
+    std::cout << std::left << std::setfill(' ') << std::setw(maxPiLength) << "pi";
+    std::cout << " | ";
+    std::cout << std::left << std::setfill(' ') << std::setw(maxLambdaLength) << "lambda";
+    std::cout << " | Result" << std::endl;
+
+    PiLambdaTypesTester<std::vector<double>> piLambdaTypesTester{parsedData,
+                                                                 ELEMENTS,
+                                                                 COORDINATES,
+                                                                 maxPiLength,
+                                                                 maxLambdaLength,
+                                                                 expectedPi,
+                                                                 expectedLambda};
 
     // performContainersTest(parsedData, tester);
-    performPiLambdaTest(tester, parsedData);
+    performPiLambdaTest(piLambdaTypesTester);
+
+    // Longest type: std::vector<AlignedArray<double, N, AVX_ALIGNMENT>>
+
+    /* std::cout << TypesPrinter::getTypeName<double>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<std::size_t>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<double *>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<std::vector<double>>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<std::list<double>>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<std::deque<double>>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<std::vector<std::list<double>>>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<std::array<double, 1000>>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<
+                          std::array<std::vector<std::array<std::size_t, 10>>, 1000>>()
+               << std::endl;
+     std::cout << TypesPrinter::getTypeName<
+                          std::array<std::vector<std::array<std::size_t, 10> *>, 1000> *>()
+               << std::endl;
+     std::cout << TypesPrinter::getTypeName<std::vector<double>::const_iterator>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<
+                          std::vector<std::array<std::list<double>::const_iterator *,
+                                                 1000>::const_iterator>::const_iterator>()
+               << std::endl;
+     std::cout << TypesPrinter::getTypeName<std::array<const double, 1000>>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<AlignedArray<double, 1000, 32>>() << std::endl;
+     std::cout << TypesPrinter::getTypeName<AlignedArray<double, 1000, 16>>() << std::endl;
+ */
 
     return 0;
 }
@@ -480,7 +533,7 @@ void performContainersTest(const std::vector<double> &parsedData, Tester &tester
     */
 }
 
-void performPiLambdaTest(Tester &tester, const std::vector<double> &data) {
+void performPiLambdaTest(PiLambdaTypesTester<std::vector<double>> &tester) {
 
     auto *piCArray = new std::size_t[ELEMENTS];
     std::array<std::size_t, ELEMENTS> piArray{};
@@ -493,33 +546,6 @@ void performPiLambdaTest(Tester &tester, const std::vector<double> &data) {
     AlignedArray<std::size_t, ELEMENTS, 16> piSseArray{};
     AlignedArray<std::size_t, ELEMENTS, 32> piAvxArray{};
 
-    std::pair<std::string, std::size_t *&> piCArrayPair = {"std::size_t *", piCArray};
-
-    std::pair<std::string, std::array<std::size_t, ELEMENTS> &> piArrayPair{
-            "std::array<std::size_t, ELEMENTS>", piArray};
-    std::pair<std::string, std::array<std::size_t, ELEMENTS>::iterator> piArrayIteratorPair{
-            "std::array<std::size_t, ELEMENTS>::iterator", piArray.begin()};
-
-    std::pair<std::string, std::vector<std::size_t> &> piVectorPair{"std::vector<std::size_t>",
-                                                                    piVector};
-    std::pair<std::string, std::vector<std::size_t>::iterator> piVectorIteratorPair{
-            "std::vector<std::size_t>::iterator", piVector.begin()};
-
-    std::pair<std::string, std::list<std::size_t> &> piListPair{"std::list<std::size_t>", piList};
-    std::pair<std::string, std::list<std::size_t>::iterator> piListIteratorPair{
-            "std::list<std::size_t>::iterator", piList.begin()};
-
-    std::pair<std::string, std::deque<std::size_t> &> piDequePair{"std::deque<std::size_t>",
-                                                                  piDeque};
-    std::pair<std::string, std::deque<std::size_t>::iterator> piDequeIteratorPair{
-            "std::deque<std::size_t>::iterator", piDeque.begin()};
-
-    std::pair<std::string, AlignedArray<std::size_t, ELEMENTS, 16> &> piSseArrayPair{
-            "AlignedArray<std::size_t, ELEMENTS, 16>", piSseArray};
-
-    std::pair<std::string, AlignedArray<std::size_t, ELEMENTS, 32> &> piAvxArrayPair{
-            "AlignedArray<std::size_t, ELEMENTS, 32>", piAvxArray};
-
     auto *lambdaCArray = new double[ELEMENTS];
     std::array<double, ELEMENTS> lambdaArray{};
     std::vector<double> lambdaVector{};
@@ -531,43 +557,48 @@ void performPiLambdaTest(Tester &tester, const std::vector<double> &data) {
     AlignedArray<double, ELEMENTS, 16> lambdaSseArray{};
     AlignedArray<double, ELEMENTS, 32> lambdaAvxArray{};
 
-    std::pair<std::string, double *&> lambdaCArrayPair = {"double *", lambdaCArray};
+    auto compilablePis = std::make_tuple(piCArray,
+                                         piArray,
+                                         piArray.begin(),
+                                         piVector,
+                                         piVector.begin(),
+                                         piDeque,
+                                         piDeque.begin(),
+                                         piSseArray,
+                                         piAvxArray);
+    auto notCompilablePis = std::make_tuple(piArray.cbegin(),
+                                            piVector.cbegin(),
+                                            piList,
+                                            piList.begin(),
+                                            piList.cbegin(),
+                                            piDeque.cbegin());
 
-    std::pair<std::string, std::array<double, ELEMENTS> &> lambdaArrayPair{
-            "std::array<double, ELEMENTS>", lambdaArray};
-    std::pair<std::string, std::array<double, ELEMENTS>::iterator> lambdaArrayIteratorPair{
-            "std::array<double, ELEMENTS>::iterator", lambdaArray.begin()};
+    auto compilableLambdas = std::make_tuple(lambdaCArray,
+                                             lambdaArray,
+                                             lambdaArray.begin(),
+                                             lambdaVector,
+                                             lambdaVector.begin(),
+                                             lambdaDeque,
+                                             lambdaDeque.begin(),
+                                             lambdaSseArray,
+                                             lambdaAvxArray);
+    auto notCompilableLambdas = std::make_tuple(lambdaList,
+                                                lambdaList.begin(),
+                                                lambdaArray.cbegin(),
+                                                lambdaVector.cbegin(),
+                                                lambdaList.cbegin(),
+                                                lambdaDeque.cbegin());
 
-    std::pair<std::string, std::vector<double> &> lambdaVectorPair{"std::vector<double>",
-                                                                   lambdaVector};
-    std::pair<std::string, std::vector<double>::iterator> lambdaVectorIteratorPair{
-            "std::vector<double>::iterator", lambdaVector.begin()};
+    tester.testAllPermutations(
+            compilablePis, notCompilablePis, compilableLambdas, notCompilableLambdas);
 
-    std::pair<std::string, std::list<double> &> lambdaListPair{"std::list<double>", lambdaList};
-    std::pair<std::string, std::list<double>::iterator> lambdaListIteratorPair{
-            "std::list<double>::iterator", lambdaList.begin()};
+    std::cout << "Test terminated" << std::endl;
 
-    std::pair<std::string, std::deque<double> &> lambdaDequePair{"std::deque<double>", lambdaDeque};
-    std::pair<std::string, std::deque<double>::iterator> lambdaDequeIteratorPair{
-            "std::deque<double>::iterator", lambdaDeque.begin()};
-
-    std::pair<std::string, AlignedArray<double, ELEMENTS, 16> &> lambdaSseArrayPair{
-            "AlignedArray<double, ELEMENTS, 16>", lambdaSseArray};
-
-    std::pair<std::string, AlignedArray<double, ELEMENTS, 32> &> lambdaAvxArrayPair{
-            "AlignedArray<double, ELEMENTS, 32>", lambdaAvxArray};
-
-    std::cout << std::endl;
-    std::cout << std::left << std::setfill(' ') << std::setw(43) << "pi";
-    std::cout << " | ";
-    std::cout << std::left << std::setfill(' ') << std::setw(38) << "lambda";
-    std::cout << " | Result" << std::endl;
-
-    tester.performAllPermutationTests(data,
+    /*tester.performAllPermutationTests(data,
                                       ELEMENTS,
-                                      43,
-                                      38,
-                                      std::make_tuple(piCArrayPair,
+                                      maxPiLength,
+                                      maxLambdaLength,
+                                      std::make_tuple(/piCArrayPair,
                                                       piArrayPair,
                                                       piArrayIteratorPair,
                                                       piVectorPair,
@@ -575,8 +606,13 @@ void performPiLambdaTest(Tester &tester, const std::vector<double> &data) {
                                                       piDequePair,
                                                       piDequeIteratorPair,
                                                       piSseArrayPair,
-                                                      piAvxArrayPair),
-                                      std::make_tuple(piListPair, piListIteratorPair),
+                                                      piAvxArrayPair/
+                                                      piArrayConstIteratorPair),
+                                      std::make_tuple(piListPair,
+                                                      piListIteratorPair,
+                                                      piArrayConstIteratorPair,
+                                                      piVectorConstIteratorPair,
+                                                      piDequeConstIteratorPair),
                                       std::make_tuple(lambdaCArrayPair,
                                                       lambdaArrayPair,
                                                       lambdaArrayIteratorPair,
@@ -586,5 +622,8 @@ void performPiLambdaTest(Tester &tester, const std::vector<double> &data) {
                                                       lambdaDequeIteratorPair,
                                                       lambdaSseArrayPair,
                                                       lambdaAvxArrayPair),
-                                      std::make_tuple(lambdaListPair, lambdaListIteratorPair));
+                                      std::make_tuple(lambdaListPair, lambdaListIteratorPair));*/
+
+    delete[] piCArray;
+    delete[] lambdaCArray;
 }

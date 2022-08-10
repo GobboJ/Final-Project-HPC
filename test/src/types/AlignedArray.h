@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <memory>
 #include <cstring>
+#include <cassert>
 
 namespace cluster::test::types {
 
@@ -17,6 +18,9 @@ namespace cluster::test::types {
 template <typename T, std::size_t N, std::size_t A>
 class AlignedArray {
 
+public:
+    using value_type = T;
+    
 private:
     template <std::size_t M>
     static constexpr bool powerOfTwo() {
@@ -39,6 +43,8 @@ public:
         std::size_t size = (N + A) * sizeof(T);
 
         this->data = static_cast<T *>(std::align(A, N * sizeof(T), fullDataPointer, size));
+        
+        assert(size >= N);
     }
 
     AlignedArray(const AlignedArray<T, N, A> &other) : fullData{new T[N + A]}, data{nullptr} {
@@ -50,6 +56,8 @@ public:
         std::size_t size = (N + A) * sizeof(T);
 
         this->data = static_cast<T *>(std::align(A, N * sizeof(T), fullDataPointer, size));
+        
+        assert(size >= N);
     }
 
     AlignedArray &operator= (const AlignedArray<T, N, A> &other) {
@@ -58,10 +66,12 @@ public:
 
             void *fullDataPointer = this->fullData;
 
-            this->size = (N + A) * sizeof(T);
+            std::size_t size = (N + A) * sizeof(T);
 
             this->data =
-                    static_cast<T *>(std::align(A, N * sizeof(T), fullDataPointer, this->size));
+                    static_cast<T *>(std::align(A, N * sizeof(T), fullDataPointer, size));
+            
+            assert(size >= N);
         }
 
         return *this;
@@ -72,6 +82,8 @@ public:
     }
 
     T &operator[] (std::size_t index) {
+
+        assert(index < N);
         return data[index];
     }
 

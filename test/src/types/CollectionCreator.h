@@ -44,21 +44,21 @@ public:
         }
 
         // Initialize the iterators
-        container.arrayIterator.second = container.array.second.cbegin();
-        container.vectorIterator.second = container.vector.second.cbegin();
-        container.listIterator.second = container.list.second.cbegin();
-        container.dequeIterator.second = container.deque.second.cbegin();
+        container.arrayConstIterator.second = container.array.second.cbegin();
+        container.vectorConstIterator.second = container.vector.second.cbegin();
+        container.listConstIterator.second = container.list.second.cbegin();
+        container.dequeConstIterator.second = container.deque.second.cbegin();
 
         // Set the names
         container.cArray.first = "double *";
         container.array.first = "std::array<double, ND>";
-        container.arrayIterator.first = "std::array<double, ND>::const_iterator";
+        container.arrayConstIterator.first = "std::array<double, ND>::const_iterator";
         container.vector.first = "std::vector<double>";
-        container.vectorIterator.first = "std::vector<double>::const_iterator";
+        container.vectorConstIterator.first = "std::vector<double>::const_iterator";
         container.list.first = "std::list<double>";
-        container.listIterator.first = "std::list<double>::const_iterator";
+        container.listConstIterator.first = "std::list<double>::const_iterator";
         container.deque.first = "std::deque<double>";
-        container.dequeIterator.first = "std::deque<double>::const_iterator";
+        container.dequeConstIterator.first = "std::deque<double>::const_iterator";
         container.sseAlignedArray.first = "AlignedArray<double, ND, SSE_ALIGNMENT>";
         container.avxAlignedArray.first = "AlignedArray<double, ND, AVX_ALIGNMENT>";
     }
@@ -131,11 +131,11 @@ private:
     static void initIterators(
             C &container, const std::string &nameBegin, const std::string &nameEnd) {
         // Set the iterators
-        container.cArrayIterator.second = container.cArray.second.cbegin();
-        container.arrayIterator.second = container.array.second.cbegin();
-        container.vectorIterator.second = container.vector.secondcbegin();
-        container.listIterator.second = container.list.second.cbegin();
-        container.dequeIterator.second = container.deque.second.cbegin();
+        container.cArrayConstIterator.second = container.cArray.second.cbegin();
+        container.arraysConstIterator.second = container.array.second.cbegin();
+        container.vectorsConstIterator.second = container.vector.secondcbegin();
+        container.listsConstIterator.second = container.list.second.cbegin();
+        container.dequesConstIterator.second = container.deque.second.cbegin();
 
         setNames(container, nameBegin, nameEnd);
     }
@@ -144,27 +144,29 @@ private:
     static void setNames(C &container, const std::string &nameBegin, const std::string &nameEnd) {
         // Set the names
         container.cArray.first = nameBegin + "double *" + nameEnd;
-        container.cArrayIterator.first = nameBegin + "double *" + nameEnd + "::const_iterator";
+        container.cArrayConstIterator.first = nameBegin + "double *" + nameEnd + "::const_iterator";
 
         container.array.first = nameBegin + "std::array<double, N>";
-        container.arrayIterator.first = nameBegin + "std::array<double, N>" + "::const_iterator";
-        container.iteratorArray.first = nameBegin + "std::array<double, N>::iterator>" + nameEnd;
+        container.arraysConstIterator.first =
+                nameBegin + "std::array<double, N>" + "::const_iterator";
+        container.constIteratorsArray.first =
+                nameBegin + "std::array<double, N>::iterator>" + nameEnd;
 
         container.vector.first = nameBegin + "std::vector<double>" + nameEnd;
-        container.vectorIterator.first =
+        container.vectorsIterator.first =
                 nameBegin + "std::vector<double>" + nameEnd + "::const_iterator";
-        container.iteratorVector.first = nameBegin + "std::vector<double>::iterator" + nameEnd;
+        container.constIteratorsVector.first =
+                nameBegin + "std::vector<double>::iterator" + nameEnd;
 
         container.list.first = nameBegin + "std::list<double>" + nameEnd;
-        container.listIterator.first =
+        container.listsConstIterator.first =
                 nameBegin + "std::list<double>" + nameEnd + "::const_iterator";
-        container.iteratorList.first = nameBegin + "std::list<double>::iterator" + nameEnd;
+        container.constIteratorsList.first = nameBegin + "std::list<double>::iterator" + nameEnd;
 
         container.deque.first = nameBegin + "std::deque<double>" + nameEnd;
-        container.dequeIterator.first =
+        container.dequesConstIterator.first =
                 nameBegin + "std::deque<double>" + nameEnd + "::const_iterator";
-        container.iteratorDeque.first =
-                nameBegin + "double*>std::deque<double>::iterator" + nameEnd;
+        container.constIteratorsDeque.first = nameBegin + "std::deque<double>::iterator" + nameEnd;
 
         container.sseAlignedArray.first =
                 nameBegin + "AlignedArray<double, N, SSE_ALIGNMENT>" + nameEnd;
@@ -198,16 +200,16 @@ private:
         container.cArray.second.emplace_back(cArrayPoint);
 
         const auto &addedArrayElement = container.array.second.emplace_back(arrayPoint);
-        container.iteratorArray.second.emplace_back(addedArrayElement.cbegin());
+        container.constIteratorsArray.second.emplace_back(addedArrayElement.cbegin());
 
         const auto &addedVectorElement = container.vector.second.emplace_back(vectorPoint);
-        container.iteratorVector.second.emplace_back(addedVectorElement.cbegin());
+        container.constIteratorsVector.second.emplace_back(addedVectorElement.cbegin());
 
         const auto &addedListElement = container.list.second.emplace_back(listPoint);
-        container.iteratorList.second.emplace_back(addedListElement.cbegin());
+        container.constIteratorsList.second.emplace_back(addedListElement.cbegin());
 
         const auto &addedDequeElement = container.deque.second.emplace_back(dequePoint);
-        container.iteratorDeque.second.emplace_back(addedDequeElement.cbegin());
+        container.constIteratorsDeque.second.emplace_back(addedDequeElement.cbegin());
 
         container.sseAlignedArray.second.emplace_back(sseAlignedArray);
         container.avxAlignedArray.second.emplace_back(avxAlignedArray);
@@ -239,16 +241,16 @@ private:
         container.cArray.second[index] = cArrayPoint;
 
         container.array.second[index] = arrayPoint;
-        container.iteratorArray.second[index] = container.array.second[index].cbegin();
+        container.constIteratorsArray.second[index] = container.array.second[index].cbegin();
 
         container.vector.second[index] = vectorPoint;
-        container.iteratorVector.second[index] = container.vector.second[index].cbegin();
+        container.constIteratorsVector.second[index] = container.vector.second[index].cbegin();
 
         container.list.second[index] = listPoint;
-        container.iteratorList.second[index] = container.list.second[index].cbegin();
+        container.constIteratorsList.second[index] = container.list.second[index].cbegin();
 
         container.deque.second[index] = dequePoint;
-        container.iteratorDeque.second[index] = container.deque.second[index].cbegin();
+        container.constIteratorsDeque.second[index] = container.deque.second[index].cbegin();
 
         container.sseAlignedArray.second[index] = sseAlignedArray;
         container.avxAlignedArray.second[index] = avxAlignedArray;

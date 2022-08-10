@@ -29,7 +29,7 @@ concept Iterable = requires(I iterator) {
 
 template <typename I, typename T>
 concept ConstIterable = requires(I iterator) {
-                            iterator.begin();
+                            iterator.cbegin();
                             { *(iterator.cbegin()) } -> std::convertible_to<const T>;
                         };
 
@@ -37,28 +37,31 @@ template <typename I, typename T>
 concept RandomIterator = std::random_access_iterator<I> && InputIterator<I, T>;
 
 template <typename I, typename T>
-concept RandomIterable = Iterable<I, T> && requires(I iterator) {
-                                               {
-                                                   iterator.begin()
-                                                   } -> std::random_access_iterator<>;
-                                           };
+concept RandomIterable =
+        Iterable<std::remove_reference_t<I>, T> && requires(I iterator) {
+                                                       {
+                                                           iterator.begin()
+                                                           } -> std::random_access_iterator<>;
+                                                   };
 
 template <typename I, typename T>
 concept ContiguousIterator = std::contiguous_iterator<I> && InputIterator<I, T>;
 
 template <typename I, typename T>
-concept ContiguousIterable = Iterable<I, T> && requires(I iterator) {
-                                                   {
-                                                       iterator.begin()
-                                                       } -> std::contiguous_iterator<>;
-                                               };
+concept ContiguousIterable =
+        Iterable<std::remove_reference_t<I>, T> && requires(I iterator) {
+                                                       {
+                                                           iterator.begin()
+                                                           } -> std::contiguous_iterator<>;
+                                                   };
 
 template <typename I, typename T>
-concept ContiguousConstIterable = ConstIterable<I, T> && requires(I iterator) {
-                                                             {
-                                                                 iterator.cbegin()
-                                                                 } -> std::contiguous_iterator<>;
-                                                         };
+concept ContiguousConstIterable =
+        ConstIterable<std::remove_reference_t<I>, T> && requires(I iterator) {
+                                                            {
+                                                                iterator.cbegin()
+                                                                } -> std::contiguous_iterator<>;
+                                                        };
 
 /*
  *
@@ -74,12 +77,16 @@ concept ParallelDataIterator = ContiguousIterator<I, double> || ContiguousIterab
                                ContiguousConstIterable<I, double>;
 
 template <typename I>
-concept PiIterator = (RandomIterator<I, std::size_t> && OutputIterator<I, std::size_t>) ||
-                     (RandomIterable<I, std::size_t> && OutputIterable<I, std::size_t>);
+concept PiIterator = (RandomIterator<std::remove_reference_t<I>, std::size_t> &&
+                      OutputIterator<std::remove_reference_t<I>, std::size_t>) ||
+                     (RandomIterable<std::remove_reference_t<I>, std::size_t> &&
+                      OutputIterable<std::remove_reference_t<I>, std::size_t>);
 
 template <typename I>
-concept LambdaIterator = (RandomIterator<I, double> && OutputIterator<I, double>) ||
-                         (RandomIterable<I, double> && OutputIterable<I, double>);
+concept LambdaIterator = (RandomIterator<std::remove_reference_t<I>, double> &&
+                          OutputIterator<std::remove_reference_t<I>, double>) ||
+                         (RandomIterable<std::remove_reference_t<I>, double> &&
+                          OutputIterable<std::remove_reference_t<I>, double>);
 
 /*
  *
