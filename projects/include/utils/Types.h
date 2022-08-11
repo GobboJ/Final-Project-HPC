@@ -73,8 +73,9 @@ concept ContiguousConstIterable =
  */
 
 template <typename I>
-concept ParallelDataIterator = ContiguousIterator<I, double> || ContiguousIterable<I, double> ||
-                               ContiguousConstIterable<I, double>;
+concept ParallelDataIterator = ContiguousIterator<std::remove_cvref_t<I>, const double> ||
+                               ContiguousIterable<std::remove_cvref_t<I>, const double> ||
+                               ContiguousConstIterable<std::remove_cvref_t<I>, const double>;
 
 template <typename I>
 concept PiIterator = (RandomIterator<std::remove_reference_t<I>, std::size_t> &&

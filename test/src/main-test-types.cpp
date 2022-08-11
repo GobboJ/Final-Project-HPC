@@ -16,6 +16,7 @@
 #include "types/CollectionCreator.h"
 #include "types/TypesPrinter.h"
 #include "types/PiLambdaTypesTester.h"
+#include "types/DataTypesTester.h"
 #include <deque>
 #include <list>
 
@@ -29,6 +30,7 @@ using cluster::test::types::AlignedArray;
 using cluster::test::types::ArrayCollectionContainer;
 using cluster::test::types::CollectionContainer;
 using cluster::test::types::CollectionCreator;
+using cluster::test::types::DataTypesTester;
 using cluster::test::types::LinearCollectionContainer;
 using cluster::test::types::PiLambdaTypesTester;
 using cluster::test::types::TypesPrinter;
@@ -96,122 +98,7 @@ public:
         staticCheck(data.first, data.second, this->maxTypeNameLength);
     }
 
-    template <typename D, typename... Ps, typename... NPs, typename... Ls, typename... NLs>
-    void performAllPermutationTests(
-            const D &data,
-            std::size_t dataElementsCount,
-            const int maxPiNameLength,
-            const int maxLambdaNameLength,
-            std::tuple<std::pair<std::string, Ps>...> compilablePis,
-            std::tuple<std::pair<std::string, NPs>...> notCompilablePis,
-            std::tuple<std::pair<std::string, Ls>...> compilableLambdas,
-            std::tuple<std::pair<std::string, NLs>...> notCompilableLambdas) {
-
-        performAllCompilablePermutationTests<D, 0>(data,
-                                                   dataElementsCount,
-                                                   maxPiNameLength,
-                                                   maxLambdaNameLength,
-                                                   compilablePis,
-                                                   compilableLambdas,
-                                                   notCompilableLambdas);
-
-        performAllNotCompilablePermutationTests<D, 0>(data,
-                                                      dataElementsCount,
-                                                      maxPiNameLength,
-                                                      maxLambdaNameLength,
-                                                      notCompilablePis,
-                                                      compilableLambdas,
-                                                      notCompilableLambdas);
-    }
-
 private:
-    template <typename D, std::size_t PI, typename... Ps, typename... Ls, typename... NLs>
-    void performAllCompilablePermutationTests(
-            const D &data,
-            std::size_t dataElementsCount,
-            const int maxPiNameLength,
-            const int maxLambdaNameLength,
-            std::tuple<std::pair<std::string, Ps>...> compilablePis,
-            std::tuple<std::pair<std::string, Ls>...> compilableLambdas,
-            std::tuple<std::pair<std::string, NLs>...> notCompilableLambdas) {
-
-        if constexpr (PI < sizeof...(Ps)) {
-            auto &current = std::get<PI>(compilablePis);
-            auto &pi = current.second;
-            performPiLambdaPermutationTest<true, D, decltype(pi)>(data,
-                                                                  dataElementsCount,
-                                                                  current.first,
-                                                                  maxPiNameLength,
-                                                                  maxLambdaNameLength,
-                                                                  pi,
-                                                                  compilableLambdas,
-                                                                  notCompilableLambdas);
-
-            performAllCompilablePermutationTests<D, PI + 1>(data,
-                                                            dataElementsCount,
-                                                            maxPiNameLength,
-                                                            maxLambdaNameLength,
-                                                            compilablePis,
-                                                            compilableLambdas,
-                                                            notCompilableLambdas);
-        }
-    }
-
-    template <typename D, std::size_t PI, typename... NPs, typename... Ls, typename... NLs>
-    void performAllNotCompilablePermutationTests(
-            const D &data,
-            std::size_t dataElementsCount,
-            const int maxPiNameLength,
-            const int maxLambdaNameLength,
-            std::tuple<std::pair<std::string, NPs>...> notCompilablePis,
-            std::tuple<std::pair<std::string, Ls>...> compilableLambdas,
-            std::tuple<std::pair<std::string, NLs>...> notCompilableLambdas) {
-
-        if constexpr (PI < sizeof...(NPs)) {
-            auto &current = std::get<PI>(notCompilablePis);
-            auto &pi = current.second;
-            performPiLambdaPermutationTest<false, D, decltype(pi)>(data,
-                                                                   dataElementsCount,
-                                                                   current.first,
-                                                                   maxPiNameLength,
-                                                                   maxLambdaNameLength,
-                                                                   pi,
-                                                                   compilableLambdas,
-                                                                   notCompilableLambdas);
-
-            performAllNotCompilablePermutationTests<D, PI + 1>(data,
-                                                               dataElementsCount,
-                                                               maxPiNameLength,
-                                                               maxLambdaNameLength,
-                                                               notCompilablePis,
-                                                               compilableLambdas,
-                                                               notCompilableLambdas);
-        }
-    }
-
-    template <bool C, typename D, typename P, typename... Ls, typename... NLs>
-    void performPiLambdaPermutationTest(
-            const D &data,
-            std::size_t dataElementsCount,
-            const std::string &name,
-            const int maxPiNameLength,
-            const int maxLambdaNameLength,
-            P &pi,
-            std::tuple<std::pair<std::string, Ls>...> compilableLambdas,
-            std::tuple<std::pair<std::string, NLs>...> notCompilableLambdas) {
-
-        performCompilablePiLambdaPermutationTest<C, D, P, 0>(data,
-                                                             dataElementsCount,
-                                                             name,
-                                                             maxPiNameLength,
-                                                             maxLambdaNameLength,
-                                                             pi,
-                                                             compilableLambdas);
-
-        performNotCompilablePiLambdaPermutationTest<C, D, P, 0>(
-                data, name, maxPiNameLength, maxLambdaNameLength, pi, notCompilableLambdas);
-    }
-
     template <NotParallelDataIterator D>
     static void staticCheck(const std::string &name, const D &data, int maxTypeNameLength) {
 
@@ -221,127 +108,17 @@ private:
                   << std::endl;
     }
 
-    template <bool C, typename D, typename P, std::size_t LI, typename... Ls>
-    void performCompilablePiLambdaPermutationTest(
-            const D &data,
-            std::size_t dataElementsCount,
-            const std::string &name,
-            const int maxPiNameLength,
-            const int maxLambdaNameLength,
-            P &pi,
-            std::tuple<std::pair<std::string, Ls>...> &compilableLambdas) {
-
-        if constexpr (LI < sizeof...(Ls)) {
-            auto &currentElement = std::get<LI>(compilableLambdas);
-            auto &lambda = currentElement.second;
-            std::cout << std::setfill(' ') << std::setw(maxPiNameLength) << name;
-            std::cout << " | ";
-            std::cout << std::setfill(' ') << std::setw(maxLambdaNameLength)
-                      << currentElement.first;
-            std::cout << " | ";
-            std::cout.flush();
-
-            if constexpr (C) {
-                ParallelClustering<true, true, true>::cluster<DistanceComputers::CLASSICAL>(
-                        data, ELEMENTS, COORDINATES, pi, lambda, 6, 6, 6);
-
-                bool result;
-                if constexpr (cluster::utils::ConstIterable<P, std::size_t>) {
-                    if constexpr (cluster::utils::ConstIterable<decltype(lambda), double>) {
-                        result = ResultsChecker::checkResults(pi.cbegin(),
-                                                              pi.cend(),
-                                                              lambda.cbegin(),
-                                                              lambda.cend(),
-                                                              this->expectedPi.cbegin(),
-                                                              this->expectedPi.cend(),
-                                                              this->expectedLambda.cbegin(),
-                                                              this->expectedLambda.cend());
-                    } else {
-                        result = ResultsChecker::checkResults(pi.cbegin(),
-                                                              pi.cend(),
-                                                              lambda,
-                                                              lambda + dataElementsCount,
-                                                              this->expectedPi.cbegin(),
-                                                              this->expectedPi.cend(),
-                                                              this->expectedLambda.cbegin(),
-                                                              this->expectedLambda.cend());
-                    }
-                } else {
-                    if constexpr (cluster::utils::ConstIterable<decltype(lambda), double>) {
-                        result = ResultsChecker::checkResults(pi,
-                                                              pi + dataElementsCount,
-                                                              lambda.cbegin(),
-                                                              lambda.cend(),
-                                                              this->expectedPi.cbegin(),
-                                                              this->expectedPi.cend(),
-                                                              this->expectedLambda.cbegin(),
-                                                              this->expectedLambda.cend());
-                    } else {
-                        result = ResultsChecker::checkResults(pi,
-                                                              pi + dataElementsCount,
-                                                              lambda,
-                                                              lambda + dataElementsCount,
-                                                              this->expectedPi.cbegin(),
-                                                              this->expectedPi.cend(),
-                                                              this->expectedLambda.cbegin(),
-                                                              this->expectedLambda.cend());
-                    }
-                }
-
-                std::cout << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m" << std::endl;
-            } else {
-                static_assert(!cluster::utils::PiIterator<P>,
-                              "Pi seems to have a correct type, but it has not");
-
-                std::cout << ((!C) ? "\033[34mOK" : "\033[31mError") << "\033[0m" << std::endl;
-            }
-            performCompilablePiLambdaPermutationTest<C, D, P, LI + 1, Ls...>(data,
-                                                                             dataElementsCount,
-                                                                             name,
-                                                                             maxPiNameLength,
-                                                                             maxLambdaNameLength,
-                                                                             pi,
-                                                                             compilableLambdas);
-        }
-    }
-
-    template <bool C, typename D, typename P, std::size_t NLI, typename... NLs>
-    void performNotCompilablePiLambdaPermutationTest(
-            const D &data,
-            const std::string &name,
-            const int maxPiNameLength,
-            const int maxLambdaNameLength,
-            P &pi,
-            std::tuple<std::pair<std::string, NLs>...> &notCompilableLambdas) {
-
-        if constexpr (NLI < sizeof...(NLs)) {
-            static_assert(
-                    !cluster::utils::LambdaIterator<std::tuple_element<NLI, std::tuple<NLs...>>>,
-                    "Lambda seems to have a correct type, but it has not");
-
-            std::cout << std::setfill(' ') << std::setw(maxPiNameLength) << name;
-            std::cout << " | ";
-            std::cout << std::setfill(' ') << std::setw(maxLambdaNameLength)
-                      << std::get<NLI>(notCompilableLambdas).first;
-            std::cout << " | "
-                      << ((!cluster::utils::LambdaIterator<
-                                  std::tuple_element<NLI, std::tuple<NLs...>>>)
-                                  ? "\033[34mOK"
-                                  : "\033[31mError")
-                      << "\033[0m" << std::endl;
-
-            performNotCompilablePiLambdaPermutationTest<C, D, P, NLI + 1, NLs...>(
-                    data, name, maxPiNameLength, maxLambdaNameLength, pi, notCompilableLambdas);
-        }
-    }
-
     const std::vector<std::size_t> &expectedPi;
     const std::vector<double> &expectedLambda;
     const int maxTypeNameLength;
 };
 
-void performPiLambdaTest(PiLambdaTypesTester<std::vector<double>> &tester);
-void performContainersTest(const std::vector<double> &parsedData, Tester &tester);
+void testPiLambdaTypes(const std::vector<double> &parsedData,
+                       const std::vector<size_t> &expectedPi,
+                       const std::vector<double> &expectedLambda);
+void testParallelDataStructureTypes(const std::vector<double> &parsedData,
+                                    const std::vector<size_t> &expectedPi,
+                                    const std::vector<double> &expectedLambda);
 
 int main() {
 
@@ -361,42 +138,21 @@ int main() {
     }
 
     std::vector<size_t> expectedPi{};
-    expectedPi.resize(ELEMENTS);
+    expectedPi.resize(parsedData.size() / COORDINATES);
     std::vector<double> expectedLambda{};
-    expectedLambda.resize(ELEMENTS);
+    expectedLambda.resize(parsedData.size() / COORDINATES);
 
     std::cout << "Running sequential implementation to check the results" << std::endl;
     /*SequentialClustering::cluster(
             ContiguousDoubleMemoryDataIterator(&(parsedData.cbegin()[0]), COORDINATES),
-            ELEMENTS,
+            parsedData.size() / COORDINATES,
             COORDINATES,
             expectedPi.begin(),
             expectedLambda.begin());*/
     DataReader::readPiLambda("../../out/birm-p-11-results.txt", expectedPi, expectedLambda);
 
-    // Longest type: std::array<std::size_t, ELEMENTS>::const_iterator
-    const constexpr int maxPiLength = 49;
-    // Longest type: std::array<double, ELEMENTS>::const_iterator
-    const constexpr int maxLambdaLength = 44;
-
-    std::cout << std::endl;
-    std::cout << std::left << std::setfill(' ') << std::setw(maxPiLength) << "pi";
-    std::cout << " | ";
-    std::cout << std::left << std::setfill(' ') << std::setw(maxLambdaLength) << "lambda";
-    std::cout << " | Result" << std::endl;
-
-    PiLambdaTypesTester<std::vector<double>> piLambdaTypesTester{parsedData,
-                                                                 ELEMENTS,
-                                                                 COORDINATES,
-                                                                 maxPiLength,
-                                                                 maxLambdaLength,
-                                                                 expectedPi,
-                                                                 expectedLambda};
-
-    // performContainersTest(parsedData, tester);
-    performPiLambdaTest(piLambdaTypesTester);
-
-    // Longest type: std::vector<AlignedArray<double, N, AVX_ALIGNMENT>>
+    // testPiLambdaTypes(parsedData, expectedPi, expectedLambda);
+    testParallelDataStructureTypes(parsedData, expectedPi, expectedLambda);
 
     /* std::cout << TypesPrinter::getTypeName<double>() << std::endl;
      std::cout << TypesPrinter::getTypeName<std::size_t>() << std::endl;
@@ -425,7 +181,28 @@ int main() {
     return 0;
 }
 
-void performContainersTest(const std::vector<double> &parsedData, Tester &tester) {
+void testParallelDataStructureTypes(const std::vector<double> &parsedData,
+                                    const std::vector<size_t> &expectedPi,
+                                    const std::vector<double> &expectedLambda) {
+
+    // Longest type: std::vector<AlignedArray<double, N, AVX_ALIGNMENT>>
+    const constexpr std::size_t maxTypeLength = 51;
+    std::cout << std::endl;
+    std::cout << std::left << std::setfill(' ') << std::setw(maxTypeLength) << "Data structure";
+    std::cout << " | Result" << std::endl;
+
+    // Max result string: Error (should compile)
+    const constexpr std::size_t separatorLength = maxTypeLength + 3 + 22;
+
+    for (std::size_t i = 0; i < separatorLength; i++) {
+        std::cout << '-';
+    }
+    std::cout << std::endl;
+    
+    const std::size_t dataElementsCount = parsedData.size() / COORDINATES;
+    DataTypesTester dataTypesTester{
+            dataElementsCount, COORDINATES, expectedPi, expectedLambda, maxTypeLength};
+
     // Fill the linear structures
     LinearCollectionContainer<ELEMENTS * COORDINATES> linearContainer{};
     CollectionCreator::createLinearContainers<ELEMENTS * COORDINATES>(parsedData, linearContainer);
@@ -446,15 +223,23 @@ void performContainersTest(const std::vector<double> &parsedData, Tester &tester
 */
     // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
     // Perform linear tests
-    tester.performParallelTest(linearContainer.cArray);
-    tester.performParallelTest(linearContainer.array);
-    tester.performParallelTest(linearContainer.arrayIterator);
-    tester.performParallelTest(linearContainer.vector);
-    tester.performParallelTest(linearContainer.vectorIterator);
-    tester.performNotCompilableParallelTest(linearContainer.list);
-    tester.performNotCompilableParallelTest(linearContainer.listIterator);
-    tester.performNotCompilableParallelTest(linearContainer.deque);
-    tester.performNotCompilableParallelTest(linearContainer.dequeIterator);
+
+    auto compilableDataStructures = std::make_tuple(linearContainer.cArray,
+                                                    linearContainer.array,
+                                                    linearContainer.arrayIterator,
+                                                    linearContainer.arrayConstIterator,
+                                                    linearContainer.vector,
+                                                    linearContainer.vectorIterator,
+                                                    linearContainer.vectorConstIterator,
+                                                    /*TODO: linearContainer.deque,
+                                                    linearContainer.dequeIterator,
+                                                    linearContainer.dequeConstIterator,*/
+                                                    linearContainer.sseAlignedArray,
+                                                    linearContainer.avxAlignedArray);
+    auto notCompilableDataStructures = std::make_tuple(
+            linearContainer.list, linearContainer.listIterator, linearContainer.listConstIterator);
+
+    dataTypesTester.testParallelTypes(compilableDataStructures, notCompilableDataStructures);
 
     /*
 
@@ -533,27 +318,56 @@ void performContainersTest(const std::vector<double> &parsedData, Tester &tester
     */
 }
 
-void performPiLambdaTest(PiLambdaTypesTester<std::vector<double>> &tester) {
+void testPiLambdaTypes(const std::vector<double> &parsedData,
+                       const std::vector<size_t> &expectedPi,
+                       const std::vector<double> &expectedLambda) {
+    // Longest type: std::array<std::size_t, ELEMENTS>::const_iterator
+    const constexpr int maxPiLength = 49;
+    // Longest type: std::array<double, ELEMENTS>::const_iterator
+    const constexpr int maxLambdaLength = 44;
 
-    auto *piCArray = new std::size_t[ELEMENTS];
+    std::cout << std::endl;
+    std::cout << std::left << std::setfill(' ') << std::setw(maxPiLength) << "pi";
+    std::cout << " | ";
+    std::cout << std::left << std::setfill(' ') << std::setw(maxLambdaLength) << "lambda";
+    std::cout << " | Result" << std::endl;
+
+    // Max result string: Error (lambda should not compile)
+    const constexpr std::size_t separatorLength = maxPiLength + maxLambdaLength + 6 + 33;
+
+    for (std::size_t i = 0; i < separatorLength; i++) {
+        std::cout << '-';
+    }
+    std::cout << std::endl;
+
+    const std::size_t dataElementsCount = parsedData.size() / COORDINATES;
+    PiLambdaTypesTester<std::vector<double>> piLambdaTypesTester{parsedData,
+                                                                 dataElementsCount,
+                                                                 COORDINATES,
+                                                                 maxPiLength,
+                                                                 maxLambdaLength,
+                                                                 expectedPi,
+                                                                 expectedLambda};
+
+    auto *piCArray = new std::size_t[dataElementsCount];
     std::array<std::size_t, ELEMENTS> piArray{};
     std::vector<std::size_t> piVector{};
-    piVector.resize(ELEMENTS);
+    piVector.resize(dataElementsCount);
     std::list<std::size_t> piList{};
-    piList.resize(ELEMENTS);
+    piList.resize(dataElementsCount);
     std::deque<std::size_t> piDeque{};
-    piDeque.resize(ELEMENTS);
+    piDeque.resize(dataElementsCount);
     AlignedArray<std::size_t, ELEMENTS, 16> piSseArray{};
     AlignedArray<std::size_t, ELEMENTS, 32> piAvxArray{};
 
-    auto *lambdaCArray = new double[ELEMENTS];
+    auto *lambdaCArray = new double[dataElementsCount];
     std::array<double, ELEMENTS> lambdaArray{};
     std::vector<double> lambdaVector{};
-    lambdaVector.resize(ELEMENTS);
+    lambdaVector.resize(dataElementsCount);
     std::list<double> lambdaList{};
-    lambdaList.resize(ELEMENTS);
+    lambdaList.resize(dataElementsCount);
     std::deque<double> lambdaDeque{};
-    lambdaDeque.resize(ELEMENTS);
+    lambdaDeque.resize(dataElementsCount);
     AlignedArray<double, ELEMENTS, 16> lambdaSseArray{};
     AlignedArray<double, ELEMENTS, 32> lambdaAvxArray{};
 
@@ -589,7 +403,7 @@ void performPiLambdaTest(PiLambdaTypesTester<std::vector<double>> &tester) {
                                                 lambdaList.cbegin(),
                                                 lambdaDeque.cbegin());
 
-    tester.testAllPermutations(
+    piLambdaTypesTester.testAllPermutations(
             compilablePis, notCompilablePis, compilableLambdas, notCompilableLambdas);
 
     std::cout << "Test terminated" << std::endl;

@@ -28,32 +28,79 @@ private:
 
 public:
     LinearCollectionContainer() :
-        cArray{std::pair{"", new double[ND]}},
+        cArray{new double[ND]},
         array{},
         sseAlignedArray{},
         avxAlignedArray{} {
     }
 
-    std::pair<std::string, double *> cArray;
+    LinearCollectionContainer(const LinearCollectionContainer& other) :
+        cArray{new double[ND]},
+        array{other.array},
+        arrayIterator{other.arrayIterator},
+        arrayConstIterator{other.arrayConstIterator},
+        vector{other.vector},
+        vectorIterator{other.vectorIterator},
+        vectorConstIterator{other.vectorConstIterator},
+        list{other.list},
+        listIterator{other.listIterator},
+        listConstIterator{other.listConstIterator},
+        deque{other.deque},
+        dequeIterator{other.dequeIterator},
+        dequeConstIterator{other.dequeConstIterator},
+        sseAlignedArray{other.sseAlignedArray},
+        avxAlignedArray{other.avxAlignedArray} {
 
-    std::pair<std::string, std::array<double, ND>> array;
-    std::pair<std::string, typename std::array<double, ND>::iterator> arrayIterator;
-    std::pair<std::string, typename std::array<double, ND>::const_iterator> arrayConstIterator;
+        memcpy(this->cArray, other.cArray, ND * sizeof(double));
+    }
 
-    std::pair<std::string, std::vector<double>> vector;
-    std::pair<std::string, std::vector<double>::iterator> vectorIterator;
-    std::pair<std::string, std::vector<double>::const_iterator> vectorConstIterator;
+    LinearCollectionContainer& operator= (const LinearCollectionContainer& other) {
+        if (this != &other) {
+            delete[] this->cArray;
+            cArray = new double[ND];
+            memcpy(this->cArray, other.cArray, ND * sizeof(double));
 
-    std::pair<std::string, std::list<double>> list;
-    std::pair<std::string, std::list<double>::iterator> listIterator;
-    std::pair<std::string, std::list<double>::const_iterator> listConstIterator;
+            array = other.array;
+            arrayIterator = other.arrayIterator;
+            arrayConstIterator = other.arrayConstIterator;
+            vector = other.vector;
+            vectorIterator = other.vectorIterator;
+            vectorConstIterator = other.vectorConstIterator;
+            list = other.list;
+            listIterator = other.listIterator;
+            listConstIterator = other.listConstIterator;
+            deque = other.deque;
+            dequeIterator = other.dequeIterator;
+            dequeConstIterator = other.dequeConstIterator;
+            sseAlignedArray = other.sseAlignedArray;
+            avxAlignedArray = other.avxAlignedArray;
+        }
+    }
 
-    std::pair<std::string, std::deque<double>> deque;
-    std::pair<std::string, std::deque<double>::iterator> dequeIterator;
-    std::pair<std::string, std::deque<double>::const_iterator> dequeConstIterator;
+    ~LinearCollectionContainer() {
+        delete[] this->cArray;
+    }
 
-    std::pair<std::string, AlignedArray<double, ND, SSE_ALIGNMENT>> sseAlignedArray;
-    std::pair<std::string, AlignedArray<double, ND, AVX_ALIGNMENT>> avxAlignedArray;
+    double* cArray;
+
+    std::array<double, ND> array;
+    typename std::array<double, ND>::iterator arrayIterator;
+    typename std::array<double, ND>::const_iterator arrayConstIterator;
+
+    std::vector<double> vector;
+    std::vector<double>::iterator vectorIterator;
+    std::vector<double>::const_iterator vectorConstIterator;
+
+    std::list<double> list;
+    std::list<double>::iterator listIterator;
+    std::list<double>::const_iterator listConstIterator;
+
+    std::deque<double> deque;
+    std::deque<double>::iterator dequeIterator;
+    std::deque<double>::const_iterator dequeConstIterator;
+
+    AlignedArray<double, ND, SSE_ALIGNMENT> sseAlignedArray;
+    AlignedArray<double, ND, AVX_ALIGNMENT> avxAlignedArray;
 };
 
 }  // namespace cluster::test::types

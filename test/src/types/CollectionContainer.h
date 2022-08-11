@@ -25,36 +25,36 @@ private:
     static const constexpr std::size_t AVX_ALIGNMENT = 32;
 
 public:
-    std::pair<std::string, C<double *>> cArray;
-    std::pair<std::string, typename C<double *>::iterator> cArrayIterator;
-    std::pair<std::string, typename C<double *>::const_iterator> cArrayConstIterator;
+    C<double *> cArray;
+    typename C<double *>::iterator cArrayIterator;
+    typename C<double *>::const_iterator cArrayConstIterator;
 
-    std::pair<std::string, C<std::array<double, D>>> array;
-    std::pair<std::string, typename C<std::array<double, D>>::iterator> arraysIterator;
-    std::pair<std::string, typename C<std::array<double, D>>::const_iterator> arraysConstIterator;
-    std::pair<std::string, C<typename std::array<double, D>::iterator>> iteratorsArray;
-    std::pair<std::string, C<typename std::array<double, D>::const_iterator>> constIteratorsArray;
+    C<std::array<double, D>> array;
+    typename C<std::array<double, D>>::iterator arraysIterator;
+    typename C<std::array<double, D>>::const_iterator arraysConstIterator;
+    C<typename std::array<double, D>::iterator> iteratorsArray;
+    C<typename std::array<double, D>::const_iterator> constIteratorsArray;
 
-    std::pair<std::string, C<std::vector<double>>> vector;
-    std::pair<std::string, typename C<std::vector<double>>::iterator> vectorsIterator;
-    std::pair<std::string, typename C<std::vector<double>>::const_iterator> vectorsConstIterator;
-    std::pair<std::string, C<std::vector<double>::iterator>> iteratorsVector;
-    std::pair<std::string, C<std::vector<double>::const_iterator>> constIteratorsVector;
+    C<std::vector<double>> vector;
+    typename C<std::vector<double>>::iterator vectorsIterator;
+    typename C<std::vector<double>>::const_iterator vectorsConstIterator;
+    C<std::vector<double>::iterator> iteratorsVector;
+    C<std::vector<double>::const_iterator> constIteratorsVector;
 
-    std::pair<std::string, C<std::list<double>>> list;
-    std::pair<std::string, typename C<std::list<double>>::iterator> listsIterator;
-    std::pair<std::string, typename C<std::list<double>>::const_iterator> listsConstIterator;
-    std::pair<std::string, C<std::list<double>::iterator>> iteratorsList;
-    std::pair<std::string, C<std::list<double>::const_iterator>> constIteratorsList;
+    C<std::list<double>> list;
+    typename C<std::list<double>>::iterator listsIterator;
+    typename C<std::list<double>>::const_iterator listsConstIterator;
+    C<std::list<double>::iterator> iteratorsList;
+    C<std::list<double>::const_iterator> constIteratorsList;
 
-    std::pair<std::string, C<std::deque<double>>> deque;
-    std::pair<std::string, typename C<std::deque<double>>::iterator> dequesIterator;
-    std::pair<std::string, typename C<std::deque<double>>::const_iterator> dequesConstIterator;
-    std::pair<std::string, C<std::deque<double>::iterator>> iteratorsDeque;
-    std::pair<std::string, C<std::deque<double>::const_iterator>> constIteratorsDeque;
+    C<std::deque<double>> deque;
+    typename C<std::deque<double>>::iterator dequesIterator;
+    typename C<std::deque<double>>::const_iterator dequesConstIterator;
+    C<std::deque<double>::iterator> iteratorsDeque;
+    C<std::deque<double>::const_iterator> constIteratorsDeque;
 
-    std::pair<std::string, C<AlignedArray<double, D, SSE_ALIGNMENT>>> sseAlignedArray;
-    std::pair<std::string, C<AlignedArray<double, D, AVX_ALIGNMENT>>> avxAlignedArray;
+    C<AlignedArray<double, D, SSE_ALIGNMENT>> sseAlignedArray;
+    C<AlignedArray<double, D, AVX_ALIGNMENT>> avxAlignedArray;
 };
 
 }  // namespace cluster::test::types

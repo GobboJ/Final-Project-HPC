@@ -43,45 +43,68 @@ public:
 
         std::string typeName{};
 
-        if constexpr (std::is_same_v<T, double>) {
+        using NonReferenceType = std::remove_reference_t<T>;
+        using NonCVRefType = std::remove_cvref_t<T>;
+
+        if constexpr (std::is_same_v<NonReferenceType, double>) {
             typeName = "double";
-        } else if constexpr (std::is_same_v<T, const double>) {
+        } else if constexpr (std::is_same_v<NonReferenceType, const double>) {
             typeName = "const double";
-        } else if constexpr (std::is_same_v<T, std::size_t>) {
+        } else if constexpr (std::is_same_v<NonReferenceType, std::size_t>) {
             typeName = "std::size_t";
-        } else if constexpr (std::is_same_v<T, const std::size_t>) {
+        } else if constexpr (std::is_same_v<NonReferenceType, const std::size_t>) {
             typeName = "const std::size_t";
-        } else if constexpr (std::is_pointer_v<T>) {
-            typeName = getTypeName<std::remove_pointer_t<T>>() + " *";
-        } else if constexpr (std::is_same_v<T, std::vector<typename T::value_type>>) {
-            typeName = "std::vector<" + getTypeName<typename T::value_type>() + ">";
-        } else if constexpr (std::is_same_v<T, std::list<typename T::value_type>>) {
-            typeName = "std::list<" + getTypeName<typename T::value_type>() + ">";
-        } else if constexpr (std::is_same_v<T, std::deque<typename T::value_type>>) {
-            typeName = "std::deque<" + getTypeName<typename T::value_type>() + ">";
-        } else if constexpr (IsStdArray<T>::value) {
-            typeName = "std::array<" + getTypeName<typename T::value_type>() + ", N>";
+        } else if constexpr (std::is_pointer_v<NonReferenceType>) {
+            typeName = getTypeName<std::remove_pointer_t<NonReferenceType>>() + " *";
         } else if constexpr (
-                std::is_same_v<T, typename std::vector<typename T::value_type>::iterator>) {
-            typeName = "std::vector<" + getTypeName<typename T::value_type>() + ">::iterator";
+                std::is_same_v<NonCVRefType, std::vector<typename NonCVRefType::value_type>>) {
+            typeName = "std::vector<" + getTypeName<typename NonCVRefType::value_type>() + ">";
         } else if constexpr (
-                std::is_same_v<T, typename std::list<typename T::value_type>::iterator>) {
-            typeName = "std::list<" + getTypeName<typename T::value_type>() + ">::iterator";
+                std::is_same_v<NonCVRefType, std::list<typename NonCVRefType::value_type>>) {
+            typeName = "std::list<" + getTypeName<typename NonCVRefType::value_type>() + ">";
         } else if constexpr (
-                std::is_same_v<T, typename std::deque<typename T::value_type>::iterator>) {
-            typeName = "std::deque<" + getTypeName<typename T::value_type>() + ">::iterator";
+                std::is_same_v<NonCVRefType, std::deque<typename NonCVRefType::value_type>>) {
+            typeName = "std::deque<" + getTypeName<typename NonCVRefType::value_type>() + ">";
+        } else if constexpr (IsStdArray<NonCVRefType>::value) {
+            typeName = "std::array<" + getTypeName<typename NonCVRefType::value_type>() + ", N>";
         } else if constexpr (
-                std::is_same_v<T, typename std::vector<typename T::value_type>::const_iterator>) {
-            typeName = "std::vector<" + getTypeName<typename T::value_type>() + ">::const_iterator";
+                std::is_same_v<NonCVRefType,
+                               typename std::vector<typename NonCVRefType::value_type>::iterator>) {
+            typeName = "std::vector<" + getTypeName<typename NonCVRefType::value_type>() +
+                       ">::iterator";
         } else if constexpr (
-                std::is_same_v<T, typename std::list<typename T::value_type>::const_iterator>) {
-            typeName = "std::list<" + getTypeName<typename T::value_type>() + ">::const_iterator";
+                std::is_same_v<NonCVRefType,
+                               typename std::list<typename NonCVRefType::value_type>::iterator>) {
+            typeName =
+                    "std::list<" + getTypeName<typename NonCVRefType::value_type>() + ">::iterator";
         } else if constexpr (
-                std::is_same_v<T, typename std::deque<typename T::value_type>::const_iterator>) {
-            typeName = "std::deque<" + getTypeName<typename T::value_type>() + ">::const_iterator";
-        } else if constexpr (IsAlignedArray<T>::value) {
-            typeName = "AlignedArray<" + getTypeName<typename T::value_type>() + ", N, " +
-                       ((IsAlignedTo<T, 32>::value) ? "AVX_ALIGNMENT" : "SSE_ALIGNMENT") + ">";
+                std::is_same_v<NonCVRefType,
+                               typename std::deque<typename NonCVRefType::value_type>::iterator>) {
+            typeName = "std::deque<" + getTypeName<typename NonCVRefType::value_type>() +
+                       ">::iterator";
+        } else if constexpr (
+                std::is_same_v<
+                        NonCVRefType,
+                        typename std::vector<typename NonCVRefType::value_type>::const_iterator>) {
+            typeName = "std::vector<" + getTypeName<typename NonCVRefType::value_type>() +
+                       ">::const_iterator";
+        } else if constexpr (
+                std::is_same_v<
+                        NonCVRefType,
+                        typename std::list<typename NonCVRefType::value_type>::const_iterator>) {
+            typeName = "std::list<" + getTypeName<typename NonCVRefType::value_type>() +
+                       ">::const_iterator";
+        } else if constexpr (
+                std::is_same_v<
+                        NonCVRefType,
+                        typename std::deque<typename NonCVRefType::value_type>::const_iterator>) {
+            typeName = "std::deque<" + getTypeName<typename NonCVRefType::value_type>() +
+                       ">::const_iterator";
+        } else if constexpr (IsAlignedArray<NonCVRefType>::value) {
+            typeName =
+                    "AlignedArray<" + getTypeName<typename NonCVRefType::value_type>() + ", N, " +
+                    ((IsAlignedTo<NonCVRefType, 32>::value) ? "AVX_ALIGNMENT" : "SSE_ALIGNMENT") +
+                    ">";
         } else {
             typeName = "UNKNOWN TYPE";
         }

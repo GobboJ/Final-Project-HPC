@@ -20,7 +20,7 @@ class AlignedArray {
 
 public:
     using value_type = T;
-    
+
 private:
     template <std::size_t M>
     static constexpr bool powerOfTwo() {
@@ -43,35 +43,34 @@ public:
         std::size_t size = (N + A) * sizeof(T);
 
         this->data = static_cast<T *>(std::align(A, N * sizeof(T), fullDataPointer, size));
-        
+
         assert(size >= N);
     }
 
     AlignedArray(const AlignedArray<T, N, A> &other) : fullData{new T[N + A]}, data{nullptr} {
-
-        memcpy(this->fullData, other.fullData, (N + A) * sizeof(T));
 
         void *fullDataPointer = this->fullData;
 
         std::size_t size = (N + A) * sizeof(T);
 
         this->data = static_cast<T *>(std::align(A, N * sizeof(T), fullDataPointer, size));
-        
+
         assert(size >= N);
+
+        memcpy(this->data, other.data, N * sizeof(T));
     }
 
     AlignedArray &operator= (const AlignedArray<T, N, A> &other) {
         if (this != &other) {
-            memcpy(this->fullData, other.fullData, (N + A) * sizeof(T));
-
             void *fullDataPointer = this->fullData;
-
+            
             std::size_t size = (N + A) * sizeof(T);
 
-            this->data =
-                    static_cast<T *>(std::align(A, N * sizeof(T), fullDataPointer, size));
-            
+            this->data = static_cast<T *>(std::align(A, N * sizeof(T), fullDataPointer, size));
+
             assert(size >= N);
+
+            memcpy(this->data, other.data, N * sizeof(T));
         }
 
         return *this;
@@ -87,19 +86,19 @@ public:
         return data[index];
     }
 
-    T *begin() {
+    T *begin() const {
         return data;
     }
 
-    T *end() {
+    T *end() const {
         return data + N;
     }
 
-    T *cbegin() {
+    const T *cbegin() const {
         return data;
     }
 
-    T *cend() {
+    const T *cend() const {
         return data + N;
     }
 
