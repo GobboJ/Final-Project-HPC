@@ -63,7 +63,7 @@ public:
     AlignedArray &operator= (const AlignedArray<T, N, A> &other) {
         if (this != &other) {
             void *fullDataPointer = this->fullData;
-            
+
             std::size_t size = (N + A) * sizeof(T);
 
             this->data = static_cast<T *>(std::align(A, N * sizeof(T), fullDataPointer, size));

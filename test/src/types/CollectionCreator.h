@@ -7,7 +7,7 @@
 #include <list>
 #include <vector>
 #include "CollectionContainer.h"
-#include "PointerWrapper.h"
+#include "PointerCollectionContainer.h"
 #include "LinearCollectionContainer.h"
 
 namespace cluster::test::types {
@@ -55,70 +55,98 @@ public:
     }
 
     template <std::size_t N, std::size_t D>
-    static void createIndirectCArrays(std::vector<std::array<double, N>> indirectParsedData,
-                                      ArrayCollectionContainer<PointerWrapper, N, D> &container) {
+    static void createIndirectCArrays(const std::vector<std::array<double, D>> &indirectParsedData,
+                                      PointerCollectionContainer<N, D> &container) {
 
-        initArrayContainers(indirectParsedData, container, "", " *");
+        initCArrayContainers<N, D>(indirectParsedData, container);
     }
 
     template <std::size_t N, std::size_t D>
-    static void createIndirectArrays(std::vector<std::array<double, N>> indirectParsedData,
+    static void createIndirectArrays(const std::vector<std::array<double, D>> &indirectParsedData,
                                      ArrayCollectionContainer<std::array, N, D> &container) {
 
-        initArrayContainers(indirectParsedData, container, "std::array<", ", N>");
+        initArrayContainers<N, D>(indirectParsedData, container);
     }
 
-    template <std::size_t N>
-    static void createIndirectVectors(std::vector<std::array<double, N>> indirectParsedData,
-                                      CollectionContainer<std::vector, N> &container) {
+    template <std::size_t D>
+    static void createIndirectVectors(const std::vector<std::array<double, D>> &indirectParsedData,
+                                      CollectionContainer<std::vector, D> &container) {
 
-        return initContainers<N, std::vector>(indirectParsedData, container, "std::vector<", ">");
+        return initContainers<D, std::vector>(indirectParsedData, container);
     }
 
-    template <std::size_t N>
-    static void createIndirectLists(std::vector<std::array<double, N>> indirectParsedData,
-                                    CollectionContainer<std::list, N> &container) {
+    template <std::size_t D>
+    static void createIndirectLists(const std::vector<std::array<double, D>> &indirectParsedData,
+                                    CollectionContainer<std::list, D> &container) {
 
-        return initContainers<N, std::list>(indirectParsedData, container, "std::list<", ">");
+        return initContainers<D, std::list>(indirectParsedData, container);
     }
 
-    template <std::size_t N>
-    static void createIndirectDeques(std::vector<std::array<double, N>> indirectParsedData,
-                                     CollectionContainer<std::deque, N> &container) {
+    template <std::size_t D>
+    static void createIndirectDeques(const std::vector<std::array<double, D>> &indirectParsedData,
+                                     CollectionContainer<std::deque, D> &container) {
 
-        return initContainers<N, std::deque>(indirectParsedData, container, "std::deque<", ">");
+        return initContainers<D, std::deque>(indirectParsedData, container);
     }
 
 private:
-    template <std::size_t N, template <typename> typename C>
-    static void initContainers(std::vector<std::array<double, N>> indirectParsedData,
-                               CollectionContainer<C, N> &container,
-                               const std::string &nameBegin,
-                               const std::string &nameEnd) {
+    template <std::size_t N, std::size_t D>
+    static void initCArrayContainers(const std::vector<std::array<double, D>> &indirectParsedData,
+                                     PointerCollectionContainer<N, D> &container) {
 
         for (std::size_t i = 0; i < indirectParsedData.size(); i++) {
-            const std::array<double, N> &point = indirectParsedData[i];
+            const std::array<double, D> &point = indirectParsedData[i];
 
-            addPoint<N, 0, C>(point, i, container);
+            addPointToPointerContainer<N, D>(point, i, container);
         }
-        initIterators<N>(container, nameBegin, nameEnd);
     }
 
     template <std::size_t N, std::size_t D, template <typename, std::size_t> typename C>
-    static void initArrayContainers(std::vector<std::array<double, N>> indirectParsedData,
-                                    ArrayCollectionContainer<C, D, N> &container,
-                                    const std::string &nameBegin,
-                                    const std::string &nameEnd) {
+    static void initArrayContainers(const std::vector<std::array<double, D>> &indirectParsedData,
+                                    ArrayCollectionContainer<C, N, D> &container) {
 
         for (std::size_t i = 0; i < indirectParsedData.size(); i++) {
-            const std::array<double, N> &point = indirectParsedData[i];
+            const std::array<double, D> &point = indirectParsedData[i];
 
-            addPoint<N, D, C>(point, container);
+            addPointToArrayContainer<N, D>(point, i, container);
         }
-        initIterators<N>(container, nameBegin, nameEnd);
+        initIterators(container);
     }
 
-    template <std::size_t N, typename C>
+    template <std::size_t D, template <typename> typename C>
+    static void initContainers(const std::vector<std::array<double, D>> &indirectParsedData,
+                               CollectionContainer<C, D> &container) {
+
+        for (std::size_t i = 0; i < indirectParsedData.size(); i++) {
+            const std::array<double, D> &point = indirectParsedData[i];
+
+            addPointToContainer<D>(point, i, container);
+        }
+
+        for (auto &addedArrayElement : container.array) {
+            container.iteratorsArray.emplace_back(addedArrayElement.begin());
+            container.constIteratorsArray.emplace_back(addedArrayElement.cbegin());
+        }
+
+        for (auto &addedVectorElement : container.vector) {
+            container.iteratorsVector.emplace_back(addedVectorElement.begin());
+            container.constIteratorsVector.emplace_back(addedVectorElement.cbegin());
+        }
+
+        for (auto &addedListElement : container.list) {
+            container.iteratorsList.emplace_back(addedListElement.begin());
+            container.constIteratorsList.emplace_back(addedListElement.cbegin());
+        }
+
+        for (auto &addedDequeElement : container.deque) {
+            container.iteratorsDeque.emplace_back(addedDequeElement.begin());
+            container.constIteratorsDeque.emplace_back(addedDequeElement.cbegin());
+        }
+
+        initIterators(container);
+    }
+
+    template <typename C>
     static void initIterators(C &container) {
         // Set the iterators
         container.cArrayIterator = container.cArray.begin();
@@ -129,70 +157,25 @@ private:
 
         container.cArrayConstIterator = container.cArray.cbegin();
         container.arraysConstIterator = container.array.cbegin();
-        container.vectorsConstIterator = container.vectorcbegin();
+        container.vectorsConstIterator = container.vector.cbegin();
         container.listsConstIterator = container.list.cbegin();
         container.dequesConstIterator = container.deque.cbegin();
     }
 
-    template <std::size_t N, std::size_t D, template <typename> typename C>
-    static void addPoint(const std::array<double, N> &point,
-                         const std::size_t index,
-                         CollectionContainer<C, N> &container) {
+    template <std::size_t N, std::size_t D>
+    static void addPointToPointerContainer(const std::array<double, D> &point,
+                                           const std::size_t index,
+                                           PointerCollectionContainer<N, D> &container) {
 
-        double *cArrayPoint = new double[N];
-        std::array<double, N> arrayPoint{};
+        double *cArrayPoint = new double[D];
+        std::array<double, D> arrayPoint{};
         std::vector<double> vectorPoint{};
         std::list<double> listPoint{};
         std::deque<double> dequePoint{};
-        AlignedArray<double, N, SSE_ALIGNMENT> sseAlignedArray{};
-        AlignedArray<double, N, AVX_ALIGNMENT> avxAlignedArray{};
+        AlignedArray<double, D, Alignments::SSE_ALIGNMENT> sseAlignedArray{};
+        AlignedArray<double, D, Alignments::AVX_ALIGNMENT> avxAlignedArray{};
 
-        for (std::size_t j = 0; j < N; j++) {
-            cArrayPoint[j] = point[j];
-            arrayPoint[j] = point[j];
-            vectorPoint.emplace_back(point[j]);
-            listPoint.emplace_back(point[j]);
-            dequePoint.emplace_back(point[j]);
-            sseAlignedArray[j] = point[j];
-            avxAlignedArray[j] = point[j];
-        }
-
-        container.cArray.emplace_back(cArrayPoint);
-
-        const auto &addedArrayElement = container.array.emplace_back(arrayPoint);
-        container.iteratorsArray.emplace_back(addedArrayElement.begin());
-        container.constIteratorsArray.emplace_back(addedArrayElement.cbegin());
-
-        const auto &addedVectorElement = container.vector.emplace_back(vectorPoint);
-        container.iteratorsVector.emplace_back(addedVectorElement.begin());
-        container.constIteratorsVector.emplace_back(addedVectorElement.cbegin());
-
-        const auto &addedListElement = container.list.emplace_back(listPoint);
-        container.iteratorsList.emplace_back(addedListElement.begin());
-        container.constIteratorsList.emplace_back(addedListElement.cbegin());
-
-        const auto &addedDequeElement = container.deque.emplace_back(dequePoint);
-        container.iteratorsDeque.emplace_back(addedDequeElement.begin());
-        container.constIteratorsDeque.emplace_back(addedDequeElement.cbegin());
-
-        container.sseAlignedArray.emplace_back(sseAlignedArray);
-        container.avxAlignedArray.emplace_back(avxAlignedArray);
-    }
-
-    template <std::size_t N, std::size_t D, template <typename, std::size_t> typename C>
-    static void addPoint(const std::array<double, N> &point,
-                         const std::size_t index,
-                         ArrayCollectionContainer<C, N, D> &container) {
-
-        double *cArrayPoint = new double[N];
-        std::array<double, N> arrayPoint{};
-        std::vector<double> vectorPoint{};
-        std::list<double> listPoint{};
-        std::deque<double> dequePoint{};
-        AlignedArray<double, N, SSE_ALIGNMENT> sseAlignedArray{};
-        AlignedArray<double, N, AVX_ALIGNMENT> avxAlignedArray{};
-
-        for (std::size_t j = 0; j < N; j++) {
+        for (std::size_t j = 0; j < D; j++) {
             cArrayPoint[j] = point[j];
             arrayPoint[j] = point[j];
             vectorPoint.emplace_back(point[j]);
@@ -222,6 +205,85 @@ private:
 
         container.sseAlignedArray[index] = sseAlignedArray;
         container.avxAlignedArray[index] = avxAlignedArray;
+    }
+
+    template <std::size_t N, std::size_t D, template <typename, std::size_t> typename C>
+    static void addPointToArrayContainer(const std::array<double, D> &point,
+                                         const std::size_t index,
+                                         ArrayCollectionContainer<C, N, D> &container) {
+
+        double *cArrayPoint = new double[D];
+        std::array<double, D> arrayPoint{};
+        std::vector<double> vectorPoint{};
+        std::list<double> listPoint{};
+        std::deque<double> dequePoint{};
+        AlignedArray<double, D, Alignments::SSE_ALIGNMENT> sseAlignedArray{};
+        AlignedArray<double, D, Alignments::AVX_ALIGNMENT> avxAlignedArray{};
+
+        for (std::size_t j = 0; j < D; j++) {
+            cArrayPoint[j] = point[j];
+            arrayPoint[j] = point[j];
+            vectorPoint.emplace_back(point[j]);
+            listPoint.emplace_back(point[j]);
+            dequePoint.emplace_back(point[j]);
+            sseAlignedArray[j] = point[j];
+            avxAlignedArray[j] = point[j];
+        }
+
+        container.cArray[index] = cArrayPoint;
+
+        container.array[index] = arrayPoint;
+        container.iteratorsArray[index] = container.array[index].begin();
+        container.constIteratorsArray[index] = container.array[index].cbegin();
+
+        container.vector[index] = vectorPoint;
+        container.iteratorsVector[index] = container.vector[index].begin();
+        container.constIteratorsVector[index] = container.vector[index].cbegin();
+
+        container.list[index] = listPoint;
+        container.iteratorsList[index] = container.list[index].begin();
+        container.constIteratorsList[index] = container.list[index].cbegin();
+
+        container.deque[index] = dequePoint;
+        container.iteratorsDeque[index] = container.deque[index].begin();
+        container.constIteratorsDeque[index] = container.deque[index].cbegin();
+
+        container.sseAlignedArray[index] = sseAlignedArray;
+        container.avxAlignedArray[index] = avxAlignedArray;
+    }
+
+    template <std::size_t D, template <typename> typename C>
+    static void addPointToContainer(const std::array<double, D> &point,
+                                    const std::size_t index,
+                                    CollectionContainer<C, D> &container) {
+
+        double *cArrayPoint = new double[D];
+        std::array<double, D> arrayPoint{};
+        std::vector<double> vectorPoint{};
+        std::list<double> listPoint{};
+        std::deque<double> dequePoint{};
+        AlignedArray<double, D, Alignments::SSE_ALIGNMENT> sseAlignedArray{};
+        AlignedArray<double, D, Alignments::AVX_ALIGNMENT> avxAlignedArray{};
+
+        for (std::size_t j = 0; j < D; j++) {
+            cArrayPoint[j] = point[j];
+            arrayPoint[j] = point[j];
+            vectorPoint.emplace_back(point[j]);
+            listPoint.emplace_back(point[j]);
+            dequePoint.emplace_back(point[j]);
+            sseAlignedArray[j] = point[j];
+            avxAlignedArray[j] = point[j];
+        }
+
+        container.cArray.emplace_back(cArrayPoint);
+
+        container.array.emplace_back(arrayPoint);
+        container.vector.emplace_back(vectorPoint);
+        container.list.emplace_back(listPoint);
+        container.deque.emplace_back(dequePoint);
+
+        container.sseAlignedArray.emplace_back(sseAlignedArray);
+        container.avxAlignedArray.emplace_back(avxAlignedArray);
     }
 };
 

@@ -25,17 +25,19 @@ public:
                     const size_t dimension,
                     const std::vector<std::size_t> &expectedPi,
                     const std::vector<double> &expectedLambda,
-                    const int maxTypeNameLength) :
+                    const int maxTypeNameLength,
+                    const int maxResultLength) :
         dataElementsCount(dataElementsCount),
         dimension(dimension),
         expectedPi(expectedPi),
         expectedLambda(expectedLambda),
-        maxTypeNameLength(maxTypeNameLength) {
+        maxTypeNameLength(maxTypeNameLength),
+        maxResultLength(maxResultLength) {
     }
 
     template <typename... CDs, typename... NCDs>
-    void testParallelTypes(std::tuple<CDs...> &compilableDataStructures,
-                           std::tuple<NCDs...> &notCompilableDataStructures) {
+    void testParallelTypes(std::tuple<CDs &...> &compilableDataStructures,
+                           std::tuple<NCDs &...> &notCompilableDataStructures) {
 
         std::vector<std::size_t> pi{};
         pi.resize(this->dataElementsCount);
@@ -52,7 +54,7 @@ public:
 
 private:
     template <bool S, std::size_t DI, typename... CDs>
-    void testCompilableTypes(std::tuple<CDs...> &compilableDataStructures,
+    void testCompilableTypes(std::tuple<CDs &...> &compilableDataStructures,
                              std::vector<std::size_t> &pi,
                              std::vector<double> &lambda) {
 
@@ -61,11 +63,16 @@ private:
         std::cout << std::setfill(' ') << std::setw(this->maxTypeNameLength)
                   << TypesPrinter::getTypeName<decltype(data)>();
         std::cout << " | ";
+        std::cout << std::setfill(' ') << std::setw(this->maxResultLength) << ' ';
+        std::cout << " | ";
         std::cout.flush();
 
-        
         if constexpr (!utils::ParallelDataIterator<decltype(data)>) {
-            std::cout << "\033[31mError (should compile)\033[0m";
+            std::cout << "\033[" << this->maxResultLength + 3 << "D"
+                      << "\033[31m";
+            std::cout << std::setfill(' ') << std::setw(this->maxResultLength)
+                      << "Error (should compile)";
+            std::cout << "\033[0m";
         } else {
             parallel::ParallelClustering<true, true, true>::cluster<
                     parallel::DistanceComputers::CLASSICAL>(
@@ -79,7 +86,8 @@ private:
                                                        this->expectedPi.cend(),
                                                        this->expectedLambda.cbegin(),
                                                        this->expectedLambda.cend());
-            std::cout << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m";
+            std::cout << "\033[" << this->maxResultLength + 3 << "D"
+                      << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m";
         }
         std::cout << std::endl;
         if constexpr (DI + 1 < sizeof...(CDs)) {
@@ -95,12 +103,16 @@ private:
         std::cout << std::setfill(' ') << std::setw(this->maxTypeNameLength)
                   << TypesPrinter::getTypeName<decltype(data)>();
         std::cout << " | ";
-        std::cout.flush();
 
         if constexpr (utils::ParallelDataIterator<decltype(data)>) {
-            std::cout << "\033[31mError (should not compile)\033[0m";
+            std::cout << "\033[31m";
+            std::cout << std::setfill(' ') << std::setw(this->maxResultLength)
+                      << "Error (should not compile)";
+            std::cout << "\033[0m |";
         } else {
-            std::cout << "\033[34mOK\033[0m";
+            std::cout << "\033[34m";
+            std::cout << std::setfill(' ') << std::setw(this->maxResultLength) << "OK";
+            std::cout << "\033[0m |";
         }
         std::cout << std::endl;
         if constexpr (NDI + 1 < sizeof...(NCDs)) {
@@ -113,6 +125,7 @@ private:
     const std::vector<std::size_t> &expectedPi;
     const std::vector<double> &expectedLambda;
     const int maxTypeNameLength;
+    const int maxResultLength;
 };
 
 }  // namespace cluster::test::types

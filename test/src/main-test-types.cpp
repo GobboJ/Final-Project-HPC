@@ -14,9 +14,9 @@
 #include "types/ArrayCollectionContainer.h"
 #include "types/CollectionContainer.h"
 #include "types/CollectionCreator.h"
-#include "types/TypesPrinter.h"
-#include "types/PiLambdaTypesTester.h"
 #include "types/DataTypesTester.h"
+#include "types/PiLambdaTypesTester.h"
+#include "types/TypesPrinter.h"
 #include <deque>
 #include <list>
 
@@ -33,6 +33,7 @@ using cluster::test::types::CollectionCreator;
 using cluster::test::types::DataTypesTester;
 using cluster::test::types::LinearCollectionContainer;
 using cluster::test::types::PiLambdaTypesTester;
+using cluster::test::types::PointerCollectionContainer;
 using cluster::test::types::TypesPrinter;
 using cluster::utils::ConstIterable;
 using cluster::utils::ContiguousConstIterable;
@@ -47,7 +48,7 @@ using cluster::utils::RandomIterator;
 using IteratorType = PiLambdaTypesTester<std::vector<double>>::IteratorType;
 
 const std::size_t ELEMENTS = 35717;
-const std::size_t COORDINATES = 2;
+const std::size_t DIMENSION = 2;
 
 template <typename D>
 concept NotParallelDataIterator = !
@@ -79,7 +80,7 @@ public:
         std::cout.flush();
 
         ParallelClustering<true, true, true>::cluster<DistanceComputers::CLASSICAL>(
-                data.second, ELEMENTS, COORDINATES, piIterator, lambdaIterator, 6, 6, 6);
+                data.second, ELEMENTS, DIMENSION, piIterator, lambdaIterator, 6, 6, 6);
 
         bool result = ResultsChecker::checkResults(pi.cbegin(),
                                                    pi.cend(),
@@ -116,9 +117,11 @@ private:
 void testPiLambdaTypes(const std::vector<double> &parsedData,
                        const std::vector<size_t> &expectedPi,
                        const std::vector<double> &expectedLambda);
-void testParallelDataStructureTypes(const std::vector<double> &parsedData,
-                                    const std::vector<size_t> &expectedPi,
-                                    const std::vector<double> &expectedLambda);
+void testParallelDataStructureTypes(
+        const std::vector<double> &parsedData,
+        const std::vector<std::array<double, DIMENSION>> &indirectParsedData,
+        const std::vector<size_t> &expectedPi,
+        const std::vector<double> &expectedLambda);
 
 int main() {
 
@@ -126,21 +129,22 @@ int main() {
     std::vector<double> parsedData;
     DataReader::readAndParseData(
             "../../test/resources/Parking Birmingham.data", parsedData, 0, 0, 2, 3);
+    //"../../test/resources/slides.data", parsedData, 0, 0, 1, 2);
 
     // Organize the data in indirect vectors
-    std::vector<std::array<double, COORDINATES>> indirectParsedData;
-    for (std::size_t i = 0; i < parsedData.size(); i += COORDINATES) {
-        std::array<double, COORDINATES> point{};
-        for (std::size_t j = 0; j < COORDINATES; j++) {
+    std::vector<std::array<double, DIMENSION>> indirectParsedData{};
+    for (std::size_t i = 0; i < parsedData.size(); i += DIMENSION) {
+        std::array<double, DIMENSION> point{};
+        for (std::size_t j = 0; j < DIMENSION; j++) {
             point[j] = parsedData[i + j];
         }
         indirectParsedData.emplace_back(point);
     }
 
-    std::vector<size_t> expectedPi{};
-    expectedPi.resize(parsedData.size() / COORDINATES);
+    std::vector<std::size_t> expectedPi{};
+    expectedPi.resize(parsedData.size() / DIMENSION);
     std::vector<double> expectedLambda{};
-    expectedLambda.resize(parsedData.size() / COORDINATES);
+    expectedLambda.resize(parsedData.size() / DIMENSION);
 
     std::cout << "Running sequential implementation to check the results" << std::endl;
     /*SequentialClustering::cluster(
@@ -150,9 +154,10 @@ int main() {
             expectedPi.begin(),
             expectedLambda.begin());*/
     DataReader::readPiLambda("../../out/birm-p-11-results.txt", expectedPi, expectedLambda);
+    std::cout << "End" << std::endl;
 
     // testPiLambdaTypes(parsedData, expectedPi, expectedLambda);
-    testParallelDataStructureTypes(parsedData, expectedPi, expectedLambda);
+    testParallelDataStructureTypes(parsedData, indirectParsedData, expectedPi, expectedLambda);
 
     /* std::cout << TypesPrinter::getTypeName<double>() << std::endl;
      std::cout << TypesPrinter::getTypeName<std::size_t>() << std::endl;
@@ -181,41 +186,69 @@ int main() {
     return 0;
 }
 
-void testParallelDataStructureTypes(const std::vector<double> &parsedData,
-                                    const std::vector<size_t> &expectedPi,
-                                    const std::vector<double> &expectedLambda) {
+template <typename... Ts>
+std::tuple<Ts &...> *wrapReferences(Ts &...arguments) {
 
-    // Longest type: std::vector<AlignedArray<double, N, AVX_ALIGNMENT>>
-    const constexpr std::size_t maxTypeLength = 51;
+    const auto a = new std::tuple<Ts &...>(arguments...);
+    return a;
+}
+
+void testParallelDataStructureTypes(
+        const std::vector<double> &parsedData,
+        const std::vector<std::array<double, DIMENSION>> &indirectParsedData,
+        const std::vector<size_t> &expectedPi,
+        const std::vector<double> &expectedLambda) {
+
+    // Longest type: std::array<AlignedArray<double, N, SSE_ALIGNMENT>, N>
+    const constexpr std::size_t maxTypeLength = 53;
+    // Longest summary: Contiguous const iterable of const iterables
+    const constexpr std::size_t maxSummaryLength = 44;
+    // Longest Result: Error (should not compile)
+    const constexpr std::size_t maxResultLength = 26;
     std::cout << std::endl;
     std::cout << std::left << std::setfill(' ') << std::setw(maxTypeLength) << "Data structure";
-    std::cout << " | Result" << std::endl;
+    std::cout << " | ";
+    std::cout << std::left << std::setfill(' ') << std::setw(maxResultLength) << "Result";
+    std::cout << " | ";
+    std::cout << std::left << std::setfill(' ') << std::setw(maxSummaryLength) << "Summary";
+    std::cout << std::endl;
 
     // Max result string: Error (should compile)
-    const constexpr std::size_t separatorLength = maxTypeLength + 3 + 22;
+    const constexpr std::size_t separatorLength =
+            maxTypeLength + maxSummaryLength + 6 + maxResultLength;
 
     for (std::size_t i = 0; i < separatorLength; i++) {
         std::cout << '-';
     }
     std::cout << std::endl;
-    
-    const std::size_t dataElementsCount = parsedData.size() / COORDINATES;
-    DataTypesTester dataTypesTester{
-            dataElementsCount, COORDINATES, expectedPi, expectedLambda, maxTypeLength};
+
+    const std::size_t dataElementsCount = parsedData.size() / DIMENSION;
+    DataTypesTester dataTypesTester{dataElementsCount,
+                                    DIMENSION,
+                                    expectedPi,
+                                    expectedLambda,
+                                    maxTypeLength,
+                                    maxResultLength};
 
     // Fill the linear structures
-    LinearCollectionContainer<ELEMENTS * COORDINATES> linearContainer{};
-    CollectionCreator::createLinearContainers<ELEMENTS * COORDINATES>(parsedData, linearContainer);
+    auto *const linearContainer = new LinearCollectionContainer<ELEMENTS * DIMENSION>();
+    CollectionCreator::createLinearContainers<ELEMENTS * DIMENSION>(parsedData, *linearContainer);
 
-    /*// Fill indirect C arrays
-    auto cArrayContainers =
-            CollectionCreator::createIndirectCArrays<COORDINATES>(indirectParsedData);
+    // Fill indirect C arrays
+    auto *const indirectCArrays = new PointerCollectionContainer<ELEMENTS, DIMENSION>();
+    CollectionCreator::createIndirectCArrays<ELEMENTS, DIMENSION>(indirectParsedData,
+                                                                  *indirectCArrays);
+
     // Fill indirect arrays
-    auto arrayContainers = CollectionCreator::createIndirectArrays<COORDINATES>(indirectParsedData);
+    auto *const arrayContainers = new ArrayCollectionContainer<std::array, ELEMENTS, DIMENSION>();
+    CollectionCreator::createIndirectArrays<ELEMENTS, DIMENSION>(indirectParsedData,
+                                                                 *arrayContainers);
+
     // Fill indirect vectors
-    auto vectorContainers =
-            CollectionCreator::createIndirectVectors<COORDINATES>(indirectParsedData);
-    // Fill indirect lists
+    auto *const vectorContainers = new CollectionContainer<std::vector, DIMENSION>();
+    CollectionCreator::createIndirectVectors<DIMENSION>(indirectParsedData, *vectorContainers);
+
+    /*// Fill indirect lists
     auto listContainers = CollectionCreator::createIndirectLists<COORDINATES>(indirectParsedData);
     // Fill indirect deques
     auto dequeueContainers =
@@ -223,32 +256,101 @@ void testParallelDataStructureTypes(const std::vector<double> &parsedData,
 */
     // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
     // Perform linear tests
+    
+    auto *const compilableDataStructures = wrapReferences(
+            // Linear types
+            linearContainer->cArray,
+            linearContainer->array,
+            linearContainer->arrayIterator,
+            linearContainer->arrayConstIterator,
+            linearContainer->vector,
+            linearContainer->vectorIterator,
+            linearContainer->vectorConstIterator,
+            linearContainer->sseAlignedArray,
+            linearContainer->avxAlignedArray,
+            // Indirect C arrays
+            indirectCArrays->cArray,
+            indirectCArrays->array,
+            indirectCArrays->iteratorsArray,
+            indirectCArrays->constIteratorsArray,
+            indirectCArrays->vector,
+            indirectCArrays->iteratorsVector,
+            indirectCArrays->constIteratorsVector,
+            indirectCArrays->sseAlignedArray,
+            indirectCArrays->avxAlignedArray,
+            // Indirect std::array
+            arrayContainers->cArray,
+            arrayContainers->cArrayIterator,
+            arrayContainers->cArrayConstIterator,
+            arrayContainers->array,
+            arrayContainers->arraysIterator,
+            arrayContainers->arraysConstIterator,
+            arrayContainers->iteratorsArray,
+            arrayContainers->constIteratorsArray,
+            arrayContainers->vector,
+            arrayContainers->vectorsIterator,
+            arrayContainers->vectorsConstIterator,
+            arrayContainers->iteratorsVector,
+            arrayContainers->constIteratorsVector,
+            arrayContainers->sseAlignedArray,
+            arrayContainers->avxAlignedArray,
+            // Indirect std::vector
+            vectorContainers->cArray,
+            vectorContainers->cArrayIterator,
+            vectorContainers->cArrayConstIterator,
+            vectorContainers->array,
+            vectorContainers->arraysIterator,
+            vectorContainers->arraysConstIterator,
+            vectorContainers->iteratorsArray,
+            vectorContainers->constIteratorsArray,
+            vectorContainers->vector,
+            vectorContainers->vectorsIterator,
+            vectorContainers->vectorsConstIterator,
+            vectorContainers->iteratorsVector,
+            vectorContainers->constIteratorsVector,
+            vectorContainers->sseAlignedArray,
+            vectorContainers->avxAlignedArray);
 
-    auto compilableDataStructures = std::make_tuple(linearContainer.cArray,
-                                                    linearContainer.array,
-                                                    linearContainer.arrayIterator,
-                                                    linearContainer.arrayConstIterator,
-                                                    linearContainer.vector,
-                                                    linearContainer.vectorIterator,
-                                                    linearContainer.vectorConstIterator,
-                                                    /*TODO: linearContainer.deque,
-                                                    linearContainer.dequeIterator,
-                                                    linearContainer.dequeConstIterator,*/
-                                                    linearContainer.sseAlignedArray,
-                                                    linearContainer.avxAlignedArray);
-    auto notCompilableDataStructures = std::make_tuple(
-            linearContainer.list, linearContainer.listIterator, linearContainer.listConstIterator);
+    auto *const notCompilableDataStructures = wrapReferences(
+            // Linear types
+            linearContainer->list,
+            linearContainer->listIterator,
+            linearContainer->listConstIterator,
+            linearContainer->deque,
+            linearContainer->dequeIterator,
+            linearContainer->dequeConstIterator,
+            // Indirect C arrays
+            indirectCArrays->list,
+            indirectCArrays->iteratorsList,
+            indirectCArrays->constIteratorsList,
+            indirectCArrays->deque,
+            indirectCArrays->iteratorsDeque,
+            indirectCArrays->constIteratorsDeque,
+            // Indirect std::array
+            arrayContainers->list,
+            arrayContainers->listsIterator,
+            arrayContainers->listsConstIterator,
+            arrayContainers->iteratorsList,
+            arrayContainers->constIteratorsList,
+            arrayContainers->deque,
+            arrayContainers->dequesIterator,
+            arrayContainers->dequesConstIterator,
+            arrayContainers->iteratorsDeque,
+            arrayContainers->constIteratorsDeque,
+            // Indirect std::vector
+            vectorContainers->list,
+            vectorContainers->listsIterator,
+            vectorContainers->listsConstIterator,
+            vectorContainers->iteratorsList,
+            vectorContainers->constIteratorsList,
+            vectorContainers->deque,
+            vectorContainers->dequesIterator,
+            vectorContainers->dequesConstIterator,
+            vectorContainers->iteratorsDeque,
+            vectorContainers->constIteratorsDeque);
 
-    dataTypesTester.testParallelTypes(compilableDataStructures, notCompilableDataStructures);
+    dataTypesTester.testParallelTypes(*compilableDataStructures, *notCompilableDataStructures);
 
-    /*
-
-    performNotCompilableParallelTest(std::get<3>(linearContainer));
-    performNotCompilableParallelTest(std::get<3>(linearContainer).begin());
-    performNotCompilableParallelTest(std::get<4>(linearContainer));
-    performNotCompilableParallelTest(std::get<5>(linearContainer).begin());
-    tester.performParallelTest(std::get<5>(linearContainer).begin());
-    tester.performParallelTest(std::get<6>(linearContainer).begin());
     /*
         // Perform indirect C arrays tests
         performParallelTest(std::get<0>(cArrayContainers));
@@ -316,6 +418,14 @@ void testParallelDataStructureTypes(const std::vector<double> &parsedData,
         performParallelTest(std::get<10>(dequeueContainers).begin());
         // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
     */
+
+    delete linearContainer;
+    delete indirectCArrays;
+    delete arrayContainers;
+    delete vectorContainers;
+
+    delete compilableDataStructures;
+    delete notCompilableDataStructures;
 }
 
 void testPiLambdaTypes(const std::vector<double> &parsedData,
@@ -340,10 +450,10 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
     }
     std::cout << std::endl;
 
-    const std::size_t dataElementsCount = parsedData.size() / COORDINATES;
+    const std::size_t dataElementsCount = parsedData.size() / DIMENSION;
     PiLambdaTypesTester<std::vector<double>> piLambdaTypesTester{parsedData,
                                                                  dataElementsCount,
-                                                                 COORDINATES,
+                                                                 DIMENSION,
                                                                  maxPiLength,
                                                                  maxLambdaLength,
                                                                  expectedPi,
@@ -403,9 +513,9 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
                                                 lambdaList.cbegin(),
                                                 lambdaDeque.cbegin());
 
-    piLambdaTypesTester.testAllPermutations(
+    /*TODO:piLambdaTypesTester.testAllPermutations(
             compilablePis, notCompilablePis, compilableLambdas, notCompilableLambdas);
-
+*/
     std::cout << "Test terminated" << std::endl;
 
     /*tester.performAllPermutationTests(data,

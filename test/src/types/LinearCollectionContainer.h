@@ -2,6 +2,7 @@
 #define FINAL_PROJECT_HPC_LINEARCOLLECTIONCONTAINER_H
 
 #include "AlignedArray.h"
+#include "Alignments.h"
 #include <array>
 #include <cstddef>
 #include <deque>
@@ -21,10 +22,6 @@ namespace cluster::test::types {
  */
 template <std::size_t ND>
 class LinearCollectionContainer {
-
-private:
-    static const constexpr std::size_t SSE_ALIGNMENT = 16;
-    static const constexpr std::size_t AVX_ALIGNMENT = 32;
 
 public:
     LinearCollectionContainer() :
@@ -99,8 +96,8 @@ public:
     std::deque<double>::iterator dequeIterator;
     std::deque<double>::const_iterator dequeConstIterator;
 
-    AlignedArray<double, ND, SSE_ALIGNMENT> sseAlignedArray;
-    AlignedArray<double, ND, AVX_ALIGNMENT> avxAlignedArray;
+    AlignedArray<double, ND, Alignments::SSE_ALIGNMENT> sseAlignedArray;
+    AlignedArray<double, ND, Alignments::AVX_ALIGNMENT> avxAlignedArray;
 };
 
 }  // namespace cluster::test::types

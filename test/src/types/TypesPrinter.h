@@ -1,11 +1,11 @@
 #ifndef FINAL_PROJECT_HPC_TYPESPRINTER_H
 #define FINAL_PROJECT_HPC_TYPESPRINTER_H
 
-#include <string>
 #include <array>
-#include <vector>
-#include <list>
 #include <deque>
+#include <list>
+#include <string>
+#include <vector>
 
 namespace cluster::test::types {
 
@@ -101,10 +101,12 @@ public:
             typeName = "std::deque<" + getTypeName<typename NonCVRefType::value_type>() +
                        ">::const_iterator";
         } else if constexpr (IsAlignedArray<NonCVRefType>::value) {
-            typeName =
-                    "AlignedArray<" + getTypeName<typename NonCVRefType::value_type>() + ", N, " +
-                    ((IsAlignedTo<NonCVRefType, 32>::value) ? "AVX_ALIGNMENT" : "SSE_ALIGNMENT") +
-                    ">";
+            typeName = "AlignedArray<" + getTypeName<typename NonCVRefType::value_type>() +
+                       ", N, " +
+                       ((IsAlignedTo<NonCVRefType, Alignments::AVX_ALIGNMENT>::value)
+                                ? "AVX_ALIGNMENT"
+                                : "SSE_ALIGNMENT") +
+                       ">";
         } else {
             typeName = "UNKNOWN TYPE";
         }

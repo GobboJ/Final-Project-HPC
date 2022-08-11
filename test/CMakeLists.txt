@@ -79,9 +79,9 @@ add_executable(
     src/types/DataTypesTester.h
     src/types/LinearCollectionContainer.h
     src/types/PiLambdaTypesTester.h
-    src/types/PointerWrapper.h
+    src/types/PointerCollectionContainer.h
     src/types/TypesPrinter.h
-)
+    src/types/Alignments.h)
 
 target_link_libraries(
     Final_Project_HPC_Test_Types Final_Project_HPC_Sequential_Library
@@ -89,6 +89,7 @@ target_link_libraries(
 )
 # target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE TIMERS PRINT_ITERATIONS) TODO:
 # target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY)
+target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY_TEST)
 
 # Define the data generator main executable
 add_executable(

@@ -144,10 +144,9 @@ public:
 
         // Iterator pointing to the n-th element of the dataset.
         // Initially it points to the first element of the dataset.
-        auto currentData =
-                utils::DataIteratorUtils::createEfficientIterator(data, "Current data");
-        auto startData = utils::DataIteratorUtils::createEfficientIterator(data,
-                                                                           "First element of data");
+        auto currentData = utils::DataIteratorUtils::createEfficientIterator(data, "Current data");
+        auto startData =
+                utils::DataIteratorUtils::createEfficientIterator(data, "First element of data");
 
         Timer::stop<0>();
 
@@ -169,6 +168,8 @@ public:
         utils::DataIteratorUtils::moveNext<D>(currentData, stride);
 
         Timer::stop<4>();
+
+        double *distanceEnd = &(m[1]);
 
         // Perform the clustering algorithm for all the remaining data samples
         for (std::size_t n = 1; n < dataSamplesCount; n++) {
@@ -210,7 +211,7 @@ public:
 
             // Iterator over the first n-1 values of m
 
-            addNewPoint<P, L>(piBegin, lambdaBegin, m, n);
+            addNewPoint<P, L>(piBegin, lambdaBegin, m, distanceEnd, n);
 
             Timer::stop<3>();
 
@@ -222,7 +223,7 @@ public:
             fixStructure(piBegin, lambdaBegin, n, stage4ThreadsCount);
             // Move to the next data sample
             utils::DataIteratorUtils::moveNext<D>(currentData, stride);
-
+            ++distanceEnd;
             Timer::stop<4>();
 
             // Log the progress every 1000 samples
@@ -355,12 +356,16 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
     }
 
     template <typename P, typename L, typename EP, typename EL>
-    static inline void addNewPoint(
-            EP currentPi, EL currentLambda, double *distanceIterator, std::size_t n) {
+    static inline void addNewPoint(EP currentPi,
+                                   EL currentLambda,
+                                   double *distanceBegin,
+                                   const double *const distanceEnd,
+                                   std::size_t n) {
 
-        double *mBegin = distanceIterator;
+        double *mBegin = distanceBegin;
+        double *distanceIterator = distanceBegin;
 
-        for (std::size_t i = 0; i <= n - 1; i++) {
+        while (distanceIterator != distanceEnd) {
             // Reference to pi[i]
             std::size_t &piI = PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(currentPi);
             // Reference to lambda[i]

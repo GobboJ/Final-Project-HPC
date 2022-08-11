@@ -45,7 +45,8 @@ concept RandomIterable =
                                                    };
 
 template <typename I, typename T>
-concept ContiguousIterator = std::contiguous_iterator<I> && InputIterator<I, T>;
+concept ContiguousIterator = std::contiguous_iterator<std::remove_cvref_t<I>> &&
+                             InputIterator<std::remove_reference_t<I>, T>;
 
 template <typename I, typename T>
 concept ContiguousIterable =
@@ -63,6 +64,76 @@ concept ContiguousConstIterable =
                                                                 } -> std::contiguous_iterator<>;
                                                         };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Iterator of iterator double **
+template <typename I, typename T>
+concept ContiguousIteratorOfIterators =
+        std::contiguous_iterator<I> && requires(I iterator) {
+                                           { *iterator } -> ContiguousIterator<T>;
+                                       };
+
+template <typename I, typename T>
+concept ContiguousIteratorOfIterables =
+        std::contiguous_iterator<I> && requires(I iterator) {
+                                           { *iterator } -> ContiguousIterable<T>;
+                                       };
+
+template <typename I, typename T>
+concept ContiguousIteratorOfConstIterables =
+        std::contiguous_iterator<I> && requires(I iterator) {
+                                           { *iterator } -> ContiguousConstIterable<T>;
+                                       };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename I, typename T>
+concept ContiguousIterableOfIterators = requires(I iterator) {
+                                            { iterator.begin() } -> std::contiguous_iterator<>;
+                                            { *(iterator.begin()) } -> ContiguousIterator<T>;
+                                        };
+
+template <typename I, typename T>
+concept ContiguousIterableOfIterables = requires(I iterator) {
+                                            { iterator.begin() } -> std::contiguous_iterator<>;
+                                            { *(iterator.begin()) } -> ContiguousIterable<T>;
+                                        };
+
+template <typename I, typename T>
+concept ContiguousIterableOfConstIterables = requires(I iterator) {
+                                                 { iterator.begin() } -> std::contiguous_iterator<>;
+                                                 {
+                                                     *(iterator.begin())
+                                                     } -> ContiguousConstIterable<T>;
+                                             };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename I, typename T>
+concept ContiguousConstIterableOfIterators = requires(I iterator) {
+                                                 {
+                                                     iterator.cbegin()
+                                                     } -> std::contiguous_iterator<>;
+                                                 { *(iterator.cbegin()) } -> ContiguousIterator<T>;
+                                             };
+
+template <typename I, typename T>
+concept ContiguousConstIterableOfIterables = requires(I iterator) {
+                                                 {
+                                                     iterator.cbegin()
+                                                     } -> std::contiguous_iterator<>;
+                                                 { *(iterator.cbegin()) } -> ContiguousIterable<T>;
+                                             };
+
+template <typename I, typename T>
+concept ContiguousConstIterableOfConstIterables = requires(I iterator) {
+                                                      {
+                                                          iterator.cbegin()
+                                                          } -> std::contiguous_iterator<>;
+                                                      {
+                                                          *(iterator.cbegin())
+                                                          } -> ContiguousConstIterable<T>;
+                                                  };
+
 /*
  *
  *
@@ -73,9 +144,16 @@ concept ContiguousConstIterable =
  */
 
 template <typename I>
-concept ParallelDataIterator = ContiguousIterator<std::remove_cvref_t<I>, const double> ||
-                               ContiguousIterable<std::remove_cvref_t<I>, const double> ||
-                               ContiguousConstIterable<std::remove_cvref_t<I>, const double>;
+concept ParallelDataIterator =
+        ContiguousIterator<std::remove_cvref_t<I>, const double> ||
+        ContiguousIterable<std::remove_cvref_t<I>, const double> ||
+        ContiguousConstIterable<std::remove_cvref_t<I>, const double> ||
+        ContiguousIteratorOfIterators<std::remove_cvref_t<I>, const double> ||
+        ContiguousIteratorOfIterables<std::remove_cvref_t<I>, const double> ||
+        ContiguousIteratorOfConstIterables<std::remove_cvref_t<I>, const double> ||
+        ContiguousIterableOfIterators<std::remove_cvref_t<I>, const double> ||
+        ContiguousIterableOfIterables<std::remove_cvref_t<I>, const double> ||
+        ContiguousIterableOfConstIterables<std::remove_cvref_t<I>, const double>;
 
 template <typename I>
 concept PiIterator = (RandomIterator<std::remove_reference_t<I>, std::size_t> &&
@@ -105,15 +183,6 @@ concept LambdaIterator = (RandomIterator<std::remove_reference_t<I>, double> &&
  *
  *
  */
-// Iterator of iterator double **
-template <typename I, typename T>
-concept IndirectContiguousAccessIterator = std::contiguous_iterator<I> &&
-
-                                           requires(I iterator, T *value) {
-                                               //  value = *iterator;
-                                               std::is_same_v<decltype(**iterator), double>;
-                                               ContiguousIterator<decltype(*iterator), double *>;
-                                           };
 
 template <typename I, typename T>
 concept IndirectRandomAccessIterator = std::random_access_iterator<I> && !

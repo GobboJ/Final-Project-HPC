@@ -7,6 +7,7 @@
 #include <list>
 #include <deque>
 #include "AlignedArray.h"
+#include "Alignments.h"
 
 namespace cluster::test::types {
 
@@ -20,11 +21,9 @@ namespace cluster::test::types {
 template <template <typename, std::size_t> typename C, std::size_t N, std::size_t D>
 class ArrayCollectionContainer {
 
-private:
-    static const constexpr std::size_t SSE_ALIGNMENT = 16;
-    static const constexpr std::size_t AVX_ALIGNMENT = 32;
-
 public:
+    ArrayCollectionContainer() = default;
+
     C<double *, N> cArray;
     typename C<double *, N>::iterator cArrayIterator;
     typename C<double *, N>::const_iterator cArrayConstIterator;
@@ -49,12 +48,12 @@ public:
 
     C<std::deque<double>, N> deque;
     typename C<std::deque<double>, N>::iterator dequesIterator;
-    typename C<std::deque<double>, N>::const_iterator dequeConstIterator;
+    typename C<std::deque<double>, N>::const_iterator dequesConstIterator;
     C<std::deque<double>::iterator, N> iteratorsDeque;
     C<std::deque<double>::const_iterator, N> constIteratorsDeque;
 
-    C<AlignedArray<double, D, SSE_ALIGNMENT>, N> sseAlignedArray;
-    C<AlignedArray<double, D, AVX_ALIGNMENT>, N> avxAlignedArray;
+    C<AlignedArray<double, D, Alignments::SSE_ALIGNMENT>, N> sseAlignedArray;
+    C<AlignedArray<double, D, Alignments::AVX_ALIGNMENT>, N> avxAlignedArray;
 };
 
 }  // namespace cluster::test::types

@@ -1,12 +1,13 @@
 #ifndef FINAL_PROJECT_HPC_COLLECTIONCONTAINER_H
 #define FINAL_PROJECT_HPC_COLLECTIONCONTAINER_H
 
+#include "AlignedArray.h"
+#include "Alignments.h"
 #include <array>
 #include <cstddef>
 #include <deque>
 #include <list>
 #include <vector>
-#include "AlignedArray.h"
 
 namespace cluster::test::types {
 
@@ -53,8 +54,8 @@ public:
     C<std::deque<double>::iterator> iteratorsDeque;
     C<std::deque<double>::const_iterator> constIteratorsDeque;
 
-    C<AlignedArray<double, D, SSE_ALIGNMENT>> sseAlignedArray;
-    C<AlignedArray<double, D, AVX_ALIGNMENT>> avxAlignedArray;
+    C<AlignedArray<double, D, Alignments::SSE_ALIGNMENT>> sseAlignedArray;
+    C<AlignedArray<double, D, Alignments::AVX_ALIGNMENT>> avxAlignedArray;
 };
 
 }  // namespace cluster::test::types

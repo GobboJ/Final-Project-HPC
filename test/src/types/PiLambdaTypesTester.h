@@ -101,49 +101,14 @@ private:
                 parallel::ParallelClustering<true, true, true>::cluster<
                         parallel::DistanceComputers::CLASSICAL>(
                         this->data, this->dataElementsCount, this->dimension, pi, lambda, 6, 6, 6);
-                bool result;
-
-                if constexpr (cluster::utils::ConstIterable<P, std::size_t>) {
-                    if constexpr (cluster::utils::ConstIterable<decltype(lambda), double>) {
-                        result = ResultsChecker::checkResults(pi.cbegin(),
-                                                              pi.cend(),
-                                                              lambda.cbegin(),
-                                                              lambda.cend(),
-                                                              this->expectedPi.cbegin(),
-                                                              this->expectedPi.cend(),
-                                                              this->expectedLambda.cbegin(),
-                                                              this->expectedLambda.cend());
-                    } else {
-                        result = ResultsChecker::checkResults(pi.cbegin(),
-                                                              pi.cend(),
-                                                              lambda,
-                                                              lambda + this->dataElementsCount,
-                                                              this->expectedPi.cbegin(),
-                                                              this->expectedPi.cend(),
-                                                              this->expectedLambda.cbegin(),
-                                                              this->expectedLambda.cend());
-                    }
-                } else {
-                    if constexpr (cluster::utils::ConstIterable<decltype(lambda), double>) {
-                        result = ResultsChecker::checkResults(pi,
-                                                              pi + this->dataElementsCount,
-                                                              lambda.cbegin(),
-                                                              lambda.cend(),
-                                                              this->expectedPi.cbegin(),
-                                                              this->expectedPi.cend(),
-                                                              this->expectedLambda.cbegin(),
-                                                              this->expectedLambda.cend());
-                    } else {
-                        result = ResultsChecker::checkResults(pi,
-                                                              pi + this->dataElementsCount,
-                                                              lambda,
-                                                              lambda + this->dataElementsCount,
-                                                              this->expectedPi.cbegin(),
-                                                              this->expectedPi.cend(),
-                                                              this->expectedLambda.cbegin(),
-                                                              this->expectedLambda.cend());
-                    }
-                }
+                bool result = ResultsChecker::checkResults(getBegin<std::size_t>(pi),
+                                                           getEnd<std::size_t>(pi),
+                                                           getBegin<double>(lambda),
+                                                           getEnd<double>(lambda),
+                                                           this->expectedPi.cbegin(),
+                                                           this->expectedPi.cend(),
+                                                           this->expectedLambda.cbegin(),
+                                                           this->expectedLambda.cend());
 
                 std::cout << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m";
             } else {
@@ -161,6 +126,26 @@ private:
         std::cout << std::endl;
         if constexpr (LI + 1 < sizeof...(Ls)) {
             testLambdaPermutations<PC, LI + 1, CL>(pi, lambdas);
+        }
+    }
+
+    template <typename T, typename I>
+    auto getBegin(I dataStructure) {
+
+        if constexpr (utils::ConstIterable<I, T>) {
+            return dataStructure.cbegin();
+        } else {
+            return dataStructure;
+        }
+    }
+
+    template <typename T, typename I>
+    auto getEnd(I dataStructure) {
+
+        if constexpr (utils::ConstIterable<I, T>) {
+            return dataStructure.cend();
+        } else {
+            return dataStructure + this->dataElementsCount;
         }
     }
 

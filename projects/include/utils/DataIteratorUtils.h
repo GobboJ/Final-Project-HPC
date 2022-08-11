@@ -16,32 +16,33 @@ namespace cluster::utils {
 class DataIteratorUtils {
 
 public:
-    template <typename D, std::enable_if_t<ContiguousIterator<D, double>, bool> = true>
-    static inline const double *createEfficientIterator(const D &data, const char *name) {
+    template <typename D, std::enable_if_t<ContiguousIterator<D, const double>, bool> = true>
+    static inline const double *createEfficientIterator(const D &iterator, const char *name) {
 
-        printSummary(name, "Using direct pointers");
-        return &(data[0]);
+        printSummary(name, "Contiguous iterator");
+        return &(iterator[0]);
     }
 
     template <typename D,
-              std::enable_if_t<ContiguousIterable<D, double> && !ContiguousConstIterable<D, double>,
+              std::enable_if_t<ContiguousIterable<D, const double> ||
+                                       ContiguousConstIterable<D, const double>,
                                bool> = true>
     static inline const double *createEfficientIterator(const D &data, const char *name) {
 
-        printSummary(name, "Using direct pointers from normal iterator");
-        return &(data.begin()[0]);
-    }
-
-    template <typename D, std::enable_if_t<ContiguousConstIterable<D, double>, bool> = true>
-    static inline const double *createEfficientIterator(const D &data, const char *name) {
-
-        printSummary(name, "Using direct pointers from const iterator");
-        return &(data.cbegin()[0]);
+        if constexpr (
+                ContiguousIterable<D, const double> && !ContiguousConstIterable<D, const double>) {
+            printSummary(name, "Contiguous iterable");
+            return &(data.begin()[0]);
+        } else {
+            printSummary(name, "Contiguous const iterable");
+            return &(data.cbegin()[0]);
+        }
     }
 
     template <typename I,
-              std::enable_if_t<ContiguousIterator<I, double> || ContiguousIterable<I, double> ||
-                                       ContiguousConstIterable<I, double>,
+              std::enable_if_t<ContiguousIterator<I, const double> ||
+                                       ContiguousIterable<I, const double> ||
+                                       ContiguousConstIterable<I, const double>,
                                bool> = true>
     static inline const double *getCurrentElement(const double *const currentElement) {
 
@@ -49,8 +50,9 @@ public:
     }
 
     template <typename I,
-              std::enable_if_t<ContiguousIterator<I, double> || ContiguousIterable<I, double> ||
-                                       ContiguousConstIterable<I, double>,
+              std::enable_if_t<ContiguousIterator<I, const double> ||
+                                       ContiguousIterable<I, const double> ||
+                                       ContiguousConstIterable<I, const double>,
                                bool> = true>
     static inline const double *getElementAt(
             const double *const startElement, const std::size_t index, std::size_t stride) {
@@ -59,8 +61,9 @@ public:
     }
 
     template <typename I,
-              std::enable_if_t<ContiguousIterator<I, double> || ContiguousIterable<I, double> ||
-                                       ContiguousConstIterable<I, double>,
+              std::enable_if_t<ContiguousIterator<I, const double> ||
+                                       ContiguousIterable<I, const double> ||
+                                       ContiguousConstIterable<I, const double>,
                                bool> = true>
     static inline void moveNext(const double *&currentElement, std::size_t stride) {
 
@@ -68,12 +71,267 @@ public:
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    template <typename D,
+              std::enable_if_t<ContiguousIteratorOfIterators<D, const double>, bool> = true>
+    static inline auto *createEfficientIterator(const D &iterator, const char *name) {
+
+        printSummary(name, "Contiguous iterator of iterators");
+        return &(iterator[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIteratorOfIterators<D, const double>, bool> = true>
+    static inline const double *getCurrentElement(const I &currentElement) {
+
+        return &((*currentElement)[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIteratorOfIterators<D, const double>, bool> = true>
+    static inline const double *getElementAt(
+            const I &startElement, const std::size_t index, std::size_t stride) {
+
+        return &(startElement[index][0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIteratorOfIterators<D, const double>, bool> = true>
+    static inline void moveNext(I &currentElement, std::size_t stride) {
+
+        ++currentElement;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <typename D,
+              std::enable_if_t<ContiguousIteratorOfIterables<D, const double> ||
+                                       ContiguousIteratorOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline auto *createEfficientIterator(const D &data, const char *name) {
+
+        if constexpr (ContiguousIteratorOfIterables<D, const double> &&
+                      !ContiguousIteratorOfConstIterables<D, const double>) {
+            printSummary(name, "Contiguous iterator of iterables");
+        } else {
+            printSummary(name, "Contiguous iterator of const iterables");
+        }
+        return &(data[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIteratorOfIterables<D, const double> &&
+                                       !ContiguousIteratorOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline const double *getCurrentElement(const I &currentElement) {
+
+        return &(((*currentElement).begin())[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIteratorOfConstIterables<D, const double>, bool> = true>
+    static inline const double *getCurrentElement(const I &currentElement) {
+
+        return &(((*currentElement).cbegin())[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIteratorOfIterables<D, const double> &&
+                                       !ContiguousIteratorOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline const double *getElementAt(
+            const I &startElement, const std::size_t index, std::size_t stride) {
+
+        return &((startElement[index].begin())[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIteratorOfConstIterables<D, const double>, bool> = true>
+    static inline const double *getElementAt(
+            const I &startElement, const std::size_t index, std::size_t stride) {
+
+        return &((startElement[index].cbegin())[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIteratorOfIterables<D, const double> ||
+                                       ContiguousIteratorOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline void moveNext(I &currentElement, std::size_t stride) {
+
+        ++currentElement;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <typename D,
+              std::enable_if_t<ContiguousIterableOfIterators<D, const double> ||
+                                       ContiguousConstIterableOfIterators<D, const double>,
+                               bool> = true>
+    static inline auto *createEfficientIterator(const D &data, const char *name) {
+
+        if constexpr (ContiguousIterableOfIterators<D, const double> &&
+                      !ContiguousConstIterableOfIterators<D, const double>) {
+            printSummary(name, "Contiguous iterable of iterators");
+            return &((data.begin())[0]);
+        } else {
+            printSummary(name, "Contiguous const iterable of iterators");
+            return &((data.cbegin())[0]);
+        }
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIterableOfIterators<D, const double> ||
+                                       ContiguousConstIterableOfIterators<D, const double>,
+                               bool> = true>
+    static inline const double *getCurrentElement(const I &currentElementIterator) {
+
+        return &((*currentElementIterator)[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIterableOfIterators<D, const double> ||
+                                       ContiguousConstIterableOfIterators<D, const double>,
+                               bool> = true>
+    static inline const double *getElementAt(
+            const I &startElementIterator, const std::size_t index, std::size_t stride) {
+
+        return &(startElementIterator[index][0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIterableOfIterators<D, const double> ||
+                                       ContiguousConstIterableOfIterators<D, const double>,
+                               bool> = true>
+    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+
+        ++currentElementIterator;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <typename D,
+              std::enable_if_t<ContiguousIterableOfIterables<D, const double> ||
+                                       ContiguousIterableOfConstIterables<D, const double> ||
+                                       ContiguousConstIterableOfIterables<D, const double> ||
+                                       ContiguousConstIterableOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline auto *createEfficientIterator(const D &data, const char *name) {
+
+        if constexpr ((ContiguousIterableOfIterables<D, const double> &&
+                       !ContiguousConstIterableOfIterables<D, const double>) ||
+                      (ContiguousIterableOfConstIterables<D, const double> &&
+                       !ContiguousConstIterableOfConstIterables<D, const double>) ) {
+            if constexpr (ContiguousIterableOfIterables<D, const double>) {
+                printSummary(name, "Contiguous iterable of iterables");
+            } else {
+                printSummary(name, "Contiguous iterable of const iterables");
+            }
+
+            return &((data.begin())[0]);
+        } else {
+            if (ContiguousConstIterableOfIterables<D, const double> &&
+                !ContiguousConstIterableOfConstIterables<D, const double>) {
+                printSummary(name, "Contiguous const iterable of iterables");
+            } else {
+                printSummary(name, "Contiguous const iterable of const iterables");
+            }
+            return &((data.cbegin())[0]);
+        }
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIterableOfIterables<D, const double> ||
+                                       ContiguousIterableOfConstIterables<D, const double> ||
+                                       ContiguousConstIterableOfIterables<D, const double> ||
+                                       ContiguousConstIterableOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline const double *getCurrentElement(const I &currentElementIterator) {
+
+        if constexpr (ContiguousIterableOfIterables<D, const double> ||
+                      ContiguousConstIterableOfIterables<D, const double>) {
+            return &(((*currentElementIterator).begin())[0]);
+        } else {
+            return &(((*currentElementIterator).cbegin())[0]);
+        }
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIterableOfIterables<D, const double> ||
+                                       ContiguousIterableOfConstIterables<D, const double> ||
+                                       ContiguousConstIterableOfIterables<D, const double> ||
+                                       ContiguousConstIterableOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline const double *getElementAt(
+            const I &startElementIterator, const std::size_t index, std::size_t stride) {
+
+        if constexpr (ContiguousIterableOfIterables<D, const double> ||
+                      ContiguousConstIterableOfIterables<D, const double>) {
+            return &((startElementIterator[index].begin())[0]);
+        } else {
+            return &((startElementIterator[index].cbegin())[0]);
+        }
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<ContiguousIterableOfIterables<D, const double> ||
+                                       ContiguousIterableOfConstIterables<D, const double> ||
+                                       ContiguousConstIterableOfIterables<D, const double> ||
+                                       ContiguousConstIterableOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+
+        ++currentElementIterator;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /*template <typename D, std::enable_if_t<RandomIterator<D, const double*>, bool> = true>
+    static inline D createEfficientIterator(const D &iterator, const char *name) {
+
+        printSummary(name, "Using direct pointers");
+        return iterator;
+    }
+
+    template <typename I, std::enable_if_t<RandomIterator<I, const double>, bool> = true>
+    static inline const double *getCurrentElement(const I &currentElementIterator) {
+
+        return *currentElementIterator;
+    }
+
+    template <typename I, std::enable_if_t<RandomIterator<I, const double>, bool> = true>
+    static inline const double *getElementAt(
+            const I &startElementIterator, const std::size_t index, std::size_t stride) {
+
+        return &(startElementIterator[index * stride]);
+    }*/
 
 private:
-    static inline void printSummary(const char *name, const char *summary) {
+    static void printSummary(const char *name, const char *summary) {
 
 #ifdef ITERATORS_SUMMARY
         std::cout << name << ": Using" << ' ' << summary << std::endl;
+#endif
+#ifdef ITERATORS_SUMMARY_TEST
+        if (strcmp("Current data", name) == 0) {
+            std::size_t summaryLength = strlen(summary);
+
+            std::cout << summary << "\033[" << summaryLength << "D";
+            std::cout.flush();
+        }
 #endif
     }
 
