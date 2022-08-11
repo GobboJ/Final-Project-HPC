@@ -242,7 +242,7 @@ double DataReader::parseDouble(
     } catch (std::exception &exception) {
         using namespace std::literals::string_literals;
         throw MalformedFileException("Line"s + ' ' + std::to_string(lineNumber) +
-                                     "contains the invalid value '" + string + "' at column " +
+                                     " contains the invalid value '" + string + "' at column " +
                                      std::to_string(columnNumber) + ": " + exception.what());
     }
 
@@ -250,7 +250,7 @@ double DataReader::parseDouble(
     if (firstNonParsedCharacter == 0) {
         using namespace std::literals::string_literals;
         throw MalformedFileException("Line"s + ' ' + std::to_string(lineNumber) +
-                                     "contains the invalid value '" + string + "' at column " +
+                                     " contains the invalid value '" + string + "' at column " +
                                      std::to_string(columnNumber));
     }
 
@@ -281,7 +281,7 @@ std::size_t DataReader::parseSizeT(
     } catch (std::exception &exception) {
         using namespace std::literals::string_literals;
         throw MalformedFileException("Line"s + ' ' + std::to_string(lineNumber) +
-                                     "contains the invalid value '" + string + "' at column " +
+                                     " contains the invalid value '" + string + "' at column " +
                                      std::to_string(columnNumber) + ": " + exception.what());
     }
 
@@ -289,7 +289,7 @@ std::size_t DataReader::parseSizeT(
     if (firstNonParsedCharacter == 0) {
         using namespace std::literals::string_literals;
         throw MalformedFileException("Line"s + ' ' + std::to_string(lineNumber) +
-                                     "contains the invalid value '" + string + "' at column " +
+                                     " contains the invalid value '" + string + "' at column " +
                                      std::to_string(columnNumber));
     }
 
