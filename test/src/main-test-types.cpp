@@ -189,8 +189,7 @@ int main() {
 template <typename... Ts>
 std::tuple<Ts &...> *wrapReferences(Ts &...arguments) {
 
-    const auto a = new std::tuple<Ts &...>(arguments...);
-    return a;
+    return new std::tuple<Ts &...>(arguments...);
 }
 
 void testParallelDataStructureTypes(
@@ -240,23 +239,22 @@ void testParallelDataStructureTypes(
                                                                   *indirectCArrays);
 
     // Fill indirect arrays
-    auto *const arrayContainers = new ArrayCollectionContainer<std::array, ELEMENTS, DIMENSION>();
+    auto *const arraysContainer = new ArrayCollectionContainer<std::array, ELEMENTS, DIMENSION>();
     CollectionCreator::createIndirectArrays<ELEMENTS, DIMENSION>(indirectParsedData,
-                                                                 *arrayContainers);
+                                                                 *arraysContainer);
 
     // Fill indirect vectors
-    auto *const vectorContainers = new CollectionContainer<std::vector, DIMENSION>();
-    CollectionCreator::createIndirectVectors<DIMENSION>(indirectParsedData, *vectorContainers);
+    auto *const vectorsContainer = new CollectionContainer<std::vector, DIMENSION>();
+    CollectionCreator::createIndirectVectors<DIMENSION>(indirectParsedData, *vectorsContainer);
 
-    /*// Fill indirect lists
-    auto listContainers = CollectionCreator::createIndirectLists<COORDINATES>(indirectParsedData);
+    // Fill indirect lists
+    auto *const listsContainer = new CollectionContainer<std::list, DIMENSION>();
+    CollectionCreator::createIndirectLists<DIMENSION>(indirectParsedData, *listsContainer);
+
     // Fill indirect deques
-    auto dequeueContainers =
-            CollectionCreator::createIndirectDeques<COORDINATES>(indirectParsedData);
-*/
-    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
-    // Perform linear tests
-    
+    auto *const dequesContainer = new CollectionContainer<std::deque, DIMENSION>();
+    CollectionCreator::createIndirectDeques<DIMENSION>(indirectParsedData, *dequesContainer);
+
     auto *const compilableDataStructures = wrapReferences(
             // Linear types
             linearContainer->cArray,
@@ -279,37 +277,53 @@ void testParallelDataStructureTypes(
             indirectCArrays->sseAlignedArray,
             indirectCArrays->avxAlignedArray,
             // Indirect std::array
-            arrayContainers->cArray,
-            arrayContainers->cArrayIterator,
-            arrayContainers->cArrayConstIterator,
-            arrayContainers->array,
-            arrayContainers->arraysIterator,
-            arrayContainers->arraysConstIterator,
-            arrayContainers->iteratorsArray,
-            arrayContainers->constIteratorsArray,
-            arrayContainers->vector,
-            arrayContainers->vectorsIterator,
-            arrayContainers->vectorsConstIterator,
-            arrayContainers->iteratorsVector,
-            arrayContainers->constIteratorsVector,
-            arrayContainers->sseAlignedArray,
-            arrayContainers->avxAlignedArray,
+            arraysContainer->cArray,
+            arraysContainer->cArrayIterator,
+            arraysContainer->cArrayConstIterator,
+            arraysContainer->array,
+            arraysContainer->arraysIterator,
+            arraysContainer->arraysConstIterator,
+            arraysContainer->iteratorsArray,
+            arraysContainer->constIteratorsArray,
+            arraysContainer->vector,
+            arraysContainer->vectorsIterator,
+            arraysContainer->vectorsConstIterator,
+            arraysContainer->iteratorsVector,
+            arraysContainer->constIteratorsVector,
+            arraysContainer->sseAlignedArray,
+            arraysContainer->avxAlignedArray,
             // Indirect std::vector
-            vectorContainers->cArray,
-            vectorContainers->cArrayIterator,
-            vectorContainers->cArrayConstIterator,
-            vectorContainers->array,
-            vectorContainers->arraysIterator,
-            vectorContainers->arraysConstIterator,
-            vectorContainers->iteratorsArray,
-            vectorContainers->constIteratorsArray,
-            vectorContainers->vector,
-            vectorContainers->vectorsIterator,
-            vectorContainers->vectorsConstIterator,
-            vectorContainers->iteratorsVector,
-            vectorContainers->constIteratorsVector,
-            vectorContainers->sseAlignedArray,
-            vectorContainers->avxAlignedArray);
+            vectorsContainer->cArray,
+            vectorsContainer->cArrayIterator,
+            vectorsContainer->cArrayConstIterator,
+            vectorsContainer->array,
+            vectorsContainer->arraysIterator,
+            vectorsContainer->arraysConstIterator,
+            vectorsContainer->iteratorsArray,
+            vectorsContainer->constIteratorsArray,
+            vectorsContainer->vector,
+            vectorsContainer->vectorsIterator,
+            vectorsContainer->vectorsConstIterator,
+            vectorsContainer->iteratorsVector,
+            vectorsContainer->constIteratorsVector,
+            vectorsContainer->sseAlignedArray,
+            vectorsContainer->avxAlignedArray,
+            // Indirect std::deque
+            dequesContainer->cArray,
+            dequesContainer->cArrayIterator,
+            dequesContainer->cArrayConstIterator,
+            dequesContainer->array,
+            dequesContainer->arraysIterator,
+            dequesContainer->arraysConstIterator,
+            dequesContainer->iteratorsArray,
+            dequesContainer->constIteratorsArray,
+            dequesContainer->vector,
+            dequesContainer->vectorsIterator,
+            dequesContainer->vectorsConstIterator,
+            dequesContainer->iteratorsVector,
+            dequesContainer->constIteratorsVector,
+            dequesContainer->sseAlignedArray,
+            dequesContainer->avxAlignedArray);
 
     auto *const notCompilableDataStructures = wrapReferences(
             // Linear types
@@ -327,102 +341,73 @@ void testParallelDataStructureTypes(
             indirectCArrays->iteratorsDeque,
             indirectCArrays->constIteratorsDeque,
             // Indirect std::array
-            arrayContainers->list,
-            arrayContainers->listsIterator,
-            arrayContainers->listsConstIterator,
-            arrayContainers->iteratorsList,
-            arrayContainers->constIteratorsList,
-            arrayContainers->deque,
-            arrayContainers->dequesIterator,
-            arrayContainers->dequesConstIterator,
-            arrayContainers->iteratorsDeque,
-            arrayContainers->constIteratorsDeque,
+            arraysContainer->list,
+            arraysContainer->listsIterator,
+            arraysContainer->listsConstIterator,
+            arraysContainer->iteratorsList,
+            arraysContainer->constIteratorsList,
+            arraysContainer->deque,
+            arraysContainer->dequesIterator,
+            arraysContainer->dequesConstIterator,
+            arraysContainer->iteratorsDeque,
+            arraysContainer->constIteratorsDeque,
             // Indirect std::vector
-            vectorContainers->list,
-            vectorContainers->listsIterator,
-            vectorContainers->listsConstIterator,
-            vectorContainers->iteratorsList,
-            vectorContainers->constIteratorsList,
-            vectorContainers->deque,
-            vectorContainers->dequesIterator,
-            vectorContainers->dequesConstIterator,
-            vectorContainers->iteratorsDeque,
-            vectorContainers->constIteratorsDeque);
+            vectorsContainer->list,
+            vectorsContainer->listsIterator,
+            vectorsContainer->listsConstIterator,
+            vectorsContainer->iteratorsList,
+            vectorsContainer->constIteratorsList,
+            vectorsContainer->deque,
+            vectorsContainer->dequesIterator,
+            vectorsContainer->dequesConstIterator,
+            vectorsContainer->iteratorsDeque,
+            vectorsContainer->constIteratorsDeque,
+            // Indirect std::list
+            listsContainer->cArray,
+            listsContainer->cArrayIterator,
+            listsContainer->cArrayConstIterator,
+            listsContainer->array,
+            listsContainer->arraysIterator,
+            listsContainer->arraysConstIterator,
+            listsContainer->iteratorsArray,
+            listsContainer->constIteratorsArray,
+            listsContainer->vector,
+            listsContainer->vectorsIterator,
+            listsContainer->vectorsConstIterator,
+            listsContainer->iteratorsVector,
+            listsContainer->constIteratorsVector,
+            listsContainer->list,
+            listsContainer->listsIterator,
+            listsContainer->listsConstIterator,
+            listsContainer->iteratorsList,
+            listsContainer->constIteratorsList,
+            listsContainer->deque,
+            listsContainer->dequesIterator,
+            listsContainer->dequesConstIterator,
+            listsContainer->iteratorsDeque,
+            listsContainer->constIteratorsDeque,
+            listsContainer->sseAlignedArray,
+            listsContainer->avxAlignedArray,
+            // Indirect std::deque
+            dequesContainer->list,
+            dequesContainer->listsIterator,
+            dequesContainer->listsConstIterator,
+            dequesContainer->iteratorsList,
+            dequesContainer->constIteratorsList,
+            dequesContainer->deque,
+            dequesContainer->dequesIterator,
+            dequesContainer->dequesConstIterator,
+            dequesContainer->iteratorsDeque,
+            dequesContainer->constIteratorsDeque);
 
     dataTypesTester.testParallelTypes(*compilableDataStructures, *notCompilableDataStructures);
 
-    /*
-        // Perform indirect C arrays tests
-        performParallelTest(std::get<0>(cArrayContainers));
-        performParallelTest(std::get<1>(cArrayContainers));
-        performParallelTest(std::get<2>(cArrayContainers));
-        performParallelTest(std::get<3>(cArrayContainers));
-        performParallelTest(std::get<4>(cArrayContainers));
-        performNotCompilableParallelTest(std::get<5>(cArrayContainers));
-        performNotCompilableParallelTest(std::get<6>(cArrayContainers));
-        performParallelTest(std::get<7>(cArrayContainers));
-        performParallelTest(std::get<8>(cArrayContainers));
-        performParallelTest(std::get<9>(cArrayContainers));
-        performParallelTest(std::get<10>(cArrayContainers));
-
-        // Perform indirect arrays test
-        performParallelTest(std::get<0>(arrayContainers).begin());
-        performParallelTest(std::get<1>(arrayContainers).begin());
-        performParallelTest(std::get<2>(arrayContainers).begin());
-        performParallelTest(std::get<3>(arrayContainers).begin());
-        performParallelTest(std::get<4>(arrayContainers).begin());
-        performNotCompilableParallelTest(std::get<5>(arrayContainers).begin());
-        performNotCompilableParallelTest(std::get<6>(arrayContainers).begin());
-        performNotCompilableParallelTest(std::get<7>(arrayContainers).begin());
-        performNotCompilableParallelTest(std::get<8>(arrayContainers).begin());
-        performParallelTest(std::get<9>(arrayContainers).begin());
-        performParallelTest(std::get<10>(arrayContainers).begin());
-
-        // Perform indirect vectors tests
-        performParallelTest(std::get<0>(vectorContainers).begin());
-        performParallelTest(std::get<1>(vectorContainers).begin());
-        performParallelTest(std::get<2>(vectorContainers).begin());
-        performParallelTest(std::get<3>(vectorContainers).begin());
-        performParallelTest(std::get<4>(vectorContainers).begin());
-        performNotCompilableParallelTest(std::get<5>(vectorContainers).begin());
-        performNotCompilableParallelTest(std::get<6>(vectorContainers).begin());
-        performNotCompilableParallelTest(std::get<7>(vectorContainers).begin());
-        performNotCompilableParallelTest(std::get<8>(vectorContainers).begin());
-        performParallelTest(std::get<9>(vectorContainers).begin());
-        performParallelTest(std::get<10>(vectorContainers).begin());
-
-        // Perform indirect lists tests
-        performNotCompilableParallelTest(std::get<0>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<1>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<2>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<3>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<4>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<5>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<6>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<7>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<8>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<9>(listContainers).begin());
-        performNotCompilableParallelTest(std::get<10>(listContainers).begin());
-
-        // Perform indirect deques tests
-        performParallelTest(std::get<0>(vectorContainers).begin());
-        performParallelTest(std::get<1>(vectorContainers).begin());
-        performParallelTest(std::get<2>(vectorContainers).begin());
-        performParallelTest(std::get<3>(vectorContainers).begin());
-        performParallelTest(std::get<4>(vectorContainers).begin());
-        performNotCompilableParallelTest(std::get<5>(vectorContainers).begin());
-        performNotCompilableParallelTest(std::get<6>(vectorContainers).begin());
-        performNotCompilableParallelTest(std::get<7>(vectorContainers).begin());
-        performNotCompilableParallelTest(std::get<8>(vectorContainers).begin());
-        performParallelTest(std::get<9>(vectorContainers).begin());
-        performParallelTest(std::get<10>(dequeueContainers).begin());
-        // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
-    */
-
     delete linearContainer;
     delete indirectCArrays;
-    delete arrayContainers;
-    delete vectorContainers;
+    delete arraysContainer;
+    delete vectorsContainer;
+    delete listsContainer;
+    delete dequesContainer;
 
     delete compilableDataStructures;
     delete notCompilableDataStructures;
@@ -460,7 +445,7 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
                                                                  expectedLambda};
 
     auto *piCArray = new std::size_t[dataElementsCount];
-    std::array<std::size_t, ELEMENTS> piArray{};
+    auto *piArray = new std::array<std::size_t, ELEMENTS>;
     std::vector<std::size_t> piVector{};
     piVector.resize(dataElementsCount);
     std::list<std::size_t> piList{};
@@ -471,7 +456,7 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
     AlignedArray<std::size_t, ELEMENTS, 32> piAvxArray{};
 
     auto *lambdaCArray = new double[dataElementsCount];
-    std::array<double, ELEMENTS> lambdaArray{};
+    auto *lambdaArray = new std::array<double, ELEMENTS>();
     std::vector<double> lambdaVector{};
     lambdaVector.resize(dataElementsCount);
     std::list<double> lambdaList{};
@@ -482,15 +467,15 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
     AlignedArray<double, ELEMENTS, 32> lambdaAvxArray{};
 
     auto compilablePis = std::make_tuple(piCArray,
-                                         piArray,
-                                         piArray.begin(),
+                                         *piArray,
+                                         piArray->begin(),
                                          piVector,
                                          piVector.begin(),
                                          piDeque,
                                          piDeque.begin(),
                                          piSseArray,
                                          piAvxArray);
-    auto notCompilablePis = std::make_tuple(piArray.cbegin(),
+    auto notCompilablePis = std::make_tuple(piArray->cbegin(),
                                             piVector.cbegin(),
                                             piList,
                                             piList.begin(),
@@ -498,8 +483,8 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
                                             piDeque.cbegin());
 
     auto compilableLambdas = std::make_tuple(lambdaCArray,
-                                             lambdaArray,
-                                             lambdaArray.begin(),
+                                             *lambdaArray,
+                                             lambdaArray->begin(),
                                              lambdaVector,
                                              lambdaVector.begin(),
                                              lambdaDeque,
@@ -508,14 +493,14 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
                                              lambdaAvxArray);
     auto notCompilableLambdas = std::make_tuple(lambdaList,
                                                 lambdaList.begin(),
-                                                lambdaArray.cbegin(),
+                                                lambdaArray->cbegin(),
                                                 lambdaVector.cbegin(),
                                                 lambdaList.cbegin(),
                                                 lambdaDeque.cbegin());
 
-    /*TODO:piLambdaTypesTester.testAllPermutations(
+    piLambdaTypesTester.testAllPermutations(
             compilablePis, notCompilablePis, compilableLambdas, notCompilableLambdas);
-*/
+
     std::cout << "Test terminated" << std::endl;
 
     /*tester.performAllPermutationTests(data,
@@ -550,4 +535,7 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
 
     delete[] piCArray;
     delete[] lambdaCArray;
+
+    delete piArray;
+    delete lambdaArray;
 }
