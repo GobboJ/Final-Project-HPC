@@ -15,11 +15,15 @@ namespace cluster::utils {
 
 class PiLambdaIteratorUtils {
 public:
+    static PiLambdaIteratorType lastPiIteratorType;
+    static PiLambdaIteratorType lastLambdaIteratorType;
+    static bool printSummaries;
+
     // cluster::utils::RandomIterator<I, T>
     template <typename T, typename I, std::enable_if_t<ContiguousIterator<I, T>, bool> = true>
     static inline T *createEfficientIterator(I &dataStructure, const char *name) {
 
-        printSummary(name, "Using direct pointers");
+        printSummary(name, PiLambdaIteratorType::CONTIGUOUS_ITERATOR);
 
         return &(dataStructure[0]);
     }
@@ -27,7 +31,7 @@ public:
     template <typename T, typename I, std::enable_if_t<ContiguousIterable<I, T>, bool> = true>
     static inline T *createEfficientIterator(I &dataStructure, const char *name) {
 
-        printSummary(name, "Using direct pointers from normal iterator");
+        printSummary(name, PiLambdaIteratorType::CONTIGUOUS_ITERABLE);
         return &((dataStructure.begin())[0]);
     }
 
@@ -62,7 +66,7 @@ public:
               std::enable_if_t<RandomIterator<I, T> && !ContiguousIterator<I, T>, bool> = true>
     static inline I createEfficientIterator(I &dataStructureIterator, const char *name) {
 
-        printSummary(name, "Using direct pointers");
+        printSummary(name, PiLambdaIteratorType::RANDOM_ITERATOR);
 
         return dataStructureIterator;
     }
@@ -72,7 +76,7 @@ public:
               std::enable_if_t<RandomIterable<D, T> && !ContiguousIterable<D, T>, bool> = true>
     static inline auto createEfficientIterator(D &dataStructure, const char *name) {
 
-        printSummary(name, "Using direct pointers from normal iterator");
+        printSummary(name, PiLambdaIteratorType::RANDOM_ITERABLE);
         return dataStructure.begin();
     }
 
@@ -104,14 +108,37 @@ public:
     }
 
 private:
-    static inline void printSummary(const char *name, const char *summary) {
+    static inline void printSummary(const char *name, PiLambdaIteratorType iteratorType) {
 
 #ifdef ITERATORS_SUMMARY
-        std::cout << name << ": Using" << ' ' << summary << std::endl;
+        std::cout << name << ": Using" << ' ' << DataIteratorTypeUtils::getDescription(iteratorType)
+                  << std::endl;
+#endif
+#ifdef ITERATORS_SUMMARY_TEST
+        if (printSummaries) {
+            bool isPi = strcmp("First element of pi", name) == 0;
+            bool isLambda = strcmp("First element of lambda", name) == 0;
+            if (isPi || isLambda) {
+                if (isPi) {
+                    lastPiIteratorType = iteratorType;
+                } else {
+                    lastLambdaIteratorType = iteratorType;
+                }
+                std::string summary = PiLambdaIteratorTypeUtils::getDescription(iteratorType);
+                //    lastIteratorType = iteratorType;
+
+                // Longest string: Contiguous iterator
+                std::cout << std::setfill(' ') << std::setw(19) << summary << " | ";
+                std::cout.flush();
+            }
+        }
 #endif
     }
 };
 
+PiLambdaIteratorType PiLambdaIteratorUtils::lastPiIteratorType = PiLambdaIteratorType::NONE;
+PiLambdaIteratorType PiLambdaIteratorUtils::lastLambdaIteratorType = PiLambdaIteratorType::NONE;
+bool PiLambdaIteratorUtils::printSummaries = false;
 }  // namespace cluster::utils
 
 #endif  // FINAL_PROJECT_HPC_PILAMBDAITERATORUTILS_H

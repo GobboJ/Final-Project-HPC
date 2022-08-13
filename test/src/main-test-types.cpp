@@ -11,12 +11,15 @@
 #include "SequentialClustering.h"
 #include "data/DataReader.h"
 #include "data/DataWriter.h"
-#include "types/ArrayCollectionContainer.h"
-#include "types/CollectionContainer.h"
+#include "types/old/ArrayCollectionContainer.h"
+#include "types/collections/CollectionContainer.h"
 #include "types/CollectionCreator.h"
 #include "types/DataTypesTester.h"
 #include "types/PiLambdaTypesTester.h"
 #include "types/TypesPrinter.h"
+#include "types/collections/PiLambdaContainer.h"
+#include "types/collections/ArrayWrapper.h"
+#include "types/SubContainerWrapper.h"
 #include <deque>
 #include <list>
 
@@ -26,23 +29,32 @@ using cluster::sequential::SequentialClustering;
 using cluster::test::ResultsChecker;
 using cluster::test::data::DataReader;
 using cluster::test::data::DataWriter;
-using cluster::test::types::AlignedArray;
 using cluster::test::types::ArrayCollectionContainer;
-using cluster::test::types::CollectionContainer;
-using cluster::test::types::CollectionCreator;
 using cluster::test::types::DataTypesTester;
-using cluster::test::types::LinearCollectionContainer;
 using cluster::test::types::PiLambdaTypesTester;
-using cluster::test::types::PointerCollectionContainer;
+using cluster::test::types::SubContainerWrapper;
 using cluster::test::types::TypesPrinter;
+using cluster::test::types::collections::AlignedArray;
+using cluster::test::types::collections::ArrayWrapper;
+using cluster::test::types::collections::CollectionContainer;
+using cluster::test::types::collections::CollectionCreator;
+using cluster::test::types::collections::LinearCollectionContainer;
+using cluster::test::types::collections::OnlyConstIterableVector;
+using cluster::test::types::collections::OnlyIterableVector;
+using cluster::test::types::collections::PiLambdaContainer;
+using cluster::test::types::collections::SubContainer;
+using WrapperType = cluster::test::types::SubContainerWrapper::WrapperType;
 using cluster::utils::ConstIterable;
 using cluster::utils::ContiguousConstIterable;
 using cluster::utils::ContiguousIterable;
 using cluster::utils::ContiguousIterator;
+using cluster::utils::DataIteratorType;
+using cluster::utils::DataIteratorUtils;
 using cluster::utils::InputIterator;
 using cluster::utils::Iterable;
 using cluster::utils::OutputIterator;
 using cluster::utils::ParallelDataIterator;
+using cluster::utils::PiLambdaIteratorUtils;
 using cluster::utils::RandomIterable;
 using cluster::utils::RandomIterator;
 using IteratorType = PiLambdaTypesTester<std::vector<double>>::IteratorType;
@@ -187,9 +199,41 @@ int main() {
 }
 
 template <typename... Ts>
-std::tuple<Ts &...> *wrapReferences(Ts &...arguments) {
+std::tuple<Ts &...> wrapReferences(Ts &...arguments) {
 
-    return new std::tuple<Ts &...>(arguments...);
+    return std::tuple<Ts &...>(arguments...);
+}
+
+template <typename T>
+std::pair<T &, DataIteratorType> wrapDataStructure(T &dataStructure,
+                                                   DataIteratorType iteratorType) {
+
+    return std::pair<T &, DataIteratorType>(dataStructure, iteratorType);
+}
+
+template <WrapperType WT,template <typename> typename C, std::size_t D>
+auto wrapCompilableCollections(CollectionContainer<C, D> &container) {
+
+    return std::tuple_cat(SubContainerWrapper::wrapSubContainer<WT>(container.cArrays),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.constCArrays),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.arrays),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.vectors),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.sseAlignedArrays),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.avxAlignedArrays),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.onlyIterables),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.onlyConstIterables));
+}
+
+template <WrapperType WT,template <typename> typename C, std::size_t D>
+auto wrapNotCompilableCollections(CollectionContainer<C, D> &container) {
+
+    return std::tuple_cat(SubContainerWrapper::wrapSubContainer<WT>(container.lists),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.deques),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.integers),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.paths),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.pathsVector),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.pairs),
+                          SubContainerWrapper::wrapSubContainer<WT>(container.strings));
 }
 
 void testParallelDataStructureTypes(
@@ -198,18 +242,19 @@ void testParallelDataStructureTypes(
         const std::vector<size_t> &expectedPi,
         const std::vector<double> &expectedLambda) {
 
-    // Longest type: std::array<AlignedArray<double, N, SSE_ALIGNMENT>, N>
-    const constexpr std::size_t maxTypeLength = 53;
+    // Longest type:
+    // OnlyConstIterableVector<OnlyConstIterableVector<double>::const_iterator>::const_iterator
+    const constexpr std::size_t maxTypeLength = 88;
     // Longest summary: Contiguous const iterable of const iterables
     const constexpr std::size_t maxSummaryLength = 44;
-    // Longest Result: Error (should not compile)
-    const constexpr std::size_t maxResultLength = 26;
+    // Longest Result: OK (Contiguous const iterable of const iterables)
+    const constexpr std::size_t maxResultLength = 49;
     std::cout << std::endl;
     std::cout << std::left << std::setfill(' ') << std::setw(maxTypeLength) << "Data structure";
     std::cout << " | ";
     std::cout << std::left << std::setfill(' ') << std::setw(maxResultLength) << "Result";
     std::cout << " | ";
-    std::cout << std::left << std::setfill(' ') << std::setw(maxSummaryLength) << "Summary";
+    std::cout << std::left << std::setfill(' ') << std::setw(maxSummaryLength) << "Overload";
     std::cout << std::endl;
 
     // Max result string: Error (should compile)
@@ -221,6 +266,9 @@ void testParallelDataStructureTypes(
     }
     std::cout << std::endl;
 
+    DataIteratorUtils::printSummaries = true;
+    PiLambdaIteratorUtils::printSummaries = false;
+
     const std::size_t dataElementsCount = parsedData.size() / DIMENSION;
     DataTypesTester dataTypesTester{dataElementsCount,
                                     DIMENSION,
@@ -228,111 +276,116 @@ void testParallelDataStructureTypes(
                                     expectedLambda,
                                     maxTypeLength,
                                     maxResultLength};
+    /*
+        // Fill the linear structures
+        auto *const linearContainer = new LinearCollectionContainer<ELEMENTS * DIMENSION>();
+        CollectionCreator::createLinearContainers<ELEMENTS * DIMENSION>(parsedData,
+       *linearContainer);
 
-    // Fill the linear structures
-    auto *const linearContainer = new LinearCollectionContainer<ELEMENTS * DIMENSION>();
-    CollectionCreator::createLinearContainers<ELEMENTS * DIMENSION>(parsedData, *linearContainer);
-
-    // Fill indirect C arrays
-    auto *const indirectCArrays = new PointerCollectionContainer<ELEMENTS, DIMENSION>();
-    CollectionCreator::createIndirectCArrays<ELEMENTS, DIMENSION>(indirectParsedData,
-                                                                  *indirectCArrays);
-
+        // Fill indirect C arrays
+        auto *const indirectCArrays = new CollectionContainer<ArrayWrapper, DIMENSION>();
+        CollectionCreator::createIndirectCArrays<DIMENSION>(indirectParsedData, *indirectCArrays);
+*/
     // Fill indirect arrays
-    auto *const arraysContainer = new ArrayCollectionContainer<std::array, ELEMENTS, DIMENSION>();
-    CollectionCreator::createIndirectArrays<ELEMENTS, DIMENSION>(indirectParsedData,
-                                                                 *arraysContainer);
+    auto *const arraysContainer = new CollectionContainer<ArrayWrapper, DIMENSION>();
+    CollectionCreator::createIndirectArrays<DIMENSION>(indirectParsedData, *arraysContainer);
 
     // Fill indirect vectors
     auto *const vectorsContainer = new CollectionContainer<std::vector, DIMENSION>();
     CollectionCreator::createIndirectVectors<DIMENSION>(indirectParsedData, *vectorsContainer);
+    /*
+        // Fill indirect lists
+        auto *const listsContainer = new CollectionContainer<std::list, DIMENSION>();
+        CollectionCreator::createIndirectLists<DIMENSION>(indirectParsedData, *listsContainer);
 
-    // Fill indirect lists
-    auto *const listsContainer = new CollectionContainer<std::list, DIMENSION>();
-    CollectionCreator::createIndirectLists<DIMENSION>(indirectParsedData, *listsContainer);
+        // Fill indirect deques
+        auto *const dequesContainer = new CollectionContainer<std::deque, DIMENSION>();
+        CollectionCreator::createIndirectDeques<DIMENSION>(indirectParsedData, *dequesContainer);
+        /*
+        // Fill indirect only iterables
+        auto *const onlyIterablesContainer = new CollectionContainer<OnlyIterableVector,
+       DIMENSION>(); CollectionCreator::createIndirectOnlyIterables<DIMENSION>(indirectParsedData,
+                                                                  *onlyIterablesContainer);
 
-    // Fill indirect deques
-    auto *const dequesContainer = new CollectionContainer<std::deque, DIMENSION>();
-    CollectionCreator::createIndirectDeques<DIMENSION>(indirectParsedData, *dequesContainer);
-
-    auto *const compilableDataStructures = wrapReferences(
+        // Fill indirect only const iterables
+        auto *const onlyConstIterablesContainer =
+                new CollectionContainer<OnlyConstIterableVector, DIMENSION>();
+        CollectionCreator::createIndirectOnlyConstIterables<DIMENSION>(indirectParsedData,
+                                                                       *onlyConstIterablesContainer);
+    */
+    auto compilableDataStructures = std::tuple_cat(std::make_tuple(
             // Linear types
-            linearContainer->cArray,
-            linearContainer->array,
-            linearContainer->arrayIterator,
-            linearContainer->arrayConstIterator,
-            linearContainer->vector,
-            linearContainer->vectorIterator,
-            linearContainer->vectorConstIterator,
-            linearContainer->sseAlignedArray,
-            linearContainer->avxAlignedArray,
+            /*wrapDataStructure(linearContainer->cArray, DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->cConstArray, DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->array, DataIteratorType::CONTIGUOUS_CONST_ITERABLE),
+            wrapDataStructure(linearContainer->arrayIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->arrayConstIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->vector, DataIteratorType::CONTIGUOUS_CONST_ITERABLE),
+            wrapDataStructure(linearContainer->vectorIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->vectorConstIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->sseAlignedArray,
+                              DataIteratorType::CONTIGUOUS_CONST_ITERABLE),
+            wrapDataStructure(linearContainer->sseAlignedArrayIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->sseAlignedArrayConstIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->avxAlignedArray,
+                              DataIteratorType::CONTIGUOUS_CONST_ITERABLE),
+            wrapDataStructure(linearContainer->avxAlignedArrayIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->avxAlignedArrayConstIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->onlyIterable,
+                              DataIteratorType::CONTIGUOUS_CONST_ITERABLE),
+            wrapDataStructure(linearContainer->onlyIterableIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR),
+            wrapDataStructure(linearContainer->onlyConstIterable,
+                              DataIteratorType::CONTIGUOUS_CONST_ITERABLE),
+            wrapDataStructure(linearContainer->onlyConstIterableIterator,
+                              DataIteratorType::CONTIGUOUS_ITERATOR)*/),
             // Indirect C arrays
-            indirectCArrays->cArray,
-            indirectCArrays->array,
-            indirectCArrays->iteratorsArray,
-            indirectCArrays->constIteratorsArray,
-            indirectCArrays->vector,
-            indirectCArrays->iteratorsVector,
-            indirectCArrays->constIteratorsVector,
-            indirectCArrays->sseAlignedArray,
-            indirectCArrays->avxAlignedArray,
+            
             // Indirect std::array
-            arraysContainer->cArray,
-            arraysContainer->cArrayIterator,
-            arraysContainer->cArrayConstIterator,
-            arraysContainer->array,
-            arraysContainer->arraysIterator,
-            arraysContainer->arraysConstIterator,
-            arraysContainer->iteratorsArray,
-            arraysContainer->constIteratorsArray,
-            arraysContainer->vector,
-            arraysContainer->vectorsIterator,
-            arraysContainer->vectorsConstIterator,
-            arraysContainer->iteratorsVector,
-            arraysContainer->constIteratorsVector,
-            arraysContainer->sseAlignedArray,
-            arraysContainer->avxAlignedArray,
+            wrapCompilableCollections<WrapperType::ARRAY_WRAPPER>(*arraysContainer)
             // Indirect std::vector
-            vectorsContainer->cArray,
-            vectorsContainer->cArrayIterator,
-            vectorsContainer->cArrayConstIterator,
-            vectorsContainer->array,
-            vectorsContainer->arraysIterator,
-            vectorsContainer->arraysConstIterator,
-            vectorsContainer->iteratorsArray,
-            vectorsContainer->constIteratorsArray,
-            vectorsContainer->vector,
-            vectorsContainer->vectorsIterator,
-            vectorsContainer->vectorsConstIterator,
-            vectorsContainer->iteratorsVector,
-            vectorsContainer->constIteratorsVector,
-            vectorsContainer->sseAlignedArray,
-            vectorsContainer->avxAlignedArray,
-            // Indirect std::deque
-            dequesContainer->cArray,
-            dequesContainer->cArrayIterator,
-            dequesContainer->cArrayConstIterator,
-            dequesContainer->array,
-            dequesContainer->arraysIterator,
-            dequesContainer->arraysConstIterator,
-            dequesContainer->iteratorsArray,
-            dequesContainer->constIteratorsArray,
-            dequesContainer->vector,
-            dequesContainer->vectorsIterator,
-            dequesContainer->vectorsConstIterator,
-            dequesContainer->iteratorsVector,
-            dequesContainer->constIteratorsVector,
-            dequesContainer->sseAlignedArray,
-            dequesContainer->avxAlignedArray);
+//            wrapCompilableCollections(*vectorsContainer)
+    );
 
-    auto *const notCompilableDataStructures = wrapReferences(
+    // Indirect std::array
+
+    // Indirect std::list
+    // Indirect std::deque
+    // Indirect OnlyIterableVector
+    // Indirect OnlyConstIterableVector
+
+    auto notCompilableDataStructures = std::tuple_cat(
+            wrapNotCompilableCollections<WrapperType::ARRAY_WRAPPER>(*vectorsContainer)
             // Linear types
-            linearContainer->list,
+            /*linearContainer->list,
             linearContainer->listIterator,
             linearContainer->listConstIterator,
             linearContainer->deque,
             linearContainer->dequeIterator,
             linearContainer->dequeConstIterator,
+            linearContainer->integers,
+            linearContainer->integersIterator,
+            linearContainer->integersConstIterator,
+            linearContainer->path,
+            linearContainer->pathConstIterator,
+            linearContainer->pathsVector,
+            linearContainer->pathsVectorIterator,
+            linearContainer->pathsVectorConstIterator,
+            linearContainer->pair,
+            linearContainer->pairsArray,
+            linearContainer->pairsArrayIterator,
+            linearContainer->pairsArrayConstIterator,
+            linearContainer->string,
+            linearContainer->stringIterator,
+            linearContainer->stringConstIterator/*,
             // Indirect C arrays
             indirectCArrays->list,
             indirectCArrays->iteratorsList,
@@ -340,6 +393,16 @@ void testParallelDataStructureTypes(
             indirectCArrays->deque,
             indirectCArrays->iteratorsDeque,
             indirectCArrays->constIteratorsDeque,
+            indirectCArrays->integers,
+            indirectCArrays->integersIterator,
+            indirectCArrays->integersConstIterator,
+            indirectCArrays->path,
+            indirectCArrays->pathConstIterator,
+            indirectCArrays->pathsVector,
+            indirectCArrays->pairsArray,
+            indirectCArrays->string,
+            indirectCArrays->stringIterator,
+            indirectCArrays->stringConstIterator,
             // Indirect std::array
             arraysContainer->list,
             arraysContainer->listsIterator,
@@ -351,6 +414,18 @@ void testParallelDataStructureTypes(
             arraysContainer->dequesConstIterator,
             arraysContainer->iteratorsDeque,
             arraysContainer->constIteratorsDeque,
+            arraysContainer->integers,
+            arraysContainer->iteratorIntegers,
+            arraysContainer->constIteratorIntegers,
+            arraysContainer->integersIterator,
+            arraysContainer->integersConstIterator,
+            arraysContainer->path,
+            arraysContainer->pathConstIterator,
+            arraysContainer->pathsVector,
+            arraysContainer->pairsArray,
+            arraysContainer->string,
+            arraysContainer->stringIterator,
+            arraysContainer->stringConstIterator,
             // Indirect std::vector
             vectorsContainer->list,
             vectorsContainer->listsIterator,
@@ -362,6 +437,18 @@ void testParallelDataStructureTypes(
             vectorsContainer->dequesConstIterator,
             vectorsContainer->iteratorsDeque,
             vectorsContainer->constIteratorsDeque,
+            vectorsContainer->integers,
+            vectorsContainer->integersIterator,
+            vectorsContainer->integersConstIterator,
+            vectorsContainer->iteratorIntegers,
+            vectorsContainer->constIteratorIntegers,
+            vectorsContainer->path,
+            vectorsContainer->pathConstIterator,
+            vectorsContainer->pathsVector,
+            vectorsContainer->pairsArray,
+            vectorsContainer->string,
+            vectorsContainer->stringIterator,
+            vectorsContainer->stringConstIterator,
             // Indirect std::list
             listsContainer->cArray,
             listsContainer->cArrayIterator,
@@ -388,6 +475,18 @@ void testParallelDataStructureTypes(
             listsContainer->constIteratorsDeque,
             listsContainer->sseAlignedArray,
             listsContainer->avxAlignedArray,
+            listsContainer->integers,
+            listsContainer->integersIterator,
+            listsContainer->integersConstIterator,
+            listsContainer->iteratorIntegers,
+            listsContainer->constIteratorIntegers,
+            listsContainer->path,
+            listsContainer->pathConstIterator,
+            listsContainer->pathsVector,
+            listsContainer->pairsArray,
+            listsContainer->string,
+            listsContainer->stringIterator,
+            listsContainer->stringConstIterator,
             // Indirect std::deque
             dequesContainer->list,
             dequesContainer->listsIterator,
@@ -398,42 +497,107 @@ void testParallelDataStructureTypes(
             dequesContainer->dequesIterator,
             dequesContainer->dequesConstIterator,
             dequesContainer->iteratorsDeque,
-            dequesContainer->constIteratorsDeque);
+            dequesContainer->constIteratorsDeque,
+            dequesContainer->integers,
+            dequesContainer->integersIterator,
+            dequesContainer->integersConstIterator,
+            dequesContainer->iteratorIntegers,
+            dequesContainer->constIteratorIntegers,
+            dequesContainer->path,
+            dequesContainer->pathConstIterator,
+            dequesContainer->pathsVector,
+            dequesContainer->pairsArray,
+            dequesContainer->string,
+            dequesContainer->stringIterator,
+            dequesContainer->stringConstIterator,
+            // Indirect OnlyIterableVector
+            onlyIterablesContainer->list,
+            onlyIterablesContainer->listsIterator,
+            onlyIterablesContainer->listsConstIterator,
+            onlyIterablesContainer->iteratorsList,
+            onlyIterablesContainer->constIteratorsList,
+            onlyIterablesContainer->deque,
+            onlyIterablesContainer->dequesIterator,
+            onlyIterablesContainer->dequesConstIterator,
+            onlyIterablesContainer->iteratorsDeque,
+            onlyIterablesContainer->constIteratorsDeque,
+            onlyIterablesContainer->integers,
+            onlyIterablesContainer->integersIterator,
+            onlyIterablesContainer->integersConstIterator,
+            onlyIterablesContainer->iteratorIntegers,
+            onlyIterablesContainer->constIteratorIntegers,
+            onlyIterablesContainer->path,
+            onlyIterablesContainer->pathConstIterator,
+            onlyIterablesContainer->pathsVector,
+            onlyIterablesContainer->pairsArray,
+            onlyIterablesContainer->string,
+            onlyIterablesContainer->stringIterator,
+            onlyIterablesContainer->stringConstIterator,*/
+            // Indirect OnlyConstIterableVector
+            /*onlyConstIterablesContainer->list,
+            onlyConstIterablesContainer->listsIterator,
+            onlyConstIterablesContainer->listsConstIterator,
+            onlyConstIterablesContainer->iteratorsList,
+            onlyConstIterablesContainer->constIteratorsList,
+            onlyConstIterablesContainer->deque,
+            onlyConstIterablesContainer->dequesIterator,
+            onlyConstIterablesContainer->dequesConstIterator,
+            onlyConstIterablesContainer->iteratorsDeque,
+            onlyConstIterablesContainer->constIteratorsDeque,
+            onlyConstIterablesContainer->integers,
+            onlyConstIterablesContainer->integersIterator,
+            onlyConstIterablesContainer->integersConstIterator,
+            onlyConstIterablesContainer->iteratorIntegers,
+            onlyConstIterablesContainer->constIteratorIntegers,
+            onlyConstIterablesContainer->path,
+            onlyConstIterablesContainer->pathConstIterator,
+            onlyConstIterablesContainer->pathsVector,
+            onlyConstIterablesContainer->pairsArray,
+            onlyConstIterablesContainer->string,
+            onlyConstIterablesContainer->stringIterator,
+            onlyConstIterablesContainer->stringConstIterator*/);
 
-    dataTypesTester.testParallelTypes(*compilableDataStructures, *notCompilableDataStructures);
+    dataTypesTester.testParallelTypes(compilableDataStructures, notCompilableDataStructures);
 
-    delete linearContainer;
-    delete indirectCArrays;
+    //  delete linearContainer;
+    /*delete indirectCArrays;
     delete arraysContainer;
     delete vectorsContainer;
     delete listsContainer;
     delete dequesContainer;
-
-    delete compilableDataStructures;
-    delete notCompilableDataStructures;
+    delete onlyIterablesContainer;
+    delete onlyConstIterablesContainer;*/
 }
 
 void testPiLambdaTypes(const std::vector<double> &parsedData,
                        const std::vector<size_t> &expectedPi,
                        const std::vector<double> &expectedLambda) {
-    // Longest type: std::array<std::size_t, ELEMENTS>::const_iterator
-    const constexpr int maxPiLength = 49;
-    // Longest type: std::array<double, ELEMENTS>::const_iterator
-    const constexpr int maxLambdaLength = 44;
+    // Longest type: std::vector<std::filesystem::path::const_iterator>
+    const constexpr int maxPiLength = 50;
+    // Longest type: std::vector<std::filesystem::path::const_iterator>
+    const constexpr int maxLambdaLength = 50;
 
     std::cout << std::endl;
+    std::cout << "Type | ";
     std::cout << std::left << std::setfill(' ') << std::setw(maxPiLength) << "pi";
     std::cout << " | ";
     std::cout << std::left << std::setfill(' ') << std::setw(maxLambdaLength) << "lambda";
+    std::cout << " | ";
+    std::cout << std::left << std::setfill(' ') << std::setw(19) << "pi iterator";
+    std::cout << " | ";
+    std::cout << std::left << std::setfill(' ') << std::setw(19) << "lambda iterator";
     std::cout << " | Result" << std::endl;
 
     // Max result string: Error (lambda should not compile)
-    const constexpr std::size_t separatorLength = maxPiLength + maxLambdaLength + 6 + 33;
+    const constexpr std::size_t separatorLength = maxPiLength + maxLambdaLength + 6 + 33 + (19 * 2);
 
     for (std::size_t i = 0; i < separatorLength; i++) {
         std::cout << '-';
     }
     std::cout << std::endl;
+
+    DataIteratorUtils::printSummaries = false;
+    PiLambdaIteratorUtils::printSummaries = true;
 
     const std::size_t dataElementsCount = parsedData.size() / DIMENSION;
     PiLambdaTypesTester<std::vector<double>> piLambdaTypesTester{parsedData,
@@ -444,29 +608,77 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
                                                                  expectedPi,
                                                                  expectedLambda};
 
-    auto *piCArray = new std::size_t[dataElementsCount];
-    auto *piArray = new std::array<std::size_t, ELEMENTS>;
-    std::vector<std::size_t> piVector{};
-    piVector.resize(dataElementsCount);
-    std::list<std::size_t> piList{};
-    piList.resize(dataElementsCount);
-    std::deque<std::size_t> piDeque{};
-    piDeque.resize(dataElementsCount);
-    AlignedArray<std::size_t, ELEMENTS, 16> piSseArray{};
-    AlignedArray<std::size_t, ELEMENTS, 32> piAvxArray{};
+    PiLambdaContainer<std::size_t, ELEMENTS> piContainer{};
+    PiLambdaContainer<double, ELEMENTS> lambdaContainer{};
 
-    auto *lambdaCArray = new double[dataElementsCount];
-    auto *lambdaArray = new std::array<double, ELEMENTS>();
-    std::vector<double> lambdaVector{};
-    lambdaVector.resize(dataElementsCount);
-    std::list<double> lambdaList{};
-    lambdaList.resize(dataElementsCount);
-    std::deque<double> lambdaDeque{};
-    lambdaDeque.resize(dataElementsCount);
-    AlignedArray<double, ELEMENTS, 16> lambdaSseArray{};
-    AlignedArray<double, ELEMENTS, 32> lambdaAvxArray{};
+    auto contiguousIteratorPis = wrapReferences(piContainer.cArray,
+                                                piContainer.arrayIterator,
+                                                piContainer.vectorIterator,
+                                                piContainer.onlyIterableIterator);
+    auto contiguousIterablePis = wrapReferences(piContainer.array,
+                                                piContainer.vector,
+                                                piContainer.sseArray,
+                                                piContainer.avxArray,
+                                                piContainer.onlyIterable);
+    auto randomIteratorPis = wrapReferences(piContainer.dequeIterator);
+    auto randomIterablePis = wrapReferences(piContainer.deque);
+    auto notCompilablePis = wrapReferences(piContainer.arrayConstIterator,
+                                           piContainer.vectorConstIterator,
+                                           piContainer.list,
+                                           piContainer.listIterator,
+                                           piContainer.listConstIterator,
+                                           piContainer.dequeConstIterator,
+                                           piContainer.onlyConstIterable,
+                                           piContainer.onlyConstIterableConstIterator,
+                                           piContainer.integers,
+                                           piContainer.integersIterator,
+                                           piContainer.integersConstIterator,
+                                           piContainer.twoLevelsArray,
+                                           piContainer.twoLevelsArrayIterator,
+                                           piContainer.twoLevelsArrayConstIterator,
+                                           piContainer.path,
+                                           piContainer.pathIterator,
+                                           piContainer.pathsVector,
+                                           piContainer.pairsArray,
+                                           piContainer.string,
+                                           piContainer.stringIterator,
+                                           piContainer.stringConstIterator);
 
-    auto compilablePis = std::make_tuple(piCArray,
+    auto contiguousIteratorLambdas = wrapReferences(lambdaContainer.cArray,
+                                                    lambdaContainer.arrayIterator,
+                                                    lambdaContainer.vectorIterator,
+                                                    lambdaContainer.onlyIterableIterator);
+    auto contiguousIterableLambdas = wrapReferences(lambdaContainer.array,
+                                                    lambdaContainer.vector,
+                                                    lambdaContainer.sseArray,
+                                                    lambdaContainer.avxArray,
+                                                    lambdaContainer.onlyIterable);
+    auto randomIteratorLambdas = wrapReferences(lambdaContainer.dequeIterator);
+    auto randomIterableLambdas = wrapReferences(lambdaContainer.deque);
+    auto notCompilableLambdas = wrapReferences(lambdaContainer.arrayConstIterator,
+                                               lambdaContainer.vectorConstIterator,
+                                               lambdaContainer.list,
+                                               lambdaContainer.listIterator,
+                                               lambdaContainer.listConstIterator,
+                                               lambdaContainer.dequeConstIterator,
+                                               lambdaContainer.onlyConstIterable,
+                                               lambdaContainer.onlyConstIterableConstIterator,
+                                               lambdaContainer.integers,
+                                               lambdaContainer.integersIterator,
+                                               lambdaContainer.integersConstIterator,
+                                               lambdaContainer.twoLevelsArray,
+                                               lambdaContainer.twoLevelsArrayIterator,
+                                               lambdaContainer.twoLevelsArrayConstIterator,
+                                               lambdaContainer.path,
+                                               lambdaContainer.pathIterator,
+                                               lambdaContainer.pathsVector,
+                                               lambdaContainer.pairsArray,
+                                               lambdaContainer.string,
+                                               lambdaContainer.stringIterator,
+                                               lambdaContainer.stringConstIterator);
+
+    /*
+    auto *const compilablePis = wrapReferences(piCArray,
                                          *piArray,
                                          piArray->begin(),
                                          piVector,
@@ -474,15 +686,32 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
                                          piDeque,
                                          piDeque.begin(),
                                          piSseArray,
-                                         piAvxArray);
-    auto notCompilablePis = std::make_tuple(piArray->cbegin(),
+                                         piAvxArray,
+                                         piOnlyIterable,
+                                         piOnlyIterable.begin());
+
+    auto * const notCompilablePis = wrapReferences(piArray->cbegin(),
                                             piVector.cbegin(),
                                             piList,
                                             piList.begin(),
                                             piList.cbegin(),
-                                            piDeque.cbegin());
+                                            piDeque.cbegin(),
+                                            piOnlyConstIterable,
+                                            piOnlyConstIterable.cbegin(),
+                                            piIntegers,
+                                            piIntegers.begin(),
+                                            piIntegers.cbegin(),
+                                            piPath,
+                                            piPath.begin(),
+                                            piPathsVector,
+                                            piPathsVector.begin(),
+                                            piPathsVector.cbegin(),
+                                            piPairsArray,
+                                            piString,
+                                            piString.begin(),
+                                            piString.cbegin());
 
-    auto compilableLambdas = std::make_tuple(lambdaCArray,
+    auto * const compilableLambdas = wrapReferences(lambdaCArray,
                                              *lambdaArray,
                                              lambdaArray->begin(),
                                              lambdaVector,
@@ -490,16 +719,40 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
                                              lambdaDeque,
                                              lambdaDeque.begin(),
                                              lambdaSseArray,
-                                             lambdaAvxArray);
-    auto notCompilableLambdas = std::make_tuple(lambdaList,
+                                             lambdaAvxArray,
+                                             lambdaOnlyIterable,
+                                             lambdaOnlyIterable.begin());
+    auto * const notCompilableLambdas = wrapReferences(lambdaList,
                                                 lambdaList.begin(),
                                                 lambdaArray->cbegin(),
                                                 lambdaVector.cbegin(),
                                                 lambdaList.cbegin(),
-                                                lambdaDeque.cbegin());
+                                                lambdaDeque.cbegin(),
+                                                lambdaOnlyConstIterable,
+                                                lambdaOnlyConstIterable.cbegin(),
+                                                lambdaIntegers,
+                                                lambdaIntegers.begin(),
+                                                lambdaIntegers.cbegin(),
+                                                lambdaPath,
+                                                lambdaPath.begin(),
+                                                lambdaPathsVector,
+                                                lambdaPathsVector.begin(),
+                                                lambdaPathsVector.cbegin(),
+                                                lambdaPairsArray,
+                                                lambdaString,
+                                                lambdaString.begin(),
+                                                lambdaString.cbegin());*/
 
-    piLambdaTypesTester.testAllPermutations(
-            compilablePis, notCompilablePis, compilableLambdas, notCompilableLambdas);
+    piLambdaTypesTester.testAllPermutations(contiguousIteratorPis,
+                                            contiguousIterablePis,
+                                            randomIteratorPis,
+                                            randomIterablePis,
+                                            notCompilablePis,
+                                            contiguousIteratorLambdas,
+                                            contiguousIterableLambdas,
+                                            randomIteratorLambdas,
+                                            randomIterableLambdas,
+                                            notCompilableLambdas);
 
     std::cout << "Test terminated" << std::endl;
 
@@ -532,10 +785,4 @@ void testPiLambdaTypes(const std::vector<double> &parsedData,
                                                       lambdaSseArrayPair,
                                                       lambdaAvxArrayPair),
                                       std::make_tuple(lambdaListPair, lambdaListIteratorPair));*/
-
-    delete[] piCArray;
-    delete[] lambdaCArray;
-
-    delete piArray;
-    delete lambdaArray;
 }

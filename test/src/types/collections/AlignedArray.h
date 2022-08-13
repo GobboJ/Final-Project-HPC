@@ -6,7 +6,7 @@
 #include <cstring>
 #include <cassert>
 
-namespace cluster::test::types {
+namespace cluster::test::types::collections {
 
 /**
  * Description.
@@ -19,6 +19,8 @@ template <typename T, std::size_t N, std::size_t A>
 class AlignedArray {
 
 public:
+    using iterator = T *;
+    using const_iterator = const T *;
     using value_type = T;
 
 private:
@@ -86,19 +88,19 @@ public:
         return data[index];
     }
 
-    T *begin() const {
+    iterator begin() const {
         return data;
     }
 
-    T *end() const {
+    iterator end() const {
         return data + N;
     }
 
-    const T *cbegin() const {
+    const_iterator cbegin() const {
         return data;
     }
 
-    const T *cend() const {
+    const_iterator cend() const {
         return data + N;
     }
 
@@ -107,6 +109,6 @@ private:
     T *data;
 };
 
-}  // namespace cluster::test::types
+}  // namespace cluster::test::types::collections
 
 #endif  // FINAL_PROJECT_HPC_ALIGNEDARRAY_H

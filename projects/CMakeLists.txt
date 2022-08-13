@@ -20,7 +20,7 @@ add_library(
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp
     src/utils/Timer.cpp
-)
+    include/utils/IteratorType.h)
 
 add_library(
     Final_Project_HPC_Parallel_Library STATIC
@@ -34,7 +34,7 @@ add_library(
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp
     src/utils/Timer.cpp
-)
+    include/utils/IteratorType.h)
 target_link_libraries(Final_Project_HPC_Parallel_Library PRIVATE OpenMP::OpenMP_CXX)
 
 # Export the include directory

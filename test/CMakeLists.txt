@@ -60,28 +60,27 @@ target_compile_definitions(Final_Project_HPC_Measurement PRIVATE TIMERS PRINT_IT
 
 # Define the test types executable
 add_executable(
-    Final_Project_HPC_Test_Types
-    src/data/DataReader.cpp
-    src/data/DataReader.h
-    src/data/DataWriter.cpp
-    src/data/DataWriter.h
-    src/data/IoException.cpp
-    src/data/IoException.h
-    src/data/MalformedFileException.cpp
-    src/data/MalformedFileException.h
-    src/main-test-types.cpp
-    src/ResultsChecker.cpp
-    src/ResultsChecker.h
-    src/types/AlignedArray.h
-    src/types/ArrayCollectionContainer.h
-    src/types/CollectionContainer.h
-    src/types/CollectionCreator.h
-    src/types/DataTypesTester.h
-    src/types/LinearCollectionContainer.h
-    src/types/PiLambdaTypesTester.h
-    src/types/PointerCollectionContainer.h
-    src/types/TypesPrinter.h
-    src/types/Alignments.h)
+        Final_Project_HPC_Test_Types
+        src/data/DataReader.cpp
+        src/data/DataReader.h
+        src/data/DataWriter.cpp
+        src/data/DataWriter.h
+        src/data/IoException.cpp
+        src/data/IoException.h
+        src/data/MalformedFileException.cpp
+        src/data/MalformedFileException.h
+        src/main-test-types.cpp
+        src/ResultsChecker.cpp
+        src/ResultsChecker.h
+        src/types/collections/AlignedArray.h
+        src/types/collections/CollectionContainer.h
+        src/types/CollectionCreator.h
+        src/types/DataTypesTester.h
+        src/types/collections/LinearCollectionContainer.h
+        src/types/PiLambdaTypesTester.h
+        src/types/TypesPrinter.h
+        src/types/collections/Alignments.h src/types/collections/OnlyIterableVector.h src/types/collections/OnlyConstIterableVector.h
+        src/types/collections/PiLambdaContainer.h src/types/collections/ArrayWrapper.h src/types/collections/SubContainer.h src/types/SubContainerWrapper.h src/types/collections/NonIterableContentSubContainer.h src/types/collections/OnlyConstIterableSubContainer.h src/types/collections/OnlyIterableSubContainer.h)
 
 target_link_libraries(
     Final_Project_HPC_Test_Types Final_Project_HPC_Sequential_Library

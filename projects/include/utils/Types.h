@@ -10,9 +10,22 @@
 
 namespace cluster::utils {
 
+//     U                T
+// double         double                OK
+// const double   double                No
+// double         const double          OK
+// const double   const double          OK
+template <typename U, typename T>
+concept IsSame = requires(std::remove_reference_t<U> *normalU,
+                          const std::remove_reference_t<U> *constU,
+                          std::remove_reference_t<T> *normalT) {
+                     normalT = normalU;
+                     constU = normalT;
+                 };
+
 template <typename I, typename T>
 concept InputIterator = requires(I iterator) {
-                            { *iterator } -> std::convertible_to<T>;
+                            { *iterator } -> IsSame<T>;
                         };
 
 template <typename I, typename T>
@@ -24,13 +37,13 @@ concept OutputIterable = requires(I iterator, T value) { *(iterator.begin()) = v
 template <typename I, typename T>
 concept Iterable = requires(I iterator) {
                        iterator.begin();
-                       { *(iterator.begin()) } -> std::convertible_to<T>;
+                       { *(iterator.begin()) } -> IsSame<T>;
                    };
 
 template <typename I, typename T>
 concept ConstIterable = requires(I iterator) {
                             iterator.cbegin();
-                            { *(iterator.cbegin()) } -> std::convertible_to<const T>;
+                            { *(iterator.cbegin()) } -> IsSame<const T>;
                         };
 
 template <typename I, typename T>
@@ -223,6 +236,9 @@ concept ParallelDataIterator =
         ContiguousIterableOfIterators<std::remove_cvref_t<I>, const double> ||
         ContiguousIterableOfIterables<std::remove_cvref_t<I>, const double> ||
         ContiguousIterableOfConstIterables<std::remove_cvref_t<I>, const double> ||
+        ContiguousConstIterableOfIterators<std::remove_cvref_t<I>, const double> ||
+        ContiguousConstIterableOfIterables<std::remove_cvref_t<I>, const double> ||
+        ContiguousConstIterableOfConstIterables<std::remove_cvref_t<I>, const double> ||
         RandomIteratorOfIterators<std::remove_cvref_t<I>, const double> ||
         RandomIteratorOfIterables<std::remove_cvref_t<I>, const double> ||
         RandomIteratorOfConstIterables<std::remove_cvref_t<I>, const double> ||

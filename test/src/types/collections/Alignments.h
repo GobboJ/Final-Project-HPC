@@ -10,12 +10,12 @@
 
 #include <cstddef>
 
-namespace cluster::test::types {
+namespace cluster::test::types::collections {
 class Alignments {
 
 public:
     static const constexpr std::size_t SSE_ALIGNMENT = 16;
     static const constexpr std::size_t AVX_ALIGNMENT = 32;
 };
-}  // namespace cluster::test::types
+}  // namespace cluster::test::types::collections
 #endif  // FINAL_PROJECT_HPC_ALIGNMENTS_H

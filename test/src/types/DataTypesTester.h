@@ -2,8 +2,8 @@
 #define FINAL_PROJECT_HPC_DATATYPESTESTER_H
 
 #include "TypesPrinter.h"
-#include "ParallelClustering.h"
 #include "../ResultsChecker.h"
+#include "ParallelClustering.h"
 #include <cstddef>
 #include <iomanip>
 #include <iostream>
@@ -19,6 +19,9 @@ namespace cluster::test::types {
  * @since version date
  */
 class DataTypesTester {
+    using DataIteratorType = cluster::utils::DataIteratorType;
+    using DataIteratorTypeUtils = cluster::utils::DataIteratorTypeUtils;
+    using DataIteratorUtils = cluster::utils::DataIteratorUtils;
 
 public:
     DataTypesTester(const size_t dataElementsCount,
@@ -36,8 +39,9 @@ public:
     }
 
     template <typename... CDs, typename... NCDs>
-    void testParallelTypes(std::tuple<CDs &...> &compilableDataStructures,
-                           std::tuple<NCDs &...> &notCompilableDataStructures) {
+    void testParallelTypes(
+            const std::tuple<std::pair<CDs &, DataIteratorType>...> &compilableDataStructures,
+            const std::tuple<std::pair<NCDs &, DataIteratorType>...> &notCompilableDataStructures) {
 
         std::vector<std::size_t> pi{};
         pi.resize(this->dataElementsCount);
@@ -54,11 +58,14 @@ public:
 
 private:
     template <bool S, std::size_t DI, typename... CDs>
-    void testCompilableTypes(std::tuple<CDs &...> &compilableDataStructures,
-                             std::vector<std::size_t> &pi,
-                             std::vector<double> &lambda) {
+    void testCompilableTypes(
+            const std::tuple<std::pair<CDs &, DataIteratorType>...> &compilableDataStructures,
+            std::vector<std::size_t> &pi,
+            std::vector<double> &lambda) {
 
-        const auto &data = std::get<DI>(compilableDataStructures);
+        const auto &dataPair = std::get<DI>(compilableDataStructures);
+        const auto &data = dataPair.first;
+        const auto iteratorType = dataPair.second;
 
         std::cout << std::setfill(' ') << std::setw(this->maxTypeNameLength)
                   << TypesPrinter::getTypeName<decltype(data)>();
@@ -74,10 +81,13 @@ private:
                       << "Error (should compile)";
             std::cout << "\033[0m";
         } else {
-            parallel::ParallelClustering<true, true, true>::cluster<
-                    parallel::DistanceComputers::CLASSICAL>(
-                    data, this->dataElementsCount, this->dimension, pi, lambda, 6, 6, 6);
-
+            if constexpr (!S) {
+                parallel::ParallelClustering<true, true, true>::cluster<
+                        parallel::DistanceComputers::CLASSICAL>(
+                        data, this->dataElementsCount, this->dimension, pi, lambda, 6, 6, 6);
+            } else {
+                // TODO: Sequential
+            }
             bool result = ResultsChecker::checkResults(pi.cbegin(),
                                                        pi.cend(),
                                                        lambda.cbegin(),
@@ -88,6 +98,12 @@ private:
                                                        this->expectedLambda.cend());
             std::cout << "\033[" << this->maxResultLength + 3 << "D"
                       << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m";
+            if (DataIteratorUtils::lastIteratorType != iteratorType) {
+                std::cout << " \033[31m(" << DataIteratorTypeUtils::getDescription(iteratorType)
+                          << ")\033[0m";
+            } else {
+                std::cout << " \033[32m(OK)\033[0m";
+            }
         }
         std::cout << std::endl;
         if constexpr (DI + 1 < sizeof...(CDs)) {
@@ -96,9 +112,11 @@ private:
     }
 
     template <std::size_t NDI, typename... NCDs>
-    void testNotCompilableTypes(std::tuple<NCDs...> &notCompilableDataStructures) {
+    void testNotCompilableTypes(
+            const std::tuple<std::pair<NCDs &, DataIteratorType>...> &notCompilableDataStructures) {
 
-        const auto &data = std::get<NDI>(notCompilableDataStructures);
+        const auto &dataPair = std::get<NDI>(notCompilableDataStructures);
+        const auto &data = dataPair.first;
 
         std::cout << std::setfill(' ') << std::setw(this->maxTypeNameLength)
                   << TypesPrinter::getTypeName<decltype(data)>();
