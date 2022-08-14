@@ -55,7 +55,7 @@ public:
                 std::cout << "[!] Iteration: " << iteration + 1 << std::endl;
                 auto piBegin = pi.begin();
                 auto lambdaBegin = lambda.begin();
-                ParallelClustering<S2>::template cluster<C>(data,
+                ParallelClustering<S2, S4, S5>::template cluster<C>(data,
                                                             rows,
                                                             dimension,
                                                             piBegin,
@@ -201,7 +201,7 @@ int main() {
         std::vector<double *> twoLevels{};
         std::vector<double *> sseTwoLevels{};
         std::vector<double *> avxTwoLevels{};
-        auto* newData = new std::array<AlignedArray<double, 45, 32>, 100'000>;
+        auto* newData = new std::array<AlignedArray<double, 45, 32>, 153'000>;
 
         auto *dataIterator = data.data();
         std::size_t dataElementsCount = data.size() / dimension;
@@ -212,9 +212,6 @@ int main() {
             // Copy the doubles
             memcpy(point, &(dataIterator[i]), dimension * sizeof(double));
             twoLevels.push_back(point);
-            for (std::size_t d = 0; d < dimension; d++) {
-                (*newData)[i][d] = point[d];
-            }
         }
 
         std::size_t sseStride = ContiguousDoubleMemoryDataIterator::computeSseStride(dimension);
@@ -268,6 +265,14 @@ int main() {
         uniqueVectorData = new double[data.size()];
         for (std::size_t i = 0; i < data.size(); i += dimension) {
             memcpy(&(uniqueVectorData[i]), &(dataIterator[i]), dimension * sizeof(double));
+        }
+        
+        std::size_t index = 0;
+        for (std::size_t i = 0; i < data.size(); i += dimension) {
+            for (std::size_t d = 0; d < dimension; d++) {
+                (*newData)[index][d] = dataIterator[i+d];
+            }
+            index++;
         }
 
         std::vector<std::size_t> pi{};
