@@ -162,18 +162,20 @@ public:
         initializeNewPoint<P, L>(currentPi, currentLambda, 0);
         Timer::stop<1>();
 
-        Timer::start<4>();
+        Timer::start<0>();
         // No more operations need to be performed for the first point, so move to the second
         // element of the dataset
         utils::DataIteratorUtils::moveNext<D>(currentData, stride);
-
-        Timer::stop<4>();
 
         double *distanceEnd = &(m[1]);
 
         // Perform the clustering algorithm for all the remaining data samples
         for (std::size_t n = 1; n < dataSamplesCount; n++) {
-
+            Timer::stop<0>();
+            
+            // Log the progress every 1000 samples
+            Logger::updateProgress<1000, 0, 1, 2, 3, 4, 5>(n, dataSamplesCount);
+            
             /***************************************************************************************
              * 1) Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
              **************************************************************************************/
@@ -221,15 +223,15 @@ public:
             Timer::start<4>();
 
             fixStructure(piBegin, lambdaBegin, n, stage4ThreadsCount);
+            Timer::stop<4>();
+            
+            Timer::start<0>();
             // Move to the next data sample
             utils::DataIteratorUtils::moveNext<D>(currentData, stride);
             ++distanceEnd;
-            Timer::stop<4>();
-
-            // Log the progress every 1000 samples
-            Logger::updateProgress<1000, 0, 1, 2, 3, 4, 5>(n, dataSamplesCount);
         }
-
+        Timer::stop<6>();
+        
         // Compute the square roots, if until now the algorithm has used the squares of the
         // distances
         Timer::start<5>();
@@ -247,8 +249,10 @@ public:
         }
         Timer::stop<5>();
 
+        Timer::start<0>();
         // Deallocate m, since it is not needed anymore
         delete[] m;
+        Timer::stop<0>();
 
         // Log the final progress
         Logger::updateProgress<1, 0, 1, 2, 3, 4, 5>(dataSamplesCount, dataSamplesCount);

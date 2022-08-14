@@ -2,16 +2,15 @@
 #define FINAL_PROJECT_HPC_COLLECTIONCREATOR_H
 
 #include "collections/AlignedArray.h"
-#include "old/PointerWrapper.h"
-#include "collections/ArrayWrapper.h"
-#include "collections/CollectionContainer.h"
-#include "collections/LinearCollectionContainer.h"
+#include "collections/Alignments.h"
+#include "collections/OnlyIterableVector.h"
+#include "collections/OnlyConstIterableVector.h"
 #include <array>
 #include <deque>
 #include <list>
 #include <vector>
 
-namespace cluster::test::types::collections {
+namespace cluster::test::types {
 
 /**
  * Description.
@@ -27,9 +26,8 @@ private:
     static const constexpr std::size_t AVX_ALIGNMENT = 32;
 
 public:
-    template <std::size_t ND>
-    static void createLinearContainers(std::vector<double> parsedData,
-                                       LinearCollectionContainer<ND> &container) {
+    template <typename C, std::size_t ND>
+    static void createLinearContainers(std::vector<double> parsedData, C &container) {
 
         // Fill the linear containers
         for (std::size_t i = 0; i < parsedData.size(); i++) {
@@ -89,14 +87,15 @@ public:
         initCArrayContainers<N, D>(indirectParsedData, container);
     }
 
-    template <std::size_t N, std::size_t D>
+     */
+    template <typename C, std::size_t D>
     static void createIndirectArrays(const std::vector<std::array<double, D>> &indirectParsedData,
-                                     ArrayCollectionContainer<std::array, N, D> &container) {
+                                     C &container) {
 
-        initArrayContainers<N, D>(indirectParsedData, container);
-    }*/
+        initContainers<D>(indirectParsedData, container);
+    }
 
-    template <std::size_t D>
+    /*TODO:template <std::size_t D>
     static void createIndirectCArrays(const std::vector<std::array<double, D>> &indirectParsedData,
                                       CollectionContainer<ArrayWrapper, D> &container) {
 
@@ -108,27 +107,27 @@ public:
                                      CollectionContainer<ArrayWrapper, D> &container) {
 
         initContainers<D, ArrayWrapper>(indirectParsedData, container);
-    }
+    }*/
 
-    template <std::size_t D>
+    template <typename C, std::size_t D>
     static void createIndirectVectors(const std::vector<std::array<double, D>> &indirectParsedData,
-                                      CollectionContainer<std::vector, D> &container) {
+                                      C &container) {
 
-        initContainers<D, std::vector>(indirectParsedData, container);
+        initContainers<D>(indirectParsedData, container);
     }
 
-    template <std::size_t D>
+    template <typename C, std::size_t D>
     static void createIndirectLists(const std::vector<std::array<double, D>> &indirectParsedData,
-                                    CollectionContainer<std::list, D> &container) {
+                                    C &container) {
 
-        initContainers<D, std::list>(indirectParsedData, container);
+        initContainers<D>(indirectParsedData, container);
     }
 
-    template <std::size_t D>
+    template <typename C, std::size_t D>
     static void createIndirectDeques(const std::vector<std::array<double, D>> &indirectParsedData,
-                                     CollectionContainer<std::deque, D> &container) {
+                                     C &container) {
 
-        initContainers<D, std::deque>(indirectParsedData, container);
+        initContainers<D>(indirectParsedData, container);
     }
 
     /*
@@ -314,9 +313,9 @@ private:
         initIterators(container);
     }*/
 
-    template <std::size_t D, template <typename> typename C>
+    template <std::size_t D, typename C>
     static void initContainers(const std::vector<std::array<double, D>> &indirectParsedData,
-                               CollectionContainer<C, D> &container) {
+                               C &container) {
 
         for (std::size_t i = 0; i < indirectParsedData.size(); i++) {
             const std::array<double, D> &point = indirectParsedData[i];
@@ -324,34 +323,9 @@ private:
             addPointToContainer<D>(point, i, container);
         }
 
-        for (auto &addedPath : container.paths.normal) {
-            std::vector<std::filesystem::path::const_iterator> pathsConstIterators{};
-            pathsConstIterators.push_back(addedPath.begin());
-
-            container.pathsVector.template emplaceElement(pathsConstIterators);
-        }
-
-        // Set the iterators
-        container.cArrays.initIterators();
-        container.constCArrays.initIterators();
-
-        container.arrays.initIterators();
-        container.vectors.initIterators();
-        container.lists.initIterators();
-        container.deques.initIterators();
-        container.sseAlignedArrays.initIterators();
-        container.avxAlignedArrays.initIterators();
-
-        container.onlyIterables.initIterators();
-        container.onlyConstIterables.initIterators();
-
-        container.integers.initIterators();
-        //container.paths.initIterators();
-        container.pathsVector.initIterators();
-        container.pairs.initIterators();
-        container.strings.initIterators();
+        container.initIterators();
     }
-    
+
     /*
     template <typename C, typename CI, typename CCI>
     static void setSubContainerIterators(
@@ -363,7 +337,7 @@ private:
         }
     }
 
-    
+
 
 template <std::size_t N, std::size_t D>
 static void addPointToPointerContainer(const std::array<double, D> &point,
@@ -538,20 +512,21 @@ static void addPointToArrayContainer(const std::array<double, D> &point,
 
 }*/
 
-    template <std::size_t D, template <typename> typename C>
-    static void addPointToContainer(const std::array<double, D> &point,
-                                    const std::size_t index,
-                                    CollectionContainer<C, D> &container) {
+    template <std::size_t D, typename C>
+    static void addPointToContainer(
+            const std::array<double, D> &point, const std::size_t index, C &container) {
 
         double *cArrayPoint = new double[D];
         std::array<double, D> arrayPoint{};
         std::vector<double> vectorPoint{};
         std::list<double> listPoint{};
         std::deque<double> dequePoint{};
-        AlignedArray<double, D, Alignments::SSE_ALIGNMENT> sseAlignedArray{};
-        AlignedArray<double, D, Alignments::AVX_ALIGNMENT> avxAlignedArray{};
-        OnlyIterableVector<double> onlyIterableVector{};
-        OnlyConstIterableVector<double> constIterableVector{};
+        collections::AlignedArray<double, D, collections::Alignments::SSE_ALIGNMENT>
+                sseAlignedArray{};
+        collections::AlignedArray<double, D, collections::Alignments::AVX_ALIGNMENT>
+                avxAlignedArray{};
+        collections::OnlyIterableVector<double> onlyIterableVector{};
+        collections::OnlyConstIterableVector<double> constIterableVector{};
         std::vector<int> integerVector{};
 
         for (std::size_t j = 0; j < D; j++) {
@@ -567,28 +542,20 @@ static void addPointToArrayContainer(const std::array<double, D> &point,
             integerVector.template emplace_back(static_cast<int>(j));
         }
 
-        container.cArrays.emplaceElement(cArrayPoint);
-        container.constCArrays.emplaceElement(cArrayPoint);
-
-        container.arrays.emplaceElement(arrayPoint);
-        container.vectors.emplaceElement(vectorPoint);
-        container.lists.emplaceElement(listPoint);
-        container.deques.emplaceElement(dequePoint);
-
-        container.sseAlignedArrays.emplaceElement(sseAlignedArray);
-        container.avxAlignedArrays.emplaceElement(avxAlignedArray);
-
-        container.onlyIterables.emplaceElement(onlyIterableVector);
-        container.onlyConstIterables.emplaceElement(constIterableVector);
-
-        container.integers.emplaceElement(integerVector);
-        container.paths.emplaceElement("/e/f/g/h/a.txt");
-        container.pairs.emplaceElement(
-                std::pair{static_cast<int>(index) + 4.5, static_cast<int>(index) - 8.09});
-        container.strings.emplaceElement(std::string{"Fake type again"});
+        container.addPoint(index,
+                           cArrayPoint,
+                           std::move(arrayPoint),
+                           std::move(vectorPoint),
+                           std::move(listPoint),
+                           std::move(dequePoint),
+                           std::move(sseAlignedArray),
+                           std::move(avxAlignedArray),
+                           std::move(onlyIterableVector),
+                           std::move(constIterableVector),
+                           std::move(integerVector));
     }
 };
 
-}  // namespace cluster::test::types::collections
+}  // namespace cluster::test::types
 
 #endif  // FINAL_PROJECT_HPC_COLLECTIONCREATOR_H

@@ -14,13 +14,14 @@ add_library(
     include/sequential/SequentialClustering.h
     include/utils/ContiguousDoubleMemoryDataIterator.h
     include/utils/DataIteratorUtils.h
+    include/utils/IteratorType.h
     include/utils/Logger.h
     include/utils/PiLambdaIteratorUtils.h
     include/utils/Timer.h
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp
     src/utils/Timer.cpp
-    include/utils/IteratorType.h)
+)
 
 add_library(
     Final_Project_HPC_Parallel_Library STATIC
@@ -28,13 +29,14 @@ add_library(
     include/parallel/ParallelClustering.h
     include/utils/ContiguousDoubleMemoryDataIterator.h
     include/utils/DataIteratorUtils.h
+    include/utils/IteratorType.h
     include/utils/Logger.h
     include/utils/PiLambdaIteratorUtils.h
     include/utils/Timer.h
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp
     src/utils/Timer.cpp
-    include/utils/IteratorType.h)
+)
 target_link_libraries(Final_Project_HPC_Parallel_Library PRIVATE OpenMP::OpenMP_CXX)
 
 # Export the include directory

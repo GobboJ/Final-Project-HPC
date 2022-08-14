@@ -11,15 +11,13 @@
 #include "SequentialClustering.h"
 #include "data/DataReader.h"
 #include "data/DataWriter.h"
-#include "types/old/ArrayCollectionContainer.h"
-#include "types/collections/CollectionContainer.h"
 #include "types/CollectionCreator.h"
 #include "types/DataTypesTester.h"
 #include "types/PiLambdaTypesTester.h"
 #include "types/TypesPrinter.h"
-#include "types/collections/PiLambdaContainer.h"
-#include "types/collections/ArrayWrapper.h"
-#include "types/SubContainerWrapper.h"
+//#include "types/containers/collection/CollectionContainer.h"
+#include "types/containers/PiLambdaContainer.h"
+#include "types/containers/array/ArrayContainer.h"
 #include <deque>
 #include <list>
 
@@ -29,21 +27,16 @@ using cluster::sequential::SequentialClustering;
 using cluster::test::ResultsChecker;
 using cluster::test::data::DataReader;
 using cluster::test::data::DataWriter;
-using cluster::test::types::ArrayCollectionContainer;
+using cluster::test::types::CollectionCreator;
 using cluster::test::types::DataTypesTester;
 using cluster::test::types::PiLambdaTypesTester;
-using cluster::test::types::SubContainerWrapper;
 using cluster::test::types::TypesPrinter;
+using cluster::test::types::containers::array::ArrayContainer;
 using cluster::test::types::collections::AlignedArray;
-using cluster::test::types::collections::ArrayWrapper;
-using cluster::test::types::collections::CollectionContainer;
-using cluster::test::types::collections::CollectionCreator;
-using cluster::test::types::collections::LinearCollectionContainer;
 using cluster::test::types::collections::OnlyConstIterableVector;
 using cluster::test::types::collections::OnlyIterableVector;
-using cluster::test::types::collections::PiLambdaContainer;
-using cluster::test::types::collections::SubContainer;
-using WrapperType = cluster::test::types::SubContainerWrapper::WrapperType;
+//using cluster::test::types::containers::LinearCollectionContainer;
+using cluster::test::types::containers::PiLambdaContainer;
 using cluster::utils::ConstIterable;
 using cluster::utils::ContiguousConstIterable;
 using cluster::utils::ContiguousIterable;
@@ -211,29 +204,29 @@ std::pair<T &, DataIteratorType> wrapDataStructure(T &dataStructure,
     return std::pair<T &, DataIteratorType>(dataStructure, iteratorType);
 }
 
-template <WrapperType WT,template <typename> typename C, std::size_t D>
-auto wrapCompilableCollections(CollectionContainer<C, D> &container) {
+template <typename C>
+auto wrapCompilableCollections(C &container) {
 
-    return std::tuple_cat(SubContainerWrapper::wrapSubContainer<WT>(container.cArrays),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.constCArrays),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.arrays),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.vectors),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.sseAlignedArrays),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.avxAlignedArrays),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.onlyIterables),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.onlyConstIterables));
+    return std::tuple_cat(container.cArrays.getCollectionsInfo(),
+                          container.constCArrays.getCollectionsInfo(),
+                          container.arrays.getCollectionsInfo(),
+                          container.vectors.getCollectionsInfo(),
+                          container.sseAlignedArrays.getCollectionsInfo(),
+                          container.avxAlignedArrays.getCollectionsInfo(),
+                          container.onlyIterables.getCollectionsInfo(),
+                          container.onlyConstIterables.getCollectionsInfo());
 }
 
-template <WrapperType WT,template <typename> typename C, std::size_t D>
-auto wrapNotCompilableCollections(CollectionContainer<C, D> &container) {
+template <typename C>
+auto wrapNotCompilableCollections(C &container) {
 
-    return std::tuple_cat(SubContainerWrapper::wrapSubContainer<WT>(container.lists),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.deques),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.integers),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.paths),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.pathsVector),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.pairs),
-                          SubContainerWrapper::wrapSubContainer<WT>(container.strings));
+    return std::tuple_cat(container.lists.getCollectionsInfo(),
+                          container.deques.getCollectionsInfo(),
+                          container.integers.getCollectionsInfo(),
+                          container.paths.getCollectionsInfo(),
+                          container.pathsVector.getCollectionsInfo(),
+                          container.pairs.getCollectionsInfo(),
+                          container.strings.getCollectionsInfo());
 }
 
 void testParallelDataStructureTypes(
@@ -243,8 +236,8 @@ void testParallelDataStructureTypes(
         const std::vector<double> &expectedLambda) {
 
     // Longest type:
-    // OnlyConstIterableVector<OnlyConstIterableVector<double>::const_iterator>::const_iterator
-    const constexpr std::size_t maxTypeLength = 88;
+    // std::vector<std::vector<std::filesystem::path::const_iterator>::const_iterator>::const_iterator
+    const constexpr std::size_t maxTypeLength = 95;
     // Longest summary: Contiguous const iterable of const iterables
     const constexpr std::size_t maxSummaryLength = 44;
     // Longest Result: OK (Contiguous const iterable of const iterables)
@@ -287,32 +280,36 @@ void testParallelDataStructureTypes(
         CollectionCreator::createIndirectCArrays<DIMENSION>(indirectParsedData, *indirectCArrays);
 */
     // Fill indirect arrays
-    auto *const arraysContainer = new CollectionContainer<ArrayWrapper, DIMENSION>();
-    CollectionCreator::createIndirectArrays<DIMENSION>(indirectParsedData, *arraysContainer);
-
-    // Fill indirect vectors
-    auto *const vectorsContainer = new CollectionContainer<std::vector, DIMENSION>();
-    CollectionCreator::createIndirectVectors<DIMENSION>(indirectParsedData, *vectorsContainer);
+    auto *const arraysContainer = new ArrayContainer<std::array, ELEMENTS, DIMENSION>(
+            "std::array", DataIteratorType::CONTIGUOUS);
+    CollectionCreator::createIndirectArrays<decltype(*arraysContainer), DIMENSION>(indirectParsedData, *arraysContainer);
     /*
-        // Fill indirect lists
-        auto *const listsContainer = new CollectionContainer<std::list, DIMENSION>();
-        CollectionCreator::createIndirectLists<DIMENSION>(indirectParsedData, *listsContainer);
+    // Fill indirect vectors
+    auto *const vectorsContainer = new CollectionContainer<std::vector, DIMENSION>(
+            "std::vector", DataIteratorType::CONTIGUOUS);
+    CollectionCreator::createIndirectVectors<DIMENSION>(indirectParsedData, *vectorsContainer);
+    
+    // Fill indirect lists
+    auto *const listsContainer =
+            new CollectionContainer<std::list, DIMENSION>("std::list", DataIteratorType::INPUT);
+    CollectionCreator::createIndirectLists<DIMENSION>(indirectParsedData, *listsContainer);
 
-        // Fill indirect deques
-        auto *const dequesContainer = new CollectionContainer<std::deque, DIMENSION>();
-        CollectionCreator::createIndirectDeques<DIMENSION>(indirectParsedData, *dequesContainer);
-        /*
-        // Fill indirect only iterables
-        auto *const onlyIterablesContainer = new CollectionContainer<OnlyIterableVector,
-       DIMENSION>(); CollectionCreator::createIndirectOnlyIterables<DIMENSION>(indirectParsedData,
-                                                                  *onlyIterablesContainer);
+    // Fill indirect deques
+    auto *const dequesContainer =
+            new CollectionContainer<std::deque, DIMENSION>("std::deque", DataIteratorType::RANDOM);
+    CollectionCreator::createIndirectDeques<DIMENSION>(indirectParsedData, *dequesContainer);
 
-        // Fill indirect only const iterables
-        auto *const onlyConstIterablesContainer =
-                new CollectionContainer<OnlyConstIterableVector, DIMENSION>();
-        CollectionCreator::createIndirectOnlyConstIterables<DIMENSION>(indirectParsedData,
-                                                                       *onlyConstIterablesContainer);
-    */
+    // Fill indirect only iterables
+    auto *const onlyIterablesContainer = new CollectionContainer<OnlyIterableVector,
+   DIMENSION>(); CollectionCreator::createIndirectOnlyIterables<DIMENSION>(indirectParsedData,
+                                                              *onlyIterablesContainer);
+
+    // Fill indirect only const iterables
+    auto *const onlyConstIterablesContainer =
+            new CollectionContainer<OnlyConstIterableVector, DIMENSION>();
+    CollectionCreator::createIndirectOnlyConstIterables<DIMENSION>(indirectParsedData,
+                                                                   *onlyConstIterablesContainer);
+*/
     auto compilableDataStructures = std::tuple_cat(std::make_tuple(
             // Linear types
             /*wrapDataStructure(linearContainer->cArray, DataIteratorType::CONTIGUOUS_ITERATOR),
@@ -350,9 +347,10 @@ void testParallelDataStructureTypes(
             // Indirect C arrays
             
             // Indirect std::array
-            wrapCompilableCollections<WrapperType::ARRAY_WRAPPER>(*arraysContainer)
+            wrapCompilableCollections(*arraysContainer)
             // Indirect std::vector
-//            wrapCompilableCollections(*vectorsContainer)
+         //   wrapCompilableCollections(*vectorsContainer)
+           //TODO: wrapCompilableCollections(*dequesContainer)
     );
 
     // Indirect std::array
@@ -363,7 +361,11 @@ void testParallelDataStructureTypes(
     // Indirect OnlyConstIterableVector
 
     auto notCompilableDataStructures = std::tuple_cat(
-            wrapNotCompilableCollections<WrapperType::ARRAY_WRAPPER>(*vectorsContainer)
+            wrapNotCompilableCollections(*arraysContainer)
+            //wrapNotCompilableCollections(*vectorsContainer)
+            //TODO:wrapNotCompilableCollections(*dequesContainer),
+            //TODO:wrapCompilableCollections(*listsContainer),
+            //TODO:wrapNotCompilableCollections(*listsContainer)
             // Linear types
             /*linearContainer->list,
             linearContainer->listIterator,

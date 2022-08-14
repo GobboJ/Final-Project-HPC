@@ -4,6 +4,7 @@
 #include "TypesPrinter.h"
 #include "../ResultsChecker.h"
 #include "ParallelClustering.h"
+#include "containers/CollectionInfo.h"
 #include <cstddef>
 #include <iomanip>
 #include <iostream>
@@ -40,39 +41,45 @@ public:
 
     template <typename... CDs, typename... NCDs>
     void testParallelTypes(
-            const std::tuple<std::pair<CDs &, DataIteratorType>...> &compilableDataStructures,
-            const std::tuple<std::pair<NCDs &, DataIteratorType>...> &notCompilableDataStructures) {
+            const std::tuple<containers::CollectionInfo<CDs> &...> &compilableDataStructures,
+            const std::tuple<containers::CollectionInfo<NCDs> &...> &notCompilableDataStructures) {
 
         std::vector<std::size_t> pi{};
         pi.resize(this->dataElementsCount);
         std::vector<double> lambda{};
         lambda.resize(this->dataElementsCount);
+        bool testPassed = true;
 
         if constexpr (sizeof...(CDs) > 0) {
-            testCompilableTypes<false, 0>(compilableDataStructures, pi, lambda);
+            testPassed &= testCompilableTypes<false, 0>(compilableDataStructures, pi, lambda);
         }
         if constexpr (sizeof...(NCDs) > 0) {
-            testNotCompilableTypes<0>(notCompilableDataStructures);
+            testPassed &= testNotCompilableTypes<0>(notCompilableDataStructures);
         }
+        std::cout << std::endl
+                  << "Test ended with" << ' '
+                  << ((testPassed) ? "\033[32msuccess" : "\033[31msome errors") << "\033[0m"
+                  << std::endl;
     }
 
 private:
     template <bool S, std::size_t DI, typename... CDs>
-    void testCompilableTypes(
-            const std::tuple<std::pair<CDs &, DataIteratorType>...> &compilableDataStructures,
+    bool testCompilableTypes(
+            const std::tuple<containers::CollectionInfo<CDs> &...> &compilableDataStructures,
             std::vector<std::size_t> &pi,
             std::vector<double> &lambda) {
 
-        const auto &dataPair = std::get<DI>(compilableDataStructures);
-        const auto &data = dataPair.first;
-        const auto iteratorType = dataPair.second;
+        const auto &dataInfo = std::get<DI>(compilableDataStructures);
+        const auto &data = dataInfo.field;
 
         std::cout << std::setfill(' ') << std::setw(this->maxTypeNameLength)
-                  << TypesPrinter::getTypeName<decltype(data)>();
+                  << dataInfo.name;  // TypesPrinter::getTypeName<decltype(data)>();
         std::cout << " | ";
         std::cout << std::setfill(' ') << std::setw(this->maxResultLength) << ' ';
         std::cout << " | ";
         std::cout.flush();
+
+        bool result = true;
 
         if constexpr (!utils::ParallelDataIterator<decltype(data)>) {
             std::cout << "\033[" << this->maxResultLength + 3 << "D"
@@ -80,6 +87,8 @@ private:
             std::cout << std::setfill(' ') << std::setw(this->maxResultLength)
                       << "Error (should compile)";
             std::cout << "\033[0m";
+
+            result = false;
         } else {
             if constexpr (!S) {
                 parallel::ParallelClustering<true, true, true>::cluster<
@@ -88,45 +97,57 @@ private:
             } else {
                 // TODO: Sequential
             }
-            bool result = ResultsChecker::checkResults(pi.cbegin(),
-                                                       pi.cend(),
-                                                       lambda.cbegin(),
-                                                       lambda.cend(),
-                                                       this->expectedPi.cbegin(),
-                                                       this->expectedPi.cend(),
-                                                       this->expectedLambda.cbegin(),
-                                                       this->expectedLambda.cend());
+            result = ResultsChecker::checkResults(pi.cbegin(),
+                                                  pi.cend(),
+                                                  lambda.cbegin(),
+                                                  lambda.cend(),
+                                                  this->expectedPi.cbegin(),
+                                                  this->expectedPi.cend(),
+                                                  this->expectedLambda.cbegin(),
+                                                  this->expectedLambda.cend());
             std::cout << "\033[" << this->maxResultLength + 3 << "D"
                       << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m";
-            if (DataIteratorUtils::lastIteratorType != iteratorType) {
-                std::cout << " \033[31m(" << DataIteratorTypeUtils::getDescription(iteratorType)
+
+            if (DataIteratorUtils::lastIteratorType != dataInfo.iteratorType ||
+                DataIteratorUtils::lastFirstLevelIteratorType != dataInfo.firstLevelIteratorType ||
+                DataIteratorUtils::lastSecondLevelIteratorType !=
+                        dataInfo.secondLevelIteratorType) {
+                std::cout << " \033[31m("
+                          << DataIteratorTypeUtils::getDescription(dataInfo.iteratorType,
+                                                                   dataInfo.firstLevelIteratorType,
+                                                                   dataInfo.secondLevelIteratorType)
                           << ")\033[0m";
+                result = false;
             } else {
                 std::cout << " \033[32m(OK)\033[0m";
             }
         }
         std::cout << std::endl;
         if constexpr (DI + 1 < sizeof...(CDs)) {
-            testCompilableTypes<S, DI + 1>(compilableDataStructures, pi, lambda);
+            result &= testCompilableTypes<S, DI + 1>(compilableDataStructures, pi, lambda);
         }
+        return result;
     }
 
     template <std::size_t NDI, typename... NCDs>
-    void testNotCompilableTypes(
-            const std::tuple<std::pair<NCDs &, DataIteratorType>...> &notCompilableDataStructures) {
+    bool testNotCompilableTypes(
+            const std::tuple<containers::CollectionInfo<NCDs> &...> &notCompilableDataStructures) {
 
         const auto &dataPair = std::get<NDI>(notCompilableDataStructures);
-        const auto &data = dataPair.first;
+        const auto &data = dataPair.field;
 
         std::cout << std::setfill(' ') << std::setw(this->maxTypeNameLength)
-                  << TypesPrinter::getTypeName<decltype(data)>();
+                  << dataPair.name;  // TypesPrinter::getTypeName<decltype(data)>();
         std::cout << " | ";
+
+        bool result = true;
 
         if constexpr (utils::ParallelDataIterator<decltype(data)>) {
             std::cout << "\033[31m";
             std::cout << std::setfill(' ') << std::setw(this->maxResultLength)
                       << "Error (should not compile)";
             std::cout << "\033[0m |";
+            result = false;
         } else {
             std::cout << "\033[34m";
             std::cout << std::setfill(' ') << std::setw(this->maxResultLength) << "OK";
@@ -134,8 +155,9 @@ private:
         }
         std::cout << std::endl;
         if constexpr (NDI + 1 < sizeof...(NCDs)) {
-            testNotCompilableTypes<NDI + 1>(notCompilableDataStructures);
+            result &= testNotCompilableTypes<NDI + 1>(notCompilableDataStructures);
         }
+        return result;
     }
 
     const std::size_t dataElementsCount;

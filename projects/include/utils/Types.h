@@ -306,7 +306,7 @@ std::contiguous_iterator<I> &&requires(I iterator, T *value) {
                               };
 
 template <typename I>
-concept DataIterator = std::input_iterator<I> && InputIterator<I, const double *>;
+concept DataIterator = std::input_iterator<I>; //TODO: && InputIterator<I, double *>;
 
 }  // namespace cluster::utils
 #endif  // FINAL_PROJECT_HPC_TYPES_H

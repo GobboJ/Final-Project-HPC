@@ -19,12 +19,17 @@ class DataIteratorUtils {
 
 public:
     static DataIteratorType lastIteratorType;
+    static DataLevelIteratorType lastFirstLevelIteratorType;
+    static DataLevelIteratorType lastSecondLevelIteratorType;
     static bool printSummaries;
 
     template <typename D, std::enable_if_t<ContiguousIterator<D, const double>, bool> = true>
     static inline const double *createEfficientIterator(const D &iterator, const char *name) {
 
-        printSummary(name, DataIteratorType::CONTIGUOUS_ITERATOR);
+        printSummary(name,
+                     DataIteratorType::CONTIGUOUS,
+                     DataLevelIteratorType::ITERATOR,
+                     DataLevelIteratorType::NONE);
         return &(iterator[0]);
     }
 
@@ -35,10 +40,16 @@ public:
     static inline const double *createEfficientIterator(const D &data, const char *name) {
 
         if constexpr (ContiguousConstIterable<D, const double>) {
-            printSummary(name, DataIteratorType::CONTIGUOUS_CONST_ITERABLE);
+            printSummary(name,
+                         DataIteratorType::CONTIGUOUS,
+                         DataLevelIteratorType::CONST_ITERABLE,
+                         DataLevelIteratorType::NONE);
             return &(data.cbegin()[0]);
         } else {
-            printSummary(name, DataIteratorType::CONTIGUOUS_ITERABLE);
+            printSummary(name,
+                         DataIteratorType::CONTIGUOUS,
+                         DataLevelIteratorType::ITERABLE,
+                         DataLevelIteratorType::NONE);
             return &(data.begin()[0]);
         }
     }
@@ -79,7 +90,10 @@ public:
               std::enable_if_t<ContiguousIteratorOfIterators<D, const double>, bool> = true>
     static inline auto *createEfficientIterator(const D &iterator, const char *name) {
 
-        printSummary(name, DataIteratorType::CONTIGUOUS_ITERATOR_OF_ITERATORS);
+        printSummary(name,
+                     DataIteratorType::CONTIGUOUS,
+                     DataLevelIteratorType::ITERATOR,
+                     DataLevelIteratorType::ITERATOR);
         return &(iterator[0]);
     }
 
@@ -117,9 +131,15 @@ public:
     static inline auto *createEfficientIterator(const D &data, const char *name) {
 
         if constexpr (ContiguousIteratorOfConstIterables<D, const double>) {
-            printSummary(name, DataIteratorType::CONTIGUOUS_ITERATOR_OF_CONST_ITERABLES);
+            printSummary(name,
+                         DataIteratorType::CONTIGUOUS,
+                         DataLevelIteratorType::ITERATOR,
+                         DataLevelIteratorType::CONST_ITERABLE);
         } else {
-            printSummary(name, DataIteratorType::CONTIGUOUS_ITERATOR_OF_ITERABLES);
+            printSummary(name,
+                         DataIteratorType::CONTIGUOUS,
+                         DataLevelIteratorType::ITERATOR,
+                         DataLevelIteratorType::ITERABLE);
         }
         return &(data[0]);
     }
@@ -172,10 +192,16 @@ public:
     static inline auto *createEfficientIterator(const D &data, const char *name) {
 
         if constexpr (ContiguousConstIterableOfIterators<D, const double>) {
-            printSummary(name, DataIteratorType::CONTIGUOUS_CONST_ITERABLE_OF_ITERATORS);
+            printSummary(name,
+                         DataIteratorType::CONTIGUOUS,
+                         DataLevelIteratorType::CONST_ITERABLE,
+                         DataLevelIteratorType::ITERATOR);
             return &((data.cbegin())[0]);
         } else {
-            printSummary(name, DataIteratorType::CONTIGUOUS_ITERABLE_OF_ITERATORS);
+            printSummary(name,
+                         DataIteratorType::CONTIGUOUS,
+                         DataLevelIteratorType::ITERABLE,
+                         DataLevelIteratorType::ITERATOR);
             return &((data.begin())[0]);
         }
     }
@@ -225,16 +251,28 @@ public:
                       ContiguousConstIterableOfConstIterables<D, const double>) {
 
             if constexpr (ContiguousConstIterableOfConstIterables<D, const double>) {
-                printSummary(name, DataIteratorType::CONTIGUOUS_CONST_ITERABLE_OF_CONST_ITERABLES);
+                printSummary(name,
+                             DataIteratorType::CONTIGUOUS,
+                             DataLevelIteratorType::CONST_ITERABLE,
+                             DataLevelIteratorType::CONST_ITERABLE);
             } else {
-                printSummary(name, DataIteratorType::CONTIGUOUS_CONST_ITERABLE_OF_ITERABLES);
+                printSummary(name,
+                             DataIteratorType::CONTIGUOUS,
+                             DataLevelIteratorType::CONST_ITERABLE,
+                             DataLevelIteratorType::ITERABLE);
             }
             return &((data.cbegin())[0]);
         } else {
             if constexpr (ContiguousIterableOfConstIterables<D, const double>) {
-                printSummary(name, DataIteratorType::CONTIGUOUS_ITERABLE_OF_CONST_ITERABLES);
+                printSummary(name,
+                             DataIteratorType::CONTIGUOUS,
+                             DataLevelIteratorType::ITERABLE,
+                             DataLevelIteratorType::CONST_ITERABLE);
             } else {
-                printSummary(name, DataIteratorType::CONTIGUOUS_ITERABLE_OF_ITERABLES);
+                printSummary(name,
+                             DataIteratorType::CONTIGUOUS,
+                             DataLevelIteratorType::ITERABLE,
+                             DataLevelIteratorType::ITERABLE);
             }
 
             return &((data.begin())[0]);
@@ -293,7 +331,10 @@ public:
     template <typename D, std::enable_if_t<RandomIteratorOfIterators<D, const double>, bool> = true>
     static inline D createEfficientIterator(const D &iterator, const char *name) {
 
-        printSummary(name, DataIteratorType::RANDOM_ITERATOR_OF_ITERATORS);
+        printSummary(name,
+                     DataIteratorType::RANDOM,
+                     DataLevelIteratorType::ITERATOR,
+                     DataLevelIteratorType::ITERATOR);
         return iterator;
     }
 
@@ -330,9 +371,15 @@ public:
     static inline D createEfficientIterator(const D &iterator, const char *name) {
 
         if constexpr (RandomIteratorOfConstIterables<D, const double>) {
-            printSummary(name, DataIteratorType::RANDOM_ITERATOR_OF_CONST_ITERABLES);
+            printSummary(name,
+                         DataIteratorType::RANDOM,
+                         DataLevelIteratorType::ITERATOR,
+                         DataLevelIteratorType::CONST_ITERABLE);
         } else {
-            printSummary(name, DataIteratorType::RANDOM_ITERATOR_OF_ITERABLES);
+            printSummary(name,
+                         DataIteratorType::RANDOM,
+                         DataLevelIteratorType::ITERATOR,
+                         DataLevelIteratorType::ITERABLE);
         }
         return iterator;
     }
@@ -384,10 +431,16 @@ public:
     static inline auto createEfficientIterator(const D &data, const char *name) {
 
         if constexpr (RandomConstIterableOfIterators<D, const double>) {
-            printSummary(name, DataIteratorType::RANDOM_CONST_ITERABLE_OF_ITERATORS);
+            printSummary(name,
+                         DataIteratorType::RANDOM,
+                         DataLevelIteratorType::CONST_ITERABLE,
+                         DataLevelIteratorType::ITERATOR);
             return data.cbegin();
         } else {
-            printSummary(name, DataIteratorType::RANDOM_ITERABLE_OF_ITERATORS);
+            printSummary(name,
+                         DataIteratorType::RANDOM,
+                         DataLevelIteratorType::ITERABLE,
+                         DataLevelIteratorType::ITERATOR);
             return data.begin();
         }
     }
@@ -435,16 +488,28 @@ public:
         if constexpr (RandomConstIterableOfIterables<D, const double> ||
                       RandomConstIterableOfConstIterables<D, const double>) {
             if constexpr (RandomConstIterableOfConstIterables<D, const double>) {
-                printSummary(name, DataIteratorType::RANDOM_CONST_ITERABLE_OF_CONST_ITERABLES);
+                printSummary(name,
+                             DataIteratorType::RANDOM,
+                             DataLevelIteratorType::CONST_ITERABLE,
+                             DataLevelIteratorType::CONST_ITERABLE);
             } else {
-                printSummary(name, DataIteratorType::RANDOM_CONST_ITERABLE_OF_ITERABLES);
+                printSummary(name,
+                             DataIteratorType::RANDOM,
+                             DataLevelIteratorType::CONST_ITERABLE,
+                             DataLevelIteratorType::ITERABLE);
             }
             return data.cbegin();
         } else {
             if constexpr (RandomIterableOfConstIterables<D, const double>) {
-                printSummary(name, DataIteratorType::RANDOM_ITERABLE_OF_CONST_ITERABLES);
+                printSummary(name,
+                             DataIteratorType::RANDOM,
+                             DataLevelIteratorType::ITERABLE,
+                             DataLevelIteratorType::CONST_ITERABLE);
             } else {
-                printSummary(name, DataIteratorType::RANDOM_ITERABLE_OF_ITERABLES);
+                printSummary(name,
+                             DataIteratorType::RANDOM,
+                             DataLevelIteratorType::ITERABLE,
+                             DataLevelIteratorType::ITERABLE);
             }
             return data.begin();
         }
@@ -498,7 +563,10 @@ public:
     }
 
 private:
-    static void printSummary(const char *name, DataIteratorType iteratorType) {
+    static void printSummary(const char *name,
+                             DataIteratorType iteratorType,
+                             DataLevelIteratorType firstLevel,
+                             DataLevelIteratorType secondLevel) {
 
 #ifdef ITERATORS_SUMMARY
         std::cout << name << ": Using" << ' ' << DataIteratorTypeUtils::getDescription(iteratorType)
@@ -506,8 +574,11 @@ private:
 #endif
 #ifdef ITERATORS_SUMMARY_TEST
         if (printSummaries && strcmp("Current data", name) == 0) {
-            std::string summary = DataIteratorTypeUtils::getDescription(iteratorType);
+            std::string summary =
+                    DataIteratorTypeUtils::getDescription(iteratorType, firstLevel, secondLevel);
             lastIteratorType = iteratorType;
+            lastFirstLevelIteratorType = firstLevel;
+            lastSecondLevelIteratorType = secondLevel;
             std::cout << summary << "\033[" << summary.length() << "D";
             std::cout.flush();
         }
@@ -686,6 +757,8 @@ private:
 };
 
 DataIteratorType DataIteratorUtils::lastIteratorType = DataIteratorType::NONE;
+DataLevelIteratorType DataIteratorUtils::lastFirstLevelIteratorType = DataLevelIteratorType::NONE;
+DataLevelIteratorType DataIteratorUtils::lastSecondLevelIteratorType = DataLevelIteratorType::NONE;
 bool DataIteratorUtils::printSummaries = false;
 }  // namespace cluster::utils
 

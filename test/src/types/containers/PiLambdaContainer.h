@@ -1,17 +1,17 @@
 #ifndef FINAL_PROJECT_HPC_PILAMBDACONTAINER_H
 #define FINAL_PROJECT_HPC_PILAMBDACONTAINER_H
 
-#include "AlignedArray.h"
-#include "OnlyConstIterableVector.h"
-#include "Alignments.h"
-#include "OnlyIterableVector.h"
+#include "../collections/AlignedArray.h"
+#include "../collections/OnlyConstIterableVector.h"
+#include "../collections/Alignments.h"
+#include "../collections/OnlyIterableVector.h"
 #include <array>
 #include <deque>
 #include <list>
 #include <vector>
 #include <filesystem>
 
-namespace cluster::test::types::collections {
+namespace cluster::test::types::containers {
 
 /**
  * Description.
@@ -86,13 +86,13 @@ public:
     typename std::deque<T>::iterator dequeIterator;
     typename std::deque<T>::const_iterator dequeConstIterator;
 
-    AlignedArray<T, N, Alignments::SSE_ALIGNMENT> sseArray;
-    AlignedArray<T, N, Alignments::AVX_ALIGNMENT> avxArray;
+    collections::AlignedArray<T, N, collections::Alignments::SSE_ALIGNMENT> sseArray;
+    collections::AlignedArray<T, N, collections::Alignments::AVX_ALIGNMENT> avxArray;
 
-    OnlyIterableVector<T> onlyIterable;
-    typename OnlyIterableVector<T>::iterator onlyIterableIterator;
-    OnlyConstIterableVector<T> onlyConstIterable;
-    typename OnlyConstIterableVector<T>::const_iterator onlyConstIterableConstIterator;
+    collections::OnlyIterableVector<T> onlyIterable;
+    typename collections::OnlyIterableVector<T>::iterator onlyIterableIterator;
+    collections::OnlyConstIterableVector<T> onlyConstIterable;
+    typename collections::OnlyConstIterableVector<T>::const_iterator onlyConstIterableConstIterator;
 
     std::vector<int> integers;
     std::vector<int>::iterator integersIterator;
@@ -112,6 +112,6 @@ public:
     // NOLINTEND(misc-non-private-member-variables-in-classes)
 };
 
-}  // namespace cluster::test::types::collections
+}  // namespace cluster::test::types::containers
 
 #endif  // FINAL_PROJECT_HPC_PILAMBDACONTAINER_H

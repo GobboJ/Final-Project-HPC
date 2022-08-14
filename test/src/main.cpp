@@ -665,13 +665,15 @@ bool checkTest(const std::filesystem::path &filePath,
             DataReader::readPiLambda(previousResultsPath, expectedPi, expectedLambda);
         } else {
             cluster::utils::Timer::initTimers();
+            auto piIterator = expectedPi.begin();
+            auto lambdaIterator = expectedLambda.begin();
             std::cout << "Running sequential implementation of '" << fileName
                       << "' to check the results" << std::endl;
             SequentialClustering::cluster(data.begin(),
                                           data.size(),
                                           dimension,
-                                          expectedPi.begin(),
-                                          expectedLambda.begin());
+                                          piIterator,
+                                          lambdaIterator);
             if (usePreviousResults) {
                 DataWriter::writePiLambda(previousResultsPath, expectedPi, expectedLambda);
             }

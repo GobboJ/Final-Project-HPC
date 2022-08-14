@@ -60,35 +60,92 @@ target_compile_definitions(Final_Project_HPC_Measurement PRIVATE TIMERS PRINT_IT
 
 # Define the test types executable
 add_executable(
-        Final_Project_HPC_Test_Types
-        src/data/DataReader.cpp
-        src/data/DataReader.h
-        src/data/DataWriter.cpp
-        src/data/DataWriter.h
-        src/data/IoException.cpp
-        src/data/IoException.h
-        src/data/MalformedFileException.cpp
-        src/data/MalformedFileException.h
-        src/main-test-types.cpp
-        src/ResultsChecker.cpp
-        src/ResultsChecker.h
-        src/types/collections/AlignedArray.h
-        src/types/collections/CollectionContainer.h
-        src/types/CollectionCreator.h
-        src/types/DataTypesTester.h
-        src/types/collections/LinearCollectionContainer.h
-        src/types/PiLambdaTypesTester.h
-        src/types/TypesPrinter.h
-        src/types/collections/Alignments.h src/types/collections/OnlyIterableVector.h src/types/collections/OnlyConstIterableVector.h
-        src/types/collections/PiLambdaContainer.h src/types/collections/ArrayWrapper.h src/types/collections/SubContainer.h src/types/SubContainerWrapper.h src/types/collections/NonIterableContentSubContainer.h src/types/collections/OnlyConstIterableSubContainer.h src/types/collections/OnlyIterableSubContainer.h)
+    Final_Project_HPC_Test_Types
+    src/data/DataReader.cpp
+    src/data/DataReader.h
+    src/data/DataWriter.cpp
+    src/data/DataWriter.h
+    src/data/IoException.cpp
+    src/data/IoException.h
+    src/data/MalformedFileException.cpp
+    src/data/MalformedFileException.h
+    src/main-test-types.cpp
+    src/ResultsChecker.cpp
+    src/ResultsChecker.h
+    src/types/CollectionCreator.h
+    src/types/collections/AlignedArray.h
+    src/types/collections/Alignments.h
+    src/types/collections/OnlyConstIterableVector.h
+    src/types/collections/OnlyIterableVector.h
+    src/types/containers/array/ArrayNonIterableSubContainer.h
+    src/types/containers/array/ArrayOnlyConstIterableSubContainer.h
+    src/types/containers/array/ArrayOnlyIterableSubContainer.h
+    src/types/containers/array/ArraySubContainer.h
+    src/types/containers/array/ArrayTypeNameComposer.h
+    src/types/containers/collection/CollectionContainer.h
+    src/types/containers/collection/CollectionNonIterableSubContainer.h
+    src/types/containers/collection/CollectionOnlyConstIterableSubContainer.h
+    src/types/containers/collection/CollectionOnlyIterableSubContainer.h
+    src/types/containers/collection/CollectionSubContainer.h
+    src/types/containers/collection/CollectionTypeNameComposer.h
+    src/types/containers/CollectionInfo.h
+    src/types/containers/LinearCollectionContainer.h
+    src/types/containers/PiLambdaContainer.h
+    src/types/containers/pointer/PointerContainer.h
+    src/types/containers/pointer/PointerNonIterableSubContainer.h
+    src/types/containers/pointer/PointerOnlyConstIterableSubContainer.h
+    src/types/containers/pointer/PointerOnlyIterableSubContainer.h
+    src/types/containers/pointer/PointerSubContainer.h
+    src/types/containers/pointer/PointerTypeNameComposer.h
+    src/types/DataTypesTester.h
+    src/types/PiLambdaTypesTester.h
+    src/types/TypesPrinter.h
+)
 
 target_link_libraries(
     Final_Project_HPC_Test_Types Final_Project_HPC_Sequential_Library
     Final_Project_HPC_Parallel_Library
 )
+
 # target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE TIMERS PRINT_ITERATIONS) TODO:
 # target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY)
 target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY_TEST)
+
+add_executable(
+    Final_Project_HPC_Test_Array_Types
+    src/data/DataReader.cpp
+    src/data/DataReader.h
+    src/data/DataWriter.cpp
+    src/data/DataWriter.h
+    src/data/IoException.cpp
+    src/data/IoException.h
+    src/data/MalformedFileException.cpp
+    src/data/MalformedFileException.h
+    src/main-test-array-types.cpp
+    src/ResultsChecker.cpp
+    src/ResultsChecker.h
+    src/types/CollectionCreator.h
+    src/types/collections/AlignedArray.h
+    src/types/collections/Alignments.h
+    src/types/collections/OnlyConstIterableVector.h
+    src/types/collections/OnlyIterableVector.h
+    src/types/containers/array/ArrayNonIterableSubContainer.h
+    src/types/containers/array/ArrayOnlyConstIterableSubContainer.h
+    src/types/containers/array/ArrayOnlyIterableSubContainer.h
+    src/types/containers/array/ArraySubContainer.h
+    src/types/containers/array/ArrayTypeNameComposer.h
+    src/types/containers/CollectionInfo.h
+    src/types/DataTypesTester.h
+)
+
+target_link_libraries(
+    Final_Project_HPC_Test_Array_Types Final_Project_HPC_Sequential_Library
+    Final_Project_HPC_Parallel_Library
+)
+
+# target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE TIMERS PRINT_ITERATIONS) TODO:
+# target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY)
+target_compile_definitions(Final_Project_HPC_Test_Array_Types PRIVATE ITERATORS_SUMMARY_TEST)
 
 # Define the data generator main executable
 add_executable(

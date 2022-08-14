@@ -1,8 +1,10 @@
 #ifndef FINAL_PROJECT_HPC_LINEARCOLLECTIONCONTAINER_H
 #define FINAL_PROJECT_HPC_LINEARCOLLECTIONCONTAINER_H
 
-#include "AlignedArray.h"
-#include "Alignments.h"
+#include "../collections/AlignedArray.h"
+#include "../collections/Alignments.h"
+#include "../collections/OnlyIterableVector.h"
+#include "../collections/OnlyConstIterableVector.h"
 #include <array>
 #include <cstddef>
 #include <deque>
@@ -11,7 +13,7 @@
 #include <tuple>
 #include <vector>
 
-namespace cluster::test::types::collections {
+namespace cluster::test::types::containers {
 
 /**
  * Description.
@@ -64,20 +66,20 @@ public:
     std::deque<double>::iterator dequeIterator;
     std::deque<double>::const_iterator dequeConstIterator;
 
-    AlignedArray<double, ND, Alignments::SSE_ALIGNMENT> sseAlignedArray;
-    typename AlignedArray<double, ND, Alignments::SSE_ALIGNMENT>::iterator sseAlignedArrayIterator;
-    typename AlignedArray<double, ND, Alignments::SSE_ALIGNMENT>::const_iterator
+    collections::AlignedArray<double, ND, collections::Alignments::SSE_ALIGNMENT> sseAlignedArray;
+    typename collections::AlignedArray<double, ND, collections::Alignments::SSE_ALIGNMENT>::iterator sseAlignedArrayIterator;
+    typename collections::AlignedArray<double, ND, collections::Alignments::SSE_ALIGNMENT>::const_iterator
             sseAlignedArrayConstIterator;
-    AlignedArray<double, ND, Alignments::AVX_ALIGNMENT> avxAlignedArray;
-    typename AlignedArray<double, ND, Alignments::AVX_ALIGNMENT>::iterator avxAlignedArrayIterator;
-    typename AlignedArray<double, ND, Alignments::AVX_ALIGNMENT>::const_iterator
+    collections::AlignedArray<double, ND, collections::Alignments::AVX_ALIGNMENT> avxAlignedArray;
+    typename collections::AlignedArray<double, ND, collections::Alignments::AVX_ALIGNMENT>::iterator avxAlignedArrayIterator;
+    typename collections::AlignedArray<double, ND, collections::Alignments::AVX_ALIGNMENT>::const_iterator
             avxAlignedArrayConstIterator;
 
-    OnlyIterableVector<double> onlyIterable;
-    OnlyIterableVector<double>::iterator onlyIterableIterator;
+    collections::OnlyIterableVector<double> onlyIterable;
+    collections::OnlyIterableVector<double>::iterator onlyIterableIterator;
 
-    OnlyConstIterableVector<double> onlyConstIterable;
-    OnlyConstIterableVector<double>::const_iterator onlyConstIterableIterator;
+    collections::OnlyConstIterableVector<double> onlyConstIterable;
+    collections::OnlyConstIterableVector<double>::const_iterator onlyConstIterableIterator;
 
     std::vector<int> integers;
     std::vector<int>::iterator integersIterator;
@@ -98,6 +100,6 @@ public:
     // NOLINTEND(misc-non-private-member-variables-in-classes)
 };
 
-}  // namespace cluster::test::types::collections
+}  // namespace cluster::test::types::containers
 
 #endif  // FINAL_PROJECT_HPC_LINEARCOLLECTIONCONTAINER_H

@@ -10,36 +10,69 @@
 
 namespace cluster::utils {
 
-enum class DataIteratorType {
-    NONE,
-    CONTIGUOUS_ITERATOR,
-    CONTIGUOUS_ITERABLE,
-    CONTIGUOUS_CONST_ITERABLE,
-    CONTIGUOUS_ITERATOR_OF_ITERATORS,
-    CONTIGUOUS_ITERATOR_OF_ITERABLES,
-    CONTIGUOUS_ITERATOR_OF_CONST_ITERABLES,
-    CONTIGUOUS_ITERABLE_OF_ITERATORS,
-    CONTIGUOUS_ITERABLE_OF_ITERABLES,
-    CONTIGUOUS_ITERABLE_OF_CONST_ITERABLES,
-    CONTIGUOUS_CONST_ITERABLE_OF_ITERATORS,
-    CONTIGUOUS_CONST_ITERABLE_OF_ITERABLES,
-    CONTIGUOUS_CONST_ITERABLE_OF_CONST_ITERABLES,
-    RANDOM_ITERATOR_OF_ITERATORS,
-    RANDOM_ITERATOR_OF_ITERABLES,
-    RANDOM_ITERATOR_OF_CONST_ITERABLES,
-    RANDOM_ITERABLE_OF_ITERATORS,
-    RANDOM_ITERABLE_OF_ITERABLES,
-    RANDOM_ITERABLE_OF_CONST_ITERABLES,
-    RANDOM_CONST_ITERABLE_OF_ITERATORS,
-    RANDOM_CONST_ITERABLE_OF_ITERABLES,
-    RANDOM_CONST_ITERABLE_OF_CONST_ITERABLES
-};
+enum class DataIteratorType { NONE, CONTIGUOUS, RANDOM, INPUT };
+
+enum class DataLevelIteratorType { NONE, ITERATOR, ITERABLE, CONST_ITERABLE };
 
 class DataIteratorTypeUtils {
 
 public:
-    static std::string getDescription(DataIteratorType iteratorType) {
+    static std::string getDescription(DataIteratorType iteratorType,
+                                      DataLevelIteratorType firstLevelIteratorType,
+                                      DataLevelIteratorType secondLevelIteratorType) {
+
+        std::string result{};
+
         switch (iteratorType) {
+            case DataIteratorType::CONTIGUOUS:
+                result += "Contiguous";
+                break;
+            case DataIteratorType::RANDOM:
+                result += "Random";
+                break;
+            case DataIteratorType::INPUT:
+                result += "Input";
+                break;
+            case DataIteratorType::NONE:
+            default:
+                result += "Unknown";
+                break;
+        }
+
+        switch (firstLevelIteratorType) {
+            case DataLevelIteratorType::ITERATOR:
+                result += " iterator";
+                break;
+            case DataLevelIteratorType::ITERABLE:
+                result += " iterable";
+                break;
+            case DataLevelIteratorType::CONST_ITERABLE:
+                result += " const iterable";
+                break;
+            case DataLevelIteratorType::NONE:
+            default:
+                result += " unknown";
+                break;
+        }
+        
+        switch (secondLevelIteratorType) {
+            case DataLevelIteratorType::ITERATOR:
+                result += " of iterators";
+                break;
+            case DataLevelIteratorType::ITERABLE:
+                result += " of iterables";
+                break;
+            case DataLevelIteratorType::CONST_ITERABLE:
+                result += " of const iterables";
+                break;
+            case DataLevelIteratorType::NONE:
+            default:
+                result += " of unknown";
+                break;
+        }
+
+        return result;
+        /*TODO: switch (iteratorType) {
 
             case DataIteratorType::CONTIGUOUS_ITERATOR:
                 return "Contiguous iterator";
@@ -107,7 +140,7 @@ public:
             case DataIteratorType::NONE:
             default:
                 return "Invalid iterator";
-        }
+        }*/
     }
 };
 
@@ -130,13 +163,13 @@ public:
 
             case PiLambdaIteratorType::CONTIGUOUS_ITERABLE:
                 return "Contiguous iterable";
-                
+
             case PiLambdaIteratorType::RANDOM_ITERATOR:
                 return "Random iterator";
 
             case PiLambdaIteratorType::RANDOM_ITERABLE:
                 return "Random iterable";
-                
+
             case PiLambdaIteratorType::NONE:
             default:
                 return "Invalid iterator";
