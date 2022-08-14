@@ -222,7 +222,7 @@ public:
              **************************************************************************************/
             Timer::start<4>();
 
-            fixStructure(piBegin, lambdaBegin, n, stage4ThreadsCount);
+            fixStructure<P, L>(piBegin, lambdaBegin, n, stage4ThreadsCount);
             Timer::stop<4>();
             
             Timer::start<0>();
@@ -410,7 +410,7 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
         }
     }
 
-    template <typename EP, typename EL>
+    template <typename P, typename L, typename EP, typename EL>
     static inline void fixStructure(const EP &piIterator,
                                     const EL &lambdaIterator,
                                     std::size_t n,
@@ -420,12 +420,14 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
         num_threads(stage4ThreadsCount) if (S4)
         for (std::size_t i = 0; i <= n - 1; i++) {
             // Reference to pi[i]
-            std::size_t &piOfI = piIterator[i];
-
+            std::size_t &piOfI = PiLambdaIteratorUtils::getElementAt<std::size_t, P>(piIterator, i);
+            double lambdaOfI =  PiLambdaIteratorUtils::getElementAt<double, L>(lambdaIterator, i);
+            double lambdaOfPiOfI =  PiLambdaIteratorUtils::getElementAt<double, L>(lambdaIterator, piOfI);
+            
             /***********************************************************************************
              * if lambda(i) >= lambda(pi(i))
              **********************************************************************************/
-            if (lambdaIterator[i] >= lambdaIterator[piOfI]) {
+            if (lambdaOfI >= lambdaOfPiOfI) {
                 /*******************************************************************************
                  * set pi(i) to n + 1
                  ******************************************************************************/
