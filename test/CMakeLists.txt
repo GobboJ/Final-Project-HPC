@@ -56,7 +56,7 @@ target_link_libraries(
     Final_Project_HPC_Parallel_Library
 )
 
-target_compile_definitions(Final_Project_HPC_Measurement PRIVATE TIMERS PRINT_ITERATIONS)
+target_compile_definitions(Final_Project_HPC_Measurement PRIVATE TIMERS PRINT_ITERATIONS ITERATORS_SUMMARY)
 
 # Define the test types executable
 add_executable(
@@ -99,8 +99,7 @@ add_executable(
     src/types/containers/pointer/PointerTypeNameComposer.h
     src/types/DataTypesTester.h
     src/types/PiLambdaTypesTester.h
-    src/types/TypesPrinter.h
-    src/types/DataTypesTest.h)
+    src/types/TypesPrinter.h)
 
 target_link_libraries(
     Final_Project_HPC_Test_Types Final_Project_HPC_Sequential_Library
@@ -136,6 +135,7 @@ add_executable(
     src/types/containers/array/ArrayTypeNameComposer.h
     src/types/containers/CollectionInfo.h
     src/types/DataTypesTester.h
+ #     src/types/DataTypesTest.h)
 )
 
 target_link_libraries(

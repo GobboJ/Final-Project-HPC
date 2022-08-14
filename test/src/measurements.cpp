@@ -56,13 +56,13 @@ public:
                 auto piBegin = pi.begin();
                 auto lambdaBegin = lambda.begin();
                 ParallelClustering<S2, S4, S5>::template cluster<C>(data,
-                                                            rows,
-                                                            dimension,
-                                                            piBegin,
-                                                            lambdaBegin,
-                                                            threadCount,
-                                                            threadCount,
-                                                            threadCount);
+                                                                    rows,
+                                                                    dimension,
+                                                                    piBegin,
+                                                                    lambdaBegin,
+                                                                    threadCount,
+                                                                    threadCount,
+                                                                    threadCount);
             }
             // Print a text informing of what stage the timer is related to
             std::cout << std::endl << "[!] Mean" << std::endl;
@@ -201,7 +201,8 @@ int main() {
         std::vector<double *> twoLevels{};
         std::vector<double *> sseTwoLevels{};
         std::vector<double *> avxTwoLevels{};
-        auto* newData = new std::array<AlignedArray<double, 45, 32>, 153'000>;
+        auto *newData = new std::array<AlignedArray<double, 45, 32>, 153'000>;
+        auto *newDataIterators = new std::array<AlignedArray<double, 45, 32>::const_iterator, 153'000>;
 
         auto *dataIterator = data.data();
         std::size_t dataElementsCount = data.size() / dimension;
@@ -266,12 +267,13 @@ int main() {
         for (std::size_t i = 0; i < data.size(); i += dimension) {
             memcpy(&(uniqueVectorData[i]), &(dataIterator[i]), dimension * sizeof(double));
         }
-        
+
         std::size_t index = 0;
         for (std::size_t i = 0; i < data.size(); i += dimension) {
             for (std::size_t d = 0; d < dimension; d++) {
-                (*newData)[index][d] = dataIterator[i+d];
+                (*newData)[index][d] = dataIterator[i + d];
             }
+            (*newDataIterators)[i] = (*newData)[i].cbegin();
             index++;
         }
 
@@ -402,7 +404,7 @@ int main() {
                 {2, 4, 8, 12, 16},
                 pi,
                 lambda);
-        
+
         ClusteringAlgorithmExecutor<true, true, true>::iterateParallelClustering<
                 DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
                 "Parallel 12: Multi-threaded Distance Computation and Stage 4 + AVX Optimized + "
@@ -413,7 +415,7 @@ int main() {
                 {2, 4, 8, 12, 16},
                 pi,
                 lambda);
-        
+
         delete newData;
     }
 

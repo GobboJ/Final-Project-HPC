@@ -569,7 +569,7 @@ private:
                              DataLevelIteratorType secondLevel) {
 
 #ifdef ITERATORS_SUMMARY
-        std::cout << name << ": Using" << ' ' << DataIteratorTypeUtils::getDescription(iteratorType)
+        std::cout << name << ": Using" << ' ' << DataIteratorTypeUtils::getDescription(iteratorType, firstLevel, secondLevel)
                   << std::endl;
 #endif
 #ifdef ITERATORS_SUMMARY_TEST

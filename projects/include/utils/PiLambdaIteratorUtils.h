@@ -111,7 +111,7 @@ private:
     static inline void printSummary(const char *name, PiLambdaIteratorType iteratorType) {
 
 #ifdef ITERATORS_SUMMARY
-        std::cout << name << ": Using" << ' ' << DataIteratorTypeUtils::getDescription(iteratorType)
+        std::cout << name << ": Using" << ' ' << PiLambdaIteratorTypeUtils::getDescription(iteratorType)
                   << std::endl;
 #endif
 #ifdef ITERATORS_SUMMARY_TEST
