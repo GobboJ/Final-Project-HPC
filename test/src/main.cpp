@@ -509,19 +509,22 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
             case 1:
                 clusteringAlgorithm = [&data, dataElementsCount, dimension](
                                               auto &pi, auto &lambda) noexcept -> void {
+                    auto piIterator = pi.begin();
+                    auto lambdaIterator = lambda.begin();
                     SequentialClustering::cluster(
-                            data.begin(), dataElementsCount, dimension, pi.begin(), lambda.begin());
+                            data.begin(), dataElementsCount, dimension, piIterator, lambdaIterator);
                 };
                 break;
             case 2:
                 clusteringAlgorithm = [&data, dataElementsCount, uniqueArrayData, dimension](
                                               auto &pi, auto &lambda) noexcept -> void {
-                    SequentialClustering::cluster(
-                            ContiguousDoubleMemoryDataIterator(&(uniqueArrayData[0]), dimension),
-                            dataElementsCount,
-                            dimension,
-                            pi.begin(),
-                            lambda.begin());
+                    auto piIterator = pi.begin();
+                    auto lambdaIterator = lambda.begin();
+                    SequentialClustering::cluster(uniqueArrayData,
+                                                  dataElementsCount,
+                                                  dimension,
+                                                  piIterator,
+                                                  lambdaIterator);
                 };
                 break;
             default:
@@ -669,11 +672,8 @@ bool checkTest(const std::filesystem::path &filePath,
             auto lambdaIterator = expectedLambda.begin();
             std::cout << "Running sequential implementation of '" << fileName
                       << "' to check the results" << std::endl;
-            SequentialClustering::cluster(data.begin(),
-                                          data.size(),
-                                          dimension,
-                                          piIterator,
-                                          lambdaIterator);
+            SequentialClustering::cluster(
+                    data.begin(), data.size(), dimension, piIterator, lambdaIterator);
             if (usePreviousResults) {
                 DataWriter::writePiLambda(previousResultsPath, expectedPi, expectedLambda);
             }
