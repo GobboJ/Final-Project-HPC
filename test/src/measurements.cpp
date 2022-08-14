@@ -4,6 +4,7 @@
 #include "data/DataReader.h"
 #include "ResultsChecker.h"
 #include "DistanceComputers.h"
+#include "types/collections/AlignedArray.h"
 #include <cstddef>
 #include <cstring>
 #include <iostream>
@@ -18,6 +19,7 @@ using cluster::utils::Timer;
 using DistanceComputers = cluster::parallel::DistanceComputers;
 using cluster::test::ResultsChecker;
 using cluster::test::data::DataReader;
+using cluster::test::types::collections::AlignedArray;
 
 template <bool S2 = true, bool S4 = false, bool S5 = false>
 class ClusteringAlgorithmExecutor {
@@ -172,7 +174,7 @@ int main() {
      * gen many attributes
      */
     std::vector<std::tuple<std::string, std::size_t, std::size_t>> datasets{
-            {"Parking Birmingham.data", 2, 3}, {"generated.data", 1, 32}};
+            {"accelerometer.csv", 3, 5}, {"generated.data", 1, 45}};
     std::vector<std::size_t> threads{2, 4, 8, 12, 16};
 
     for (auto &dataset : datasets) {
@@ -199,6 +201,7 @@ int main() {
         std::vector<double *> twoLevels{};
         std::vector<double *> sseTwoLevels{};
         std::vector<double *> avxTwoLevels{};
+        auto* newData = new std::array<AlignedArray<double, 45, 32>, 100'000>;
 
         auto *dataIterator = data.data();
         std::size_t dataElementsCount = data.size() / dimension;
@@ -209,6 +212,9 @@ int main() {
             // Copy the doubles
             memcpy(point, &(dataIterator[i]), dimension * sizeof(double));
             twoLevels.push_back(point);
+            for (std::size_t d = 0; d < dimension; d++) {
+                (*newData)[i][d] = point[d];
+            }
         }
 
         std::size_t sseStride = ContiguousDoubleMemoryDataIterator::computeSseStride(dimension);
@@ -391,6 +397,19 @@ int main() {
                 {2, 4, 8, 12, 16},
                 pi,
                 lambda);
+        
+        ClusteringAlgorithmExecutor<true, true, true>::iterateParallelClustering<
+                DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
+                "Parallel 12: Multi-threaded Distance Computation and Stage 4 + AVX Optimized + "
+                "Linearized + No Square Root + std::array<AlignedArray>",
+                *newData,
+                avxTwoLevels.size(),
+                dimension,
+                {2, 4, 8, 12, 16},
+                pi,
+                lambda);
+        
+        delete newData;
     }
 
     return 0;
