@@ -273,7 +273,7 @@ int main() {
             for (std::size_t d = 0; d < dimension; d++) {
                 (*newData)[index][d] = dataIterator[i + d];
             }
-            (*newDataIterators)[i] = (*newData)[i].cbegin();
+            (*newDataIterators)[index] = (*newData)[index].cbegin();
             index++;
         }
 
@@ -408,8 +408,8 @@ int main() {
         ClusteringAlgorithmExecutor<true, true, true>::iterateParallelClustering<
                 DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
                 "Parallel 12: Multi-threaded Distance Computation and Stage 4 + AVX Optimized + "
-                "Linearized + No Square Root + std::array<AlignedArray>",
-                *newData,
+                "Linearized + No Square Root + std::array<AlignedArray::const_iterator>",
+                *newDataIterators,
                 avxTwoLevels.size(),
                 dimension,
                 {2, 4, 8, 12, 16},
