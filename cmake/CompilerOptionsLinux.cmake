@@ -163,6 +163,7 @@ add_compile_options(
     -msse3
     -mavx
     -march=native
+    -fconcepts-diagnostics-depth=10
     # Build-type-related options
     $<$<CONFIG:Release>:-O3>
     $<$<CONFIG:Debug>:-O0>

@@ -1,9 +1,11 @@
 #include "ContiguousDoubleMemoryDataIterator.h"
 #include "ParallelClustering.h"
 #include "SequentialClustering.h"
+#include "Types.h"
 #include "cli/CliArgumentsParser.h"
 #include "data/DataReader.h"
 #include "data/DataWriter.h"
+#include "ResultsChecker.h"
 #include <atomic>
 #include <cmath>
 #include <cstring>
@@ -16,10 +18,12 @@
 #include <unordered_map>
 #include <vector>
 #include <xmmintrin.h>
+#include <deque>
 
 using cluster::parallel::DistanceComputers;
 using cluster::parallel::ParallelClustering;
 using cluster::sequential::SequentialClustering;
+using cluster::test::ResultsChecker;
 using cluster::test::cli::CliArguments;
 using cluster::test::cli::CliArgumentsParser;
 using cluster::test::data::DataReader;
@@ -48,8 +52,8 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
 bool checkTest(const std::filesystem::path &filePath,
                const std::vector<double *> &data,
                std::size_t dimension,
-               const std::vector<std::size_t> &pi,
-               const std::vector<double> &lambda,
+               const std::vector<std::size_t> &resultPi,
+               const std::vector<double> &resultLambda,
                bool usePreviousResults,
                const std::filesystem::path &previousResultsPath);
 
@@ -59,6 +63,9 @@ bool areAlmostEqual(const double first, const double second);
 
 bool check(std::vector<std::pair<std::size_t, double>> &expected,
            std::vector<std::pair<std::size_t, double>> &result);
+
+template <typename T>
+void addAll(std::vector<T> &vector, std::initializer_list<T> values);
 
 CliArguments parseArguments(int argc, char *argv[]) {
 
@@ -300,11 +307,11 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
 
     std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm;
 
-    auto sseMmAlignedDataIterator = ContiguousDoubleMemoryDataIterator(
-            &(mmAlignedData[0]), ParallelClustering<>::computeSseBlocksCount(dimension));
+    auto sseMmAlignedDataIterator = mmAlignedData;
+    auto avxMmAlignedDataIterator = mmAlignedData;
 
-    auto avxMmAlignedDataIterator = ContiguousDoubleMemoryDataIterator(
-            &(mmAlignedData[0]), ParallelClustering<>::computeAvxBlocksCount(dimension));
+    // static_assert(cluster::utils::IndirectContiguousAccessIterator<double *, double>, "No");
+    static_assert(cluster::utils::ContiguousIterator<double *, double>, "No");
 
     if (isParallel) {
         switch (version) {
@@ -316,11 +323,11 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        stage4ThreadsCount](auto &pi,
                                                            auto &lambda) noexcept -> void {
                     ParallelClustering<>::cluster<DistanceComputers::CLASSICAL>(
-                            data.begin(),
+                            data,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -330,14 +337,13 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        dataElementsCount,
                                        dimension,
                                        distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
                     ParallelClustering<>::cluster<DistanceComputers::SSE>(
-                            data.begin(),
+                            data,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -347,14 +353,13 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        dataElementsCount,
                                        dimension,
                                        distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
                     ParallelClustering<>::cluster<DistanceComputers::AVX>(
-                            data.begin(),
+                            data,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -364,14 +369,13 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        dimension,
                                        avxMmAlignedDataIterator,
                                        distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
                     ParallelClustering<>::cluster<DistanceComputers::AVX>(
                             avxMmAlignedDataIterator,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -382,14 +386,13 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        dataElementsCount,
                                        dimension,
                                        distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
                     ParallelClustering<true, true>::cluster<DistanceComputers::SSE>(
-                            data.begin(),
+                            data,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -399,14 +402,13 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        dataElementsCount,
                                        dimension,
                                        distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
                     ParallelClustering<true, true>::cluster<DistanceComputers::SSE_OPTIMIZED>(
-                            data.begin(),
+                            data,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -416,14 +418,13 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        dataElementsCount,
                                        dimension,
                                        distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
                     ParallelClustering<true, true>::cluster<DistanceComputers::AVX_OPTIMIZED>(
-                            data.begin(),
+                            data,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -433,14 +434,13 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        dimension,
                                        sseMmAlignedDataIterator,
                                        distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
                     ParallelClustering<true, true>::cluster<DistanceComputers::SSE_OPTIMIZED>(
                             sseMmAlignedDataIterator,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -450,14 +450,13 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        dimension,
                                        avxMmAlignedDataIterator,
                                        distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
                     ParallelClustering<true, true>::cluster<DistanceComputers::AVX_OPTIMIZED>(
                             avxMmAlignedDataIterator,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -467,15 +466,14 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        dimension,
                                        avxMmAlignedDataIterator,
                                        distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
                     ParallelClustering<true, true>::cluster<
                             DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
                             avxMmAlignedDataIterator,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            pi,
+                            lambda,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount);
                 };
@@ -486,15 +484,17 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
                                        avxMmAlignedDataIterator,
                                        distanceComputationThreadsCount,
                                        stage4ThreadsCount,
-                                       stage5ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
+                                       stage5ThreadsCount](auto &pi, auto &lambda) -> void {
+                    auto piIterator = pi.begin();
+                    auto lambdaIterator = lambda.begin();
+
                     ParallelClustering<true, true, true>::cluster<
                             DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
                             avxMmAlignedDataIterator,
                             dataElementsCount,
                             dimension,
-                            pi.begin(),
-                            lambda.begin(),
+                            piIterator,
+                            lambdaIterator,
                             distanceComputationThreadsCount,
                             stage4ThreadsCount,
                             stage5ThreadsCount);
@@ -509,19 +509,22 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
             case 1:
                 clusteringAlgorithm = [&data, dataElementsCount, dimension](
                                               auto &pi, auto &lambda) noexcept -> void {
+                    auto piIterator = pi.begin();
+                    auto lambdaIterator = lambda.begin();
                     SequentialClustering::cluster(
-                            data.begin(), dataElementsCount, dimension, pi.begin(), lambda.begin());
+                            data.begin(), dataElementsCount, dimension, piIterator, lambdaIterator);
                 };
                 break;
             case 2:
                 clusteringAlgorithm = [&data, dataElementsCount, uniqueArrayData, dimension](
                                               auto &pi, auto &lambda) noexcept -> void {
-                    SequentialClustering::cluster(
-                            ContiguousDoubleMemoryDataIterator(&(uniqueArrayData[0]), dimension),
-                            dataElementsCount,
-                            dimension,
-                            pi.begin(),
-                            lambda.begin());
+                    auto piIterator = pi.begin();
+                    auto lambdaIterator = lambda.begin();
+                    SequentialClustering::cluster(uniqueArrayData,
+                                                  dataElementsCount,
+                                                  dimension,
+                                                  piIterator,
+                                                  lambdaIterator);
                 };
                 break;
             default:
@@ -610,46 +613,52 @@ void printValues(const std::vector<double *> &data,
 bool checkTest(const std::filesystem::path &filePath,
                const std::vector<double *> &data,
                const std::size_t dimension,
-               const std::vector<std::size_t> &pi,
-               const std::vector<double> &lambda,
+               const std::vector<std::size_t> &resultPi,
+               const std::vector<double> &resultLambda,
                const bool usePreviousResults,
                const std::filesystem::path &previousResultsPath) {
 
-    std::vector<std::pair<std::size_t, double>> expectedResult{};
+    std::vector<std::size_t> expectedPi{};
+    std::vector<double> expectedLambda{};
 
     std::string fileName{filePath.filename().string()};
 
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
     if (fileName == "two-points.data") {
-        expectedResult = {{1, 3.6055}, {1, INFINITY}};
+        addAll<std::size_t>(expectedPi, {1, 1});
+        addAll(expectedLambda, {3.6055, std::numeric_limits<double>::infinity()});
     } else if (fileName == "samples.data") {
-        expectedResult = {
-                {1, 0.4472},   // A
-                {4, 0.8944},   // B
-                {3, 0.4},      // C
-                {4, 0.7211},   // D
-                {5, 1.2806},   // E
-                {5, INFINITY}  // F
-        };
+        addAll<std::size_t>(expectedPi, {1, 4, 3, 4, 5, 5});
+        addAll(expectedLambda,
+               {0.4472,                                   // A
+                0.8944,                                   // B
+                0.4,                                      // C
+                0.7211,                                   // D
+                1.2806,                                   // E
+                std::numeric_limits<double>::infinity()}  // F
+        );
     } else if (fileName == "same-distance.data") {
-        expectedResult = {
-                {3, 2.2360},   // A
-                {2, 1.4142},   // B
-                {3, 2.2360},   // C
-                {3, INFINITY}  // D
-        };
+        addAll<std::size_t>(expectedPi, {3, 2, 3, 3});
+        addAll(expectedLambda,
+               {
+                       2.2360,                                  // A
+                       1.4142,                                  // B
+                       2.2360,                                  // C
+                       std::numeric_limits<double>::infinity()  // D
+               });
     } else if (fileName == "slide.data") {
-        expectedResult = {
-                {1, 0.7071},   // 1
-                {5, 2.5},      // 2
-                {5, 1.4142},   // 3,
-                {5, 0.5},      // 4
-                {5, 1},        // 5
-                {5, INFINITY}  // 6
-        };
+        addAll<std::size_t>(expectedPi, {1, 5, 5, 5, 5, 5});
+        addAll(expectedLambda,
+               {0.7071,                                   // 1
+                2.5,                                      // 2
+                1.4142,                                   // 3,
+                0.5,                                      // 4
+                1.0,                                      // 5
+                std::numeric_limits<double>::infinity()}  // 6
+        );
     } else {
-        std::vector<std::size_t> expectedPi{};
+
         expectedPi.resize(data.size());
-        std::vector<double> expectedLambda{};
         expectedLambda.resize(data.size());
 
         if (usePreviousResults && std::filesystem::is_regular_file(previousResultsPath)) {
@@ -658,29 +667,44 @@ bool checkTest(const std::filesystem::path &filePath,
                       << fileName << "' so to check the results" << std::endl;
             DataReader::readPiLambda(previousResultsPath, expectedPi, expectedLambda);
         } else {
-
+            cluster::utils::Timer::initTimers();
+            auto piIterator = expectedPi.begin();
+            auto lambdaIterator = expectedLambda.begin();
             std::cout << "Running sequential implementation of '" << fileName
                       << "' to check the results" << std::endl;
-            SequentialClustering::cluster(data.begin(),
-                                          data.size(),
-                                          dimension,
-                                          expectedPi.begin(),
-                                          expectedLambda.begin());
+            SequentialClustering::cluster(
+                    data.begin(), data.size(), dimension, piIterator, lambdaIterator);
             if (usePreviousResults) {
                 DataWriter::writePiLambda(previousResultsPath, expectedPi, expectedLambda);
             }
         }
-        for (std::size_t i = 0; i < expectedPi.size(); i++) {
+        /*for (std::size_t i = 0; i < expectedPi.size(); i++) {
             expectedResult.emplace_back(std::make_pair(expectedPi[i], expectedLambda[i]));
-        }
+        }*/
     }
+    // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 
-    std::vector<std::pair<std::size_t, double>> result{};
+    /*std::vector<std::pair<std::size_t, double>> result{};
     for (std::size_t i = 0; i < pi.size(); i++) {
         result.emplace_back(std::make_pair(pi[i], lambda[i]));
-    }
+    }*/
 
-    return check(expectedResult, result);
+    return ResultsChecker::checkResults(resultPi.cbegin(),
+                                        resultPi.cend(),
+                                        resultLambda.cbegin(),
+                                        resultLambda.cend(),
+                                        expectedPi.cbegin(),
+                                        expectedPi.cend(),
+                                        expectedLambda.cbegin(),
+                                        expectedLambda.cend());  // check(expectedResult, result);
+}
+
+template <typename T>
+void addAll(std::vector<T> &vector, const std::initializer_list<T> values) {
+
+    for (const T &value : values) {
+        vector.template emplace_back(value);
+    }
 }
 
 bool check(std::vector<std::pair<std::size_t, double>> &expected,

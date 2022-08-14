@@ -13,7 +13,10 @@ add_library(
     Final_Project_HPC_Sequential_Library STATIC
     include/sequential/SequentialClustering.h
     include/utils/ContiguousDoubleMemoryDataIterator.h
+    include/utils/DataIteratorUtils.h
+    include/utils/IteratorType.h
     include/utils/Logger.h
+    include/utils/PiLambdaIteratorUtils.h
     include/utils/Timer.h
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp
@@ -25,7 +28,10 @@ add_library(
     include/parallel/DistanceComputers.h
     include/parallel/ParallelClustering.h
     include/utils/ContiguousDoubleMemoryDataIterator.h
+    include/utils/DataIteratorUtils.h
+    include/utils/IteratorType.h
     include/utils/Logger.h
+    include/utils/PiLambdaIteratorUtils.h
     include/utils/Timer.h
     include/utils/Types.h
     src/utils/ContiguousDoubleMemoryDataIterator.cpp

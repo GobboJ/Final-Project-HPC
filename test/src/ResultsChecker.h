@@ -1,12 +1,13 @@
 #ifndef FINAL_PROJECT_HPC_RESULTSCHECKER_H
 #define FINAL_PROJECT_HPC_RESULTSCHECKER_H
 
-#include <vector>
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <iostream>
-#include <cmath>
-#include <algorithm>
+#include <vector>
 
+namespace cluster::test {
 /**
  * Description.
  *
@@ -16,100 +17,81 @@
  */
 class ResultsChecker {
 
-public:
-    static bool checkTest(const std::vector<std::size_t> &pi,
-                   const std::vector<double> &lambda,
-
-                   std::vector<std::size_t> expectedPi,
-                   std::vector<double> expectedLambda) {
-
-        std::vector<std::pair<std::size_t, double>> expectedResult{};
-
-        for (std::size_t i = 0; i < expectedPi.size(); i++) {
-            expectedResult.emplace_back(std::make_pair(expectedPi[i], expectedLambda[i]));
-        }
-
-        std::vector<std::pair<std::size_t, double>> result{};
-        for (std::size_t i = 0; i < pi.size(); i++) {
-            result.emplace_back(std::make_pair(pi[i], lambda[i]));
-        }
-
-        return check(expectedResult, result);
-    }
-
 private:
-    static bool check(std::vector<std::pair<std::size_t, double>> &expected,
-                      std::vector<std::pair<std::size_t, double>> &result) {
+    static const constexpr double EPSILON = 0.0001;
 
-        std::vector<std::size_t> orderedIndexes{};
-        for (std::size_t i = 0; i < expected.size(); i++) {
-            orderedIndexes.push_back(i);
-        }
-        std::sort(orderedIndexes.begin(),
-                  orderedIndexes.end(),
-                  [&expected](const auto &a, const auto &b) -> bool {
-                      return expected[a].second < expected[b].second;
-                  });
+public:
+    template <typename P, typename L, typename EP, typename EL>
+    static bool checkResults(const P resultPiBegin,
+                             const P resultPiEnd,
+                             const L resultLambdaBegin,
+                             const L resultLambdaEnd,
+                             const EP expectedPiBegin,
+                             const EP expectedPiEnd,
+                             const EL expectedLambdaBegin,
+                             const EL expectedLambdaEnd) {
 
-        std::vector<std::size_t> orderedExpectedIndexes{};
-        for (std::size_t i = 0; i < result.size(); i++) {
-            orderedExpectedIndexes.push_back(i);
-        }
-        std::sort(orderedExpectedIndexes.begin(),
-                  orderedExpectedIndexes.end(),
-                  [&result](const auto &a, const auto &b) -> bool {
-                      return result[a].second < result[b].second;
-                  });
+        P currentResultPi = resultPiBegin;
+        L currentResultLambda = resultLambdaBegin;
+        EP currentExpectedPi = expectedPiBegin;
+        EL currentExpectedLambda = expectedLambdaBegin;
+        bool equal = true;
+        std::size_t dataSampleIndex = 0;
 
-        auto orderedExpectedIndexesIterator = orderedExpectedIndexes.cbegin();
-        for (std::size_t index : orderedIndexes) {
+        while (currentResultPi != resultPiEnd && currentResultLambda != resultLambdaEnd &&
+               currentExpectedPi != expectedPiEnd && currentExpectedLambda != expectedLambdaEnd &&
+               equal) {
 
-            std::size_t piToCheck = result[index].first;
-            double lambdaToCheck = result[index].second;
+            std::size_t piValue = *currentResultPi;
+            double lambdaValue = *currentResultLambda;
+            std::size_t expectedPiValue = *currentExpectedPi;
+            double expectedLambdaValue = *currentExpectedLambda;
 
-            std::vector<std::size_t>::difference_type back = 0;
-            bool continueSearch = true;
-            while (areAlmostLess(expected[*orderedExpectedIndexesIterator].second, lambdaToCheck)) {
-                ++orderedExpectedIndexesIterator;
+            if (piValue != expectedPiValue || !areAlmostEqual(lambdaValue, expectedLambdaValue)) {
+                std::cerr << "Error at data sample" << ' ' << dataSampleIndex << ":" << std::endl;
+                std::cerr << "    "
+                          << "Expected to be connected to" << ' ' << expectedPiValue
+                          << " at distance" << ' ' << expectedLambdaValue << std::endl;
+                std::cerr << "    "
+                          << "Found it is connected to" << ' ' << piValue << " at distance" << ' '
+                          << lambdaValue << std::endl;
+                equal = false;
             }
+            dataSampleIndex++;
+            ++currentResultPi;
+            ++currentResultLambda;
+            ++currentExpectedPi;
+            ++currentExpectedLambda;
+        }
 
-            while (areAlmostEqual(lambdaToCheck,
-                                  expected[*orderedExpectedIndexesIterator].second) &&
-                   continueSearch) {
-                if (piToCheck != expected[*orderedExpectedIndexesIterator].first) {
-                    ++orderedExpectedIndexesIterator;
-                    back++;
-                } else {
-                    continueSearch = false;
-                }
-            }
-
-            if (continueSearch) {
-                std::cerr << "Expected" << ' ' << index << " being in the cluster" << ' '
-                          << piToCheck << " at distance" << ' ' << lambdaToCheck << " but it is not"
+        if (equal) {
+            if ((currentResultPi != resultPiEnd && currentResultLambda == resultLambdaEnd) ||
+                (currentResultPi == resultPiEnd && currentResultLambda != resultLambdaEnd)) {
+                std::cerr << "The result pi and lambda data structures have different sizes."
                           << std::endl;
                 return false;
             }
-            orderedExpectedIndexesIterator -= back;
+            if ((currentExpectedPi != expectedPiEnd &&
+                 currentExpectedLambda == expectedLambdaEnd) ||
+                (currentExpectedPi == expectedPiEnd &&
+                 currentExpectedLambda != expectedLambdaEnd)) {
+                std::cerr << "The expected pi and lambda vectors have different sizes."
+                          << std::endl;
+                return false;
+            }
+            if ((currentResultPi != resultPiEnd && currentExpectedPi == expectedPiEnd) ||
+                (currentResultPi == resultPiEnd && currentExpectedPi != expectedPiEnd)) {
+                std::cerr << "The result and expected data structures have different sizes."
+                          << std::endl;
+                return false;
+            }
         }
 
-        return true;
+        return equal;
     }
 
-    [[gnu::const]] static bool areAlmostLess(const double first, const double second) {
-
-        return (first - second) < -0.0001;
-    }
-
-    [[gnu::const]] static bool areAlmostEqual(const double first, const double second) {
-
-        if (first > std::numeric_limits<double>::max() &&
-            second > std::numeric_limits<double>::max()) {
-            return true;
-        }
-
-        return fabs(first - second) < 0.0001;
-    }
+private:
+    [[gnu::const]] static bool areAlmostEqual(double first, double second);
 };
-
+}  // namespace cluster::test
 #endif  // FINAL_PROJECT_HPC_RESULTSCHECKER_H
