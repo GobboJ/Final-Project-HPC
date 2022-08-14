@@ -13,8 +13,10 @@
 
 using cluster::parallel::ParallelClustering;
 using cluster::sequential::SequentialClustering;
+using cluster::utils::ParallelDataIterator;
 using cluster::utils::Timer;
 using DistanceComputers = cluster::parallel::DistanceComputers;
+using cluster::test::ResultsChecker;
 using cluster::test::data::DataReader;
 
 template <bool S2 = true, bool S4 = false, bool S5 = false>
@@ -23,7 +25,7 @@ class ClusteringAlgorithmExecutor {
 public:
     template <DistanceComputers C, ParallelDataIterator D>
     static void iterateParallelClustering(const std::string &title,
-                                          D data,
+                                          const D &data,
                                           std::size_t rows,
                                           std::size_t dimension,
                                           std::vector<std::size_t> threadCounts,
@@ -49,11 +51,13 @@ public:
 
             for (std::size_t iteration = 0; iteration < 3; iteration++) {
                 std::cout << "[!] Iteration: " << iteration + 1 << std::endl;
+                auto piBegin = pi.begin();
+                auto lambdaBegin = lambda.begin();
                 ParallelClustering<S2>::template cluster<C>(data,
                                                             rows,
                                                             dimension,
-                                                            pi.begin(),
-                                                            lambda.begin(),
+                                                            piBegin,
+                                                            lambdaBegin,
                                                             threadCount,
                                                             threadCount,
                                                             threadCount);
@@ -76,7 +80,14 @@ public:
             Timer::printTotal<0, 1, 2, 3, 4, 5>(3);
             std::cout << std::endl;
 
-            if (!ResultsChecker::checkTest(pi, lambda, expectedPi, expectedLambda)) {
+            if (!ResultsChecker::checkResults(pi.cbegin(),
+                                              pi.cend(),
+                                              lambda.cbegin(),
+                                              lambda.cend(),
+                                              expectedPi.cbegin(),
+                                              expectedPi.cend(),
+                                              expectedLambda.cbegin(),
+                                              expectedLambda.cend())) {
                 std::cerr << "Error!" << std::endl;
             } else {
                 std::cout << "Ok!" << std::endl;
@@ -87,7 +98,7 @@ public:
 
 template <typename D>
 void iterateSequentialClustering(const std::string &title,
-                                 D data,
+                                 const D &data,
                                  std::size_t rows,
                                  std::size_t dimension,
                                  const std::vector<std::size_t> &expectedPi,
@@ -106,7 +117,9 @@ void iterateSequentialClustering(const std::string &title,
     Timer::reset();
     for (std::size_t iteration = 0; iteration < 3; iteration++) {
         std::cout << "[!] Iteration: " << iteration + 1 << std::endl;
-        SequentialClustering::cluster(data, rows, dimension, pi.begin(), lambda.begin());
+        auto piBegin = pi.begin();
+        auto lambdaBegin = lambda.begin();
+        SequentialClustering::cluster(data, rows, dimension, piBegin, lambdaBegin);
     }
     // Print a text informing of what stage the timer is related to
     std::cout << std::endl << "[!] Mean" << std::endl;
@@ -126,7 +139,14 @@ void iterateSequentialClustering(const std::string &title,
     Timer::printTotal<0, 1, 2, 3, 4, 5>(3);
     std::cout << std::endl;
 
-    if (!ResultsChecker::checkTest(pi, lambda, expectedPi, expectedLambda)) {
+    if (!ResultsChecker::checkResults(pi.cbegin(),
+                                      pi.cend(),
+                                      lambda.cbegin(),
+                                      lambda.cend(),
+                                      expectedPi.cbegin(),
+                                      expectedPi.cend(),
+                                      expectedLambda.cbegin(),
+                                      expectedLambda.cend())) {
         std::cerr << "Error!" << std::endl;
     } else {
         std::cout << "Ok!" << std::endl;
@@ -250,14 +270,18 @@ int main() {
         lambda.resize(twoLevels.size());
 
         std::cout << "Executing the sequential implementation to check the results" << std::endl;
+        auto dataBegin = twoLevels.begin();
+        auto piBegin = pi.begin();
+        auto lambdaBegin = lambda.begin();
+
         SequentialClustering::cluster(
-                twoLevels.begin(), dataElementsCount, dimension, pi.begin(), lambda.begin());
+                dataBegin, dataElementsCount, dimension, piBegin, lambdaBegin);
 
         iterateSequentialClustering(
                 "Sequential 1", twoLevels.begin(), twoLevels.size(), dimension, pi, lambda);
 
         iterateSequentialClustering("Sequential 2: Linearized",
-                                    ContiguousDoubleMemoryDataIterator(uniqueVectorData, dimension),
+                                    uniqueVectorData,
                                     twoLevels.size(),
                                     dimension,
                                     pi,
@@ -310,7 +334,7 @@ int main() {
 
         ClusteringAlgorithmExecutor<>::iterateParallelClustering<DistanceComputers::SSE>(
                 "Parallel 6: Multi-threaded Distance Computation + SSE + Linearized",
-                ContiguousDoubleMemoryDataIterator(sseMMAlignedData, sseStride),
+                sseMMAlignedData,
                 sseTwoLevels.size(),
                 dimension,
                 {4, 8, 12},
@@ -319,7 +343,7 @@ int main() {
 
         ClusteringAlgorithmExecutor<>::iterateParallelClustering<DistanceComputers::AVX>(
                 "Parallel 7: Multi-threaded Distance Computation + AVX + Linearized",
-                ContiguousDoubleMemoryDataIterator(avxMMAlignedData, avxStride),
+                avxMMAlignedData,
                 avxTwoLevels.size(),
                 dimension,
                 {4, 8, 12},
@@ -328,7 +352,7 @@ int main() {
 
         ClusteringAlgorithmExecutor<true, true>::iterateParallelClustering<DistanceComputers::AVX>(
                 "Parallel 8: Multi-threaded Distance Computation and Stage 4 + AVX + Linearized",
-                ContiguousDoubleMemoryDataIterator(avxMMAlignedData, avxStride),
+                avxMMAlignedData,
                 avxTwoLevels.size(),
                 dimension,
                 {4, 8, 12},
@@ -339,7 +363,7 @@ int main() {
                 DistanceComputers::AVX_OPTIMIZED>(
                 "Parallel 9: Multi-threaded Distance Computation and Stage 4 + AVX Optimized + "
                 "Linearized",
-                ContiguousDoubleMemoryDataIterator(avxMMAlignedData, avxStride),
+                avxMMAlignedData,
                 avxTwoLevels.size(),
                 dimension,
                 {4, 8, 12},
@@ -350,7 +374,7 @@ int main() {
                 DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT>(
                 "Parallel 10: Multi-threaded Distance Computation and Stage 4 + SSE Optimized + "
                 "Linearized + No Square Root",
-                ContiguousDoubleMemoryDataIterator(sseMMAlignedData, sseStride),
+                sseMMAlignedData,
                 sseTwoLevels.size(),
                 dimension,
                 {2, 4, 8, 12, 16},
@@ -361,7 +385,7 @@ int main() {
                 DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
                 "Parallel 11: Multi-threaded Distance Computation and Stage 4 + AVX Optimized + "
                 "Linearized + No Square Root",
-                ContiguousDoubleMemoryDataIterator(avxMMAlignedData, avxStride),
+                avxMMAlignedData,
                 avxTwoLevels.size(),
                 dimension,
                 {2, 4, 8, 12, 16},

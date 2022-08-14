@@ -100,7 +100,7 @@ add_executable(
     src/types/DataTypesTester.h
     src/types/PiLambdaTypesTester.h
     src/types/TypesPrinter.h
-)
+    src/types/DataTypesTest.h)
 
 target_link_libraries(
     Final_Project_HPC_Test_Types Final_Project_HPC_Sequential_Library
