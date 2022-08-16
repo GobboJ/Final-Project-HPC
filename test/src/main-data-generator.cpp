@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <filesystem>
 #include <iostream>
+#include <random>
 
 bool parseSizeT(char *string, std::size_t &result);
 
@@ -75,12 +76,20 @@ int main(int argc, char *argv[]) {
     std::cout.flush();
     std::size_t lastPrintedRowNumber = 0;
 
+    auto seed = static_cast<uint64_t>(std::chrono::high_resolution_clock::now().time_since_epoch()
+                                           .count());
+    std::mt19937_64 randomNumberGenerator{seed};
+    
     std::ofstream file{outputPath};
-    srand(time(nullptr));
+    
     for (std::size_t rowNumber = 0; rowNumber < rowsCount; rowNumber++) {
         for (std::size_t attributeNumber = 0; attributeNumber < attributesCount;
              attributeNumber++) {
-            file << minValue + (rand() % (maxValue - minValue));
+            
+            uint64_t number = randomNumberGenerator();
+            
+            
+            file << minValue + (number % (maxValue - minValue));
             if (!file) {
                 std::cout << std::endl;
                 std::cerr << "Error while writing the file at row" << ' ' << rowNumber << std::endl;
