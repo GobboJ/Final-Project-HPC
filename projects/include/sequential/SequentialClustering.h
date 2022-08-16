@@ -40,7 +40,7 @@ public:
      * to contain all the <code>lambda</code> values, which are exactly
      * <code>dataSamplesCount</code>.
      */
-    template <utils::DataIterator D, utils::PiIterator P, utils::LambdaIterator L>
+    template <utils::SequentialDataIterator D, utils::PiIterator P, utils::LambdaIterator L>
     static void cluster(const D &data,
                         const std::size_t dataSamplesCount,
                         const std::size_t dimension,

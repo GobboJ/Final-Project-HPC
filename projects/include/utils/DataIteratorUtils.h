@@ -562,6 +562,189 @@ public:
         ++currentElement;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <typename D, std::enable_if_t<InputIteratorOfIterators<D, const double>, bool> = true>
+    static inline D createEfficientIterator(const D &iterator, const char *name) {
+
+        printSummary(name,
+                     DataIteratorType::INPUT,
+                     DataLevelIteratorType::ITERATOR,
+                     DataLevelIteratorType::ITERATOR);
+        return iterator;
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<InputIteratorOfIterators<D, const double>, bool> = true>
+    static inline const double *getCurrentElement(const I &currentElementIterator) {
+
+        return &((*currentElementIterator)[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<InputIteratorOfIterators<D, const double>, bool> = true>
+    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+
+        ++currentElementIterator;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    template <typename D,
+              std::enable_if_t<InputIteratorOfIterables<D, const double> ||
+                                       InputIteratorOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline D createEfficientIterator(const D &iterator, const char *name) {
+
+        if constexpr (InputIteratorOfConstIterables<D, const double>) {
+            printSummary(name,
+                         DataIteratorType::INPUT,
+                         DataLevelIteratorType::ITERATOR,
+                         DataLevelIteratorType::CONST_ITERABLE);
+        } else {
+            printSummary(name,
+                         DataIteratorType::INPUT,
+                         DataLevelIteratorType::ITERATOR,
+                         DataLevelIteratorType::ITERABLE);
+        }
+        return iterator;
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<InputIteratorOfIterables<D, const double> ||
+                                       InputIteratorOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline const double *getCurrentElement(const I &currentElementIterator) {
+
+        if constexpr (InputIteratorOfConstIterables<D, const double>) {
+            return &(((*currentElementIterator).cbegin())[0]);
+        } else {
+            return &(((*currentElementIterator).begin())[0]);
+        }
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<InputIteratorOfIterables<D, const double> ||
+                                       InputIteratorOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+
+        ++currentElementIterator;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    template <typename D,
+              std::enable_if_t<InputIterableOfIterators<D, const double> ||
+                                       InputConstIterableOfIterators<D, const double>,
+                               bool> = true>
+    static inline auto createEfficientIterator(const D &data, const char *name) {
+
+        if constexpr (InputConstIterableOfIterators<D, const double>) {
+            printSummary(name,
+                         DataIteratorType::INPUT,
+                         DataLevelIteratorType::CONST_ITERABLE,
+                         DataLevelIteratorType::ITERATOR);
+            return data.cbegin();
+        } else {
+            printSummary(name,
+                         DataIteratorType::INPUT,
+                         DataLevelIteratorType::ITERABLE,
+                         DataLevelIteratorType::ITERATOR);
+            return data.begin();
+        }
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<InputIterableOfIterators<D, const double> ||
+                                       InputConstIterableOfIterators<D, const double>,
+                               bool> = true>
+    static inline const double *getCurrentElement(const I &currentElement) {
+
+        return &((*currentElement)[0]);
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<InputIterableOfIterators<D, const double> ||
+                                       InputConstIterableOfIterators<D, const double>,
+                               bool> = true>
+    static inline void moveNext(I &currentElement, std::size_t stride) {
+
+        ++currentElement;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    template <typename D,
+              std::enable_if_t<InputIterableOfIterables<D, const double> ||
+                                       InputIterableOfConstIterables<D, const double> ||
+                                       InputConstIterableOfIterables<D, const double> ||
+                                       InputConstIterableOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline auto createEfficientIterator(const D &data, const char *name) {
+
+        if constexpr (InputConstIterableOfIterables<D, const double> ||
+                      InputConstIterableOfConstIterables<D, const double>) {
+            if constexpr (InputConstIterableOfConstIterables<D, const double>) {
+                printSummary(name,
+                             DataIteratorType::INPUT,
+                             DataLevelIteratorType::CONST_ITERABLE,
+                             DataLevelIteratorType::CONST_ITERABLE);
+            } else {
+                printSummary(name,
+                             DataIteratorType::INPUT,
+                             DataLevelIteratorType::CONST_ITERABLE,
+                             DataLevelIteratorType::ITERABLE);
+            }
+            return data.cbegin();
+        } else {
+            if constexpr (InputIterableOfConstIterables<D, const double>) {
+                printSummary(name,
+                             DataIteratorType::INPUT,
+                             DataLevelIteratorType::ITERABLE,
+                             DataLevelIteratorType::CONST_ITERABLE);
+            } else {
+                printSummary(name,
+                             DataIteratorType::INPUT,
+                             DataLevelIteratorType::ITERABLE,
+                             DataLevelIteratorType::ITERABLE);
+            }
+            return data.begin();
+        }
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<InputIterableOfIterables<D, const double> ||
+                                       InputIterableOfConstIterables<D, const double> ||
+                                       InputConstIterableOfIterables<D, const double> ||
+                                       InputConstIterableOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline const double *getCurrentElement(const I &currentElement) {
+
+        if constexpr (InputIterableOfConstIterables<D, const double> ||
+                      InputConstIterableOfConstIterables<D, const double>) {
+            return &(((*currentElement).cbegin())[0]);
+        } else {
+            return &(((*currentElement).begin())[0]);
+        }
+    }
+
+    template <typename D,
+              typename I,
+              std::enable_if_t<InputIterableOfIterables<D, const double> ||
+                                       InputIterableOfConstIterables<D, const double> ||
+                                       InputConstIterableOfIterables<D, const double> ||
+                                       InputConstIterableOfConstIterables<D, const double>,
+                               bool> = true>
+    static inline void moveNext(I &currentElement, std::size_t stride) {
+
+        ++currentElement;
+    }
+
 private:
     static void printSummary(const char *name,
                              DataIteratorType iteratorType,
@@ -569,7 +752,8 @@ private:
                              DataLevelIteratorType secondLevel) {
 
 #ifdef ITERATORS_SUMMARY
-        std::cout << name << ": Using" << ' ' << DataIteratorTypeUtils::getDescription(iteratorType, firstLevel, secondLevel)
+        std::cout << name << ": Using" << ' '
+                  << DataIteratorTypeUtils::getDescription(iteratorType, firstLevel, secondLevel)
                   << std::endl;
 #endif
 #ifdef ITERATORS_SUMMARY_TEST
@@ -585,175 +769,6 @@ private:
 
 #endif
     }
-
-    /*
-
-
-    template <typename I, std::enable_if_t<IndirectRandomAccessIterator<I, T>, bool> = true>
-    static inline I createEfficientIterator(const I &iterator, const char *name) {
-
-#ifdef ITERATORS_SUMMARY
-        std::cout << name << ": Using random access iterator over iterators" << std::endl;
-#endif
-
-        return iterator;
-    }
-
-    template <typename I, std::enable_if_t<IndirectRandomAccessIterable<I, T>, bool> = true>
-    static inline I createEfficientIterator(const I &iterator, const char *name) {
-
-#ifdef ITERATORS_SUMMARY
-        std::cout << name << ": Using random access iterator over iterables" << std::endl;
-#endif
-
-        return iterator;
-    }
-
-    template <typename I, std::enable_if_t<IndirectContiguousAccessIterator<I, T>, bool> = true>
-    static inline const T * createEfficientIterator(const I &iterator, const char *name) {
-
-#ifdef ITERATORS_SUMMARY
-        std::cout << name << ": Using indirect pointers" << std::endl;
-#endif
-
-        return &((*iterator)[0]);
-    }
-
-    template <typename I, std::enable_if_t<IndirectContiguousAccessIterable<I, T>, bool> = true>
-    static inline T *createEfficientIterator(const I &iterator, const char *name) {
-
-#ifdef ITERATORS_SUMMARY
-        std::cout << name << ": Using element iterator as indirect pointers" << std::endl;
-#endif
-
-        return &(((*iterator).begin())[0]);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template <typename I, typename EI, std::enable_if_t<ContiguousIterator<I, T>, bool> = true>
-    static inline T *getCurrent(const EI &currentElement) {
-
-        return currentElement;
-    }
-
-
-    template <typename I,
-              typename EI,
-              std::enable_if_t<IndirectRandomAccessIterator<I, T>, bool> = true>
-    static inline T *getCurrent(const EI &currentElement) {
-
-        return *currentElement;
-    }
-
-    template <typename I,
-              typename EI,
-              std::enable_if_t<IndirectRandomAccessIterable<I, T>, bool> = true>
-    static inline T *getCurrent(const EI &currentElement) {
-
-        return &(((*currentElement).begin())[0]);
-    }
-
-    template <typename I,
-              typename EI,
-              std::enable_if_t<IndirectContiguousAccessIterator<I, T>, bool> = true>
-    static inline const T *getCurrent(const EI &currentElement) {
-
-        return currentElement;
-    }
-
-    template <typename I,
-              typename EI,
-              std::enable_if_t<IndirectContiguousAccessIterable<I, T>, bool> = true>
-    static inline T *getCurrent(const EI &currentElement) {
-
-        return currentElement;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template <typename I, typename EI, std::enable_if_t<ContiguousIterator<I, T>, bool> = true>
-    static inline T *getElement(const EI &startElement, std::size_t i, std::size_t stride) {
-
-        return &(startElement[i * stride]);
-    }
-
-
-        template <typename I,
-                  typename EI,
-                  std::enable_if_t<IndirectRandomAccessIterator<I, T>, bool> = true>
-        static inline T *getElement(const EI &efficientIterator, std::size_t i, std::size_t stride)
-       {
-
-            return efficientIterator[i];
-        }
-
-        template <typename I,
-                  typename EI,
-                  std::enable_if_t<IndirectRandomAccessIterable<I, T>, bool> = true>
-        static inline T *getElement(const EI &efficientIterator, std::size_t i, std::size_t stride)
-       {
-
-            return &((efficientIterator[i].begin())[0]);
-        }
-
-        template <typename I,
-                  typename EI,
-                  std::enable_if_t<IndirectContiguousAccessIterator<I, T>, bool> = true>
-        static inline const T *getElement(const EI &startElement, std::size_t i, std::size_t stride)
-       {
-
-            return &(startElement[i]);
-        }
-
-        template <typename I,
-                  typename EI,
-                  std::enable_if_t<IndirectContiguousAccessIterable<I, T>, bool> = true>
-        static inline T *getElement(const EI &startElement, std::size_t i, std::size_t stride) {
-
-            return &(startElement[i]);
-        }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template <typename I, typename EI, std::enable_if_t<ContiguousIterator<I, T>, bool> = true>
-    static inline void moveNext(EI &currentElement, const std::size_t stride) {
-
-        currentElement += stride;
-    }
-
-
-        template <typename I,
-                  typename EI,
-                  std::enable_if_t<IndirectRandomAccessIterator<I, T>, bool> = true>
-        static inline void moveNext(EI &iterator, const std::size_t stride) {
-
-            ++iterator;
-        }
-
-        template <typename I,
-                  typename EI,
-                  std::enable_if_t<IndirectRandomAccessIterable<I, T>, bool> = true>
-        static inline void moveNext(EI &iterator, const std::size_t stride) {
-
-            ++iterator;
-        }
-
-        template <typename I,
-                  typename EI,
-                  std::enable_if_t<IndirectContiguousAccessIterator<I, T>, bool> = true>
-        static inline void moveNext(EI &currentElement, const std::size_t stride) {
-
-            ++currentElement;
-        }
-
-        template <typename I,
-                  typename EI,
-                  std::enable_if_t<IndirectContiguousAccessIterable<I, T>, bool> = true>
-        static inline void moveNext(EI &currentElement, const std::size_t stride) {
-
-            ++currentElement;
-        }*/
 };
 
 DataIteratorType DataIteratorUtils::lastIteratorType = DataIteratorType::NONE;

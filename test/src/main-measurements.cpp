@@ -2,7 +2,7 @@
 #include "ParallelClustering.h"
 #include "SequentialClustering.h"
 #include "data/DataReader.h"
-#include "ResultsChecker.h"
+#include "data/ResultsChecker.h"
 #include "DistanceComputers.h"
 #include "types/collections/AlignedArray.h"
 #include <cstddef>

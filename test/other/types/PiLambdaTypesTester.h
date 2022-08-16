@@ -10,7 +10,7 @@
 #include "PiLambdaIteratorUtils.h"
 #include "ParallelClustering.h"
 #include "DistanceComputers.h"
-#include "../ResultsChecker.h"
+#include "../../src/data/ResultsChecker.h"
 
 namespace cluster::test::types {
 

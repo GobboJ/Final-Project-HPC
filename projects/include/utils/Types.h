@@ -216,6 +216,74 @@ concept RandomConstIterableOfConstIterables = requires(I iterator) {
                                                       } -> ContiguousConstIterable<T>;
                                               };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+template <typename I>
+concept InputOnlyIterator = std::input_iterator<I> && !
+std::random_access_iterator<I>;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+template <typename I, typename T>
+concept InputIteratorOfIterators = InputOnlyIterator<I> && requires(I iterator) {
+                                                               {
+                                                                   *iterator
+                                                                   } -> ContiguousIterator<T>;
+                                                           };
+
+template <typename I, typename T>
+concept InputIteratorOfIterables = InputOnlyIterator<I> && requires(I iterator) {
+                                                               {
+                                                                   *iterator
+                                                                   } -> ContiguousIterable<T>;
+                                                           };
+
+template <typename I, typename T>
+concept InputIteratorOfConstIterables =
+        InputOnlyIterator<I> && requires(I iterator) {
+                                    { *iterator } -> ContiguousConstIterable<T>;
+                                };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename I, typename T>
+concept InputIterableOfIterators = requires(I iterator) {
+                                       { iterator.begin() } -> InputOnlyIterator<>;
+                                       { *(iterator.begin()) } -> ContiguousIterator<T>;
+                                   };
+
+template <typename I, typename T>
+concept InputIterableOfIterables = requires(I iterator) {
+                                       { iterator.begin() } -> InputOnlyIterator<>;
+                                       { *(iterator.begin()) } -> ContiguousIterable<T>;
+                                   };
+
+template <typename I, typename T>
+concept InputIterableOfConstIterables = requires(I iterator) {
+                                            { iterator.begin() } -> InputOnlyIterator<>;
+                                            { *(iterator.begin()) } -> ContiguousConstIterable<T>;
+                                        };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename I, typename T>
+concept InputConstIterableOfIterators = requires(I iterator) {
+                                            { iterator.cbegin() } -> InputOnlyIterator<>;
+                                            { *(iterator.cbegin()) } -> ContiguousIterator<T>;
+                                        };
+
+template <typename I, typename T>
+concept InputConstIterableOfIterables = requires(I iterator) {
+                                            { iterator.cbegin() } -> InputOnlyIterator<>;
+                                            { *(iterator.cbegin()) } -> ContiguousIterable<T>;
+                                        };
+
+template <typename I, typename T>
+concept InputConstIterableOfConstIterables = requires(I iterator) {
+                                                 { iterator.cbegin() } -> InputOnlyIterator<>;
+                                                 {
+                                                     *(iterator.cbegin())
+                                                     } -> ContiguousConstIterable<T>;
+                                             };
+
 /*
  *
  *
@@ -250,6 +318,18 @@ concept ParallelDataIterator =
         RandomConstIterableOfConstIterables<std::remove_cvref_t<I>, const double>;
 
 template <typename I>
+concept SequentialDataIterator =
+        ParallelDataIterator<I> || InputIteratorOfIterators<std::remove_cvref_t<I>, const double> ||
+        InputIteratorOfIterables<std::remove_cvref_t<I>, const double> ||
+        InputIteratorOfConstIterables<std::remove_cvref_t<I>, const double> ||
+        InputIterableOfIterators<std::remove_cvref_t<I>, const double> ||
+        InputIterableOfIterables<std::remove_cvref_t<I>, const double> ||
+        InputIterableOfConstIterables<std::remove_cvref_t<I>, const double> ||
+        InputConstIterableOfIterators<std::remove_cvref_t<I>, const double> ||
+        InputConstIterableOfIterables<std::remove_cvref_t<I>, const double> ||
+        InputConstIterableOfConstIterables<std::remove_cvref_t<I>, const double>;
+
+template <typename I>
 concept PiIterator = (RandomIterator<std::remove_reference_t<I>, std::size_t> &&
                       OutputIterator<std::remove_reference_t<I>, std::size_t>) ||
                      (RandomIterable<std::remove_reference_t<I>, std::size_t> &&
@@ -260,53 +340,6 @@ concept LambdaIterator = (RandomIterator<std::remove_reference_t<I>, double> &&
                           OutputIterator<std::remove_reference_t<I>, double>) ||
                          (RandomIterable<std::remove_reference_t<I>, double> &&
                           OutputIterable<std::remove_reference_t<I>, double>);
-
-/*
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- */
-
-template <typename I, typename T>
-concept IndirectRandomAccessIterator = std::random_access_iterator<I> && !
-std::contiguous_iterator<I> &&
-
-        requires(I iterator, T *value) {
-            //  value = *iterator;
-            std::is_same_v<decltype(**iterator), double>;
-            ContiguousIterator<decltype(*iterator), double *>;
-        };
-
-template <typename I, typename T>
-concept IndirectContiguousAccessIterable =
-        std::contiguous_iterator<I> &&
-        requires(I iterator, T *value) {
-            //  value = *iterator;
-            std::is_same_v<decltype(*((*iterator).begin())), double>;
-            ContiguousIterator<decltype(((*iterator).begin())), double *>;
-        };
-
-template <typename I, typename T>
-concept IndirectRandomAccessIterable = std::random_access_iterator<I> && !
-std::contiguous_iterator<I> &&requires(I iterator, T *value) {
-                                  //  value = *iterator;
-                                  std::is_same_v<decltype(*((*iterator).begin())), double>;
-                                  ContiguousIterator<decltype(((*iterator).begin())), double *>;
-                              };
-
-template <typename I>
-concept DataIterator = std::input_iterator<I>; //TODO: && InputIterator<I, double *>;
 
 }  // namespace cluster::utils
 #endif  // FINAL_PROJECT_HPC_TYPES_H

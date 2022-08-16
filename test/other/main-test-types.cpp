@@ -7,10 +7,10 @@
  */
 #include "ContiguousDoubleMemoryDataIterator.h"
 #include "ParallelClustering.h"
-#include "ResultsChecker.h"
+#include "../src/data/ResultsChecker.h"
 #include "SequentialClustering.h"
-#include "data/DataReader.h"
-#include "data/DataWriter.h"
+#include "../src/data/DataReader.h"
+#include "../src/data/DataWriter.h"
 #include "types/CollectionCreator.h"
 #include "types/DataTypesTester.h"
 #include "types/PiLambdaTypesTester.h"

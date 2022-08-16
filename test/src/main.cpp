@@ -5,7 +5,7 @@
 #include "cli/CliArgumentsParser.h"
 #include "data/DataReader.h"
 #include "data/DataWriter.h"
-#include "ResultsChecker.h"
+#include "data/ResultsChecker.h"
 #include <atomic>
 #include <cmath>
 #include <cstring>

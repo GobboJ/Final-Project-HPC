@@ -2,7 +2,7 @@
 #define FINAL_PROJECT_HPC_DATATYPESTESTER_H
 
 #include "TypesPrinter.h"
-#include "../ResultsChecker.h"
+#include "../../src/data/ResultsChecker.h"
 #include "ParallelClustering.h"
 #include "containers/CollectionInfo.h"
 #include <cstddef>
