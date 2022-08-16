@@ -1,3 +1,4 @@
+#include "ClusteringAlgorithmExecutor.h"
 #include "ContiguousDoubleMemoryDataIterator.h"
 #include "ParallelClustering.h"
 #include "SequentialClustering.h"
@@ -9,6 +10,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstring>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -18,7 +20,6 @@
 #include <unordered_map>
 #include <vector>
 #include <xmmintrin.h>
-#include <deque>
 
 using cluster::parallel::DistanceComputers;
 using cluster::parallel::ParallelClustering;
@@ -28,16 +29,25 @@ using cluster::test::cli::CliArguments;
 using cluster::test::cli::CliArgumentsParser;
 using cluster::test::data::DataReader;
 using cluster::test::data::DataWriter;
+using cluster::test::main::ClusteringAlgorithmExecutor;
 
-template <typename C, typename D>
-void printElapsedTime(std::chrono::time_point<C, D> start, std::chrono::time_point<C, D> end);
+void initializeDataStructure(bool isParallel,
+                             std::size_t version,
+                             std::size_t dimension,
+                             const double *dataBegin,
+                             std::size_t dataElementsCount,
+                             double *&uniqueVectorData,
+                             std::vector<double *> &indirectData,
+                             std::vector<double *> &alignedIndirectData,
+                             double *&alignedData,
+                             std::function<void()> &freeFunction);
 
 void printValues(const std::vector<double *> &data,
                  std::size_t dimension,
                  const std::vector<std::size_t> &pi,
                  const std::vector<double> &lambda);
 
-std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getClusteringAlgorithm(
+/*std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getClusteringAlgorithm(
         const bool isParallel,
         const std::size_t version,
         const std::size_t distanceComputationThreadsCount,
@@ -47,7 +57,7 @@ std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getCluste
         std::size_t dataElementsCount,
         double *mmAlignedData,
         double *uniqueArrayData,
-        const std::size_t dimension);
+        const std::size_t dimension);*/
 
 bool checkTest(const std::filesystem::path &filePath,
                const std::vector<double *> &data,
@@ -57,28 +67,12 @@ bool checkTest(const std::filesystem::path &filePath,
                bool usePreviousResults,
                const std::filesystem::path &previousResultsPath);
 
-bool areAlmostLess(const double first, const double second);
-
-bool areAlmostEqual(const double first, const double second);
-
-bool check(std::vector<std::pair<std::size_t, double>> &expected,
-           std::vector<std::pair<std::size_t, double>> &result);
-
 template <typename T>
 void addAll(std::vector<T> &vector, std::initializer_list<T> values);
 
-CliArguments parseArguments(int argc, char *argv[]) {
+CliArguments parseArguments(int argc, char *argv[]);
 
-    try {
-        CliArgumentsParser parser{argc, argv};
-        CliArguments arguments = parser.parseArguments();
-
-        return arguments;
-    } catch (std::exception &exception) {
-        std::cerr << exception.what() << std::endl;
-        exit(1);
-    }
-}
+void printThreadsCount(std::size_t threadsCount);
 
 /*
  * Description.
@@ -100,77 +94,33 @@ int main(int argc, char *argv[]) {
                                                          arguments.getLastLineNumber(),
                                                          arguments.getFirstColumnNumber(),
                                                          arguments.getLastColumnNumber());
-
-    double *mmAlignedData = nullptr;
-    double *uniqueVectorData = nullptr;
+    std::size_t dataElementsCount = data.size() / dimension;
 
     bool isParallel = arguments.isParallel();
     std::size_t version = arguments.getAlgorithmVersion();
     std::size_t distanceComputationThreadsCount = arguments.getDistanceComputationThreadsCount();
     std::size_t stage4ThreadsCount = arguments.getStructuralFixThreadsCount();
     std::size_t stage5ThreadsCount = arguments.getSqrtComputationThreadsCount();
-    auto *dataIterator = data.data();
-    std::vector<double *> twoLevels{};
-    std::size_t dataElementsCount = data.size() / dimension;
 
-    // Fill two levels
-    for (std::size_t i = 0; i < data.size(); i += dimension) {
-        auto *point = new double[dimension];
-        // Copy the doubles
-        memcpy(point, &(dataIterator[i]), dimension * sizeof(double));
-        twoLevels.push_back(point);
-    }
+    double *uniqueVectorData = nullptr;
+    std::vector<double *> indirectData{};
+    std::vector<double *> alignedIndirectData{};
+    double *alignedData = nullptr;
+    std::function<void()> freeFunction{};
 
-    if (isParallel) {
-        std::size_t alignment = (version == 2) ? 2 : 4;
-        std::size_t quotient = 1 + ((dimension - 1) / alignment);
-        std::size_t newDimension = alignment * quotient;
-
-        if (version != 1) {
-            if (version == 2 || version == 3 || version == 5 || version == 6 || version == 7) {
-                std::size_t elementIndex = 0;
-                for (std::size_t i = 0; i < data.size(); i += dimension) {
-                    auto *reallocatedPoint = static_cast<double *>(
-                            _mm_malloc(newDimension * sizeof(double), alignment * sizeof(double)));
-                    // Copy the doubles
-                    memcpy(reallocatedPoint, &(dataIterator[i]), dimension * sizeof(double));
-                    // Fill the remaining coordinates with 0
-                    memset(&(reallocatedPoint[dimension]),
-                           0,
-                           (newDimension - dimension) * sizeof(double));
-
-                    // Add the point
-                    delete[] twoLevels[elementIndex];
-                    twoLevels[elementIndex] = reallocatedPoint;
-                    elementIndex++;
-                }
-            } else if (version == 4 || version == 8 || version == 9 || version == 10 ||
-                       version == 11) {
-                std::size_t size = sizeof(double) * (dataElementsCount * newDimension);
-                mmAlignedData = static_cast<double *>(_mm_malloc(size, alignment * sizeof(double)));
-                memset(mmAlignedData, 0, size);
-
-                std::size_t start = 0;
-                for (std::size_t i = 0; i < data.size(); i += dimension) {
-                    memcpy(&(mmAlignedData[start]), &(dataIterator[i]), dimension * sizeof(double));
-                    start += newDimension;
-                }
-            } else {
-                std::cerr << "Warning: Possibly unaligned data" << std::endl;
-                sleep(20);
-            }
-        }
-    } else {
-        if (version == 2) {
-            uniqueVectorData = new double[data.size()];
-            for (std::size_t i = 0; i < data.size(); i += dimension) {
-                memcpy(&(uniqueVectorData[i]), &(dataIterator[i]), dimension * sizeof(double));
-            }
-        }
-    }
+    initializeDataStructure(isParallel,
+                            version,
+                            dimension,
+                            &(data.begin()[0]),
+                            dataElementsCount,
+                            uniqueVectorData,
+                            indirectData,
+                            alignedIndirectData,
+                            alignedData,
+                            freeFunction);
 
     // Decide the clustering algorithm
-    std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm =
+    /*std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm =
             getClusteringAlgorithm(isParallel,
                                    version,
                                    distanceComputationThreadsCount,
@@ -181,60 +131,37 @@ int main(int argc, char *argv[]) {
                                    mmAlignedData,
                                    uniqueVectorData,
                                    dimension);
-
+    */
     if (isParallel) {
         std::cout << "Parallel clustering version" << ' ' << version;
     } else {
         std::cout << "Sequential clustering";
     }
     std::cout << " of '" << arguments.getInputFilePath().string() << "' (columns from "
-              << arguments.getFirstColumnNumber() + 1 << " to "
-              << arguments.getLastColumnNumber() + 1 << ')';
-
-    std::time_t t = std::time(nullptr);
-    std::tm tm = *std::localtime(&t);
-    std::cout << " started at" << ' ' << std::put_time(&tm, "%H:%M:%S");
+              << arguments.getFirstColumnNumber() << " to " << arguments.getLastColumnNumber()
+              << ')';
 
     if (isParallel) {
         std::cout << " with:" << std::endl << "    ";
-        if (distanceComputationThreadsCount == 0) {
-            std::cout << "all the available CPU core threads";
-        } else {
-            std::cout << distanceComputationThreadsCount << " thread";
-            if (distanceComputationThreadsCount != 1) {
-                std::cout << 's';
-            }
-        }
+        printThreadsCount(distanceComputationThreadsCount);
         std::cout << " to compute the distance" << std::endl;
         if (version >= 5) {
-            std::cout << "    ";
-            if (stage4ThreadsCount == 0) {
-                std::cout << "all the available CPU core threads";
-            } else {
-                std::cout << stage4ThreadsCount << " thread";
-                if (stage4ThreadsCount != 1) {
-                    std::cout << 's';
-                }
-            }
+            printThreadsCount(stage4ThreadsCount);
             std::cout << " to execute the stage 4" << std::endl;
         }
         if (version == 11) {
-            std::cout << "    ";
-            if (stage5ThreadsCount == 0) {
-                std::cout << "all the available CPU core threads";
-            } else {
-                std::cout << stage5ThreadsCount << " thread";
-                if (stage5ThreadsCount != 1) {
-                    std::cout << 's';
-                }
-            }
+            printThreadsCount(stage5ThreadsCount);
             std::cout << " to execute the stage 5" << std::endl;
         }
     } else {
         std::cout << std::endl;
     }
 
-    auto start = std::chrono::high_resolution_clock::now();
+    ClusteringAlgorithmExecutor executor{dataElementsCount,
+                                         dimension,
+                                         distanceComputationThreadsCount,
+                                         stage4ThreadsCount,
+                                         stage5ThreadsCount};
 
     std::vector<std::size_t> pi{};
     std::vector<double> lambda{};
@@ -243,15 +170,19 @@ int main(int argc, char *argv[]) {
     pi.resize(dataElementsCount);
     lambda.resize(dataElementsCount);
 
-    clusteringAlgorithm(pi, lambda);
-
-    auto end = std::chrono::high_resolution_clock::now();
+    executor.executeClusteringAlgorithm(isParallel,
+                                        version,
+                                        indirectData,
+                                        indirectData,
+                                        indirectData,
+                                        alignedData,
+                                        alignedData,
+                                        uniqueVectorData,
+                                        pi.begin(),
+                                        lambda.begin());
 
     // Print the values
     // printValues(data, dimension, pi, lambda);
-
-    // Print the elapsed time
-    printElapsedTime(start, end);
 
     if (arguments.isTestModeEnabled()) {
         std::cout << std::endl;
@@ -260,7 +191,7 @@ int main(int argc, char *argv[]) {
         }
         std::cout << std::endl << std::endl;
         if (!checkTest(arguments.getInputFilePath(),
-                       twoLevels,
+                       indirectData,
                        dimension,
                        pi,
                        lambda,
@@ -287,281 +218,131 @@ int main(int argc, char *argv[]) {
         std::cout << "no" << std::endl;
     }
 
-    delete[] uniqueVectorData;
-    _mm_free(mmAlignedData);
+    freeFunction();
 
     return 0;
 }
 
-std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getClusteringAlgorithm(
-        const bool isParallel,
-        const std::size_t version,
-        const std::size_t distanceComputationThreadsCount,
-        const std::size_t stage4ThreadsCount,
-        const std::size_t stage5ThreadsCount,
-        std::vector<double *> &data,
-        std::size_t dataElementsCount,
-        double *mmAlignedData,
-        double *uniqueArrayData,
-        const std::size_t dimension) {
+CliArguments parseArguments(int argc, char **argv) {
 
-    std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm;
+    try {
+        CliArgumentsParser parser{argc, argv};
+        CliArguments arguments = parser.parseArguments();
 
-    auto sseMmAlignedDataIterator = mmAlignedData;
-    auto avxMmAlignedDataIterator = mmAlignedData;
-
-    // static_assert(cluster::utils::IndirectContiguousAccessIterator<double *, double>, "No");
-    static_assert(cluster::utils::ContiguousIterator<double *, double>, "No");
-
-    if (isParallel) {
-        switch (version) {
-            case 1:
-                clusteringAlgorithm = [&data,
-                                       dataElementsCount,
-                                       dimension,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi,
-                                                           auto &lambda) noexcept -> void {
-                    ParallelClustering<>::cluster<DistanceComputers::CLASSICAL>(
-                            data,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-                break;
-            case 2:
-                clusteringAlgorithm = [&data,
-                                       dataElementsCount,
-                                       dimension,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
-                    ParallelClustering<>::cluster<DistanceComputers::SSE>(
-                            data,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-                break;
-            case 3:
-                clusteringAlgorithm = [&data,
-                                       dataElementsCount,
-                                       dimension,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
-                    ParallelClustering<>::cluster<DistanceComputers::AVX>(
-                            data,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-                break;
-            case 4:
-                clusteringAlgorithm = [dataElementsCount,
-                                       dimension,
-                                       avxMmAlignedDataIterator,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
-                    ParallelClustering<>::cluster<DistanceComputers::AVX>(
-                            avxMmAlignedDataIterator,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-
-                break;
-            case 5:
-                clusteringAlgorithm = [&data,
-                                       dataElementsCount,
-                                       dimension,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
-                    ParallelClustering<true, true>::cluster<DistanceComputers::SSE>(
-                            data,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-                break;
-            case 6:
-                clusteringAlgorithm = [&data,
-                                       dataElementsCount,
-                                       dimension,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
-                    ParallelClustering<true, true>::cluster<DistanceComputers::SSE_OPTIMIZED>(
-                            data,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-                break;
-            case 7:
-                clusteringAlgorithm = [&data,
-                                       dataElementsCount,
-                                       dimension,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
-                    ParallelClustering<true, true>::cluster<DistanceComputers::AVX_OPTIMIZED>(
-                            data,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-                break;
-            case 8:
-                clusteringAlgorithm = [dataElementsCount,
-                                       dimension,
-                                       sseMmAlignedDataIterator,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
-                    ParallelClustering<true, true>::cluster<DistanceComputers::SSE_OPTIMIZED>(
-                            sseMmAlignedDataIterator,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-                break;
-            case 9:
-                clusteringAlgorithm = [dataElementsCount,
-                                       dimension,
-                                       avxMmAlignedDataIterator,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
-                    ParallelClustering<true, true>::cluster<DistanceComputers::AVX_OPTIMIZED>(
-                            avxMmAlignedDataIterator,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-                break;
-            case 10:
-                clusteringAlgorithm = [dataElementsCount,
-                                       dimension,
-                                       avxMmAlignedDataIterator,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount](auto &pi, auto &lambda) -> void {
-                    ParallelClustering<true, true>::cluster<
-                            DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
-                            avxMmAlignedDataIterator,
-                            dataElementsCount,
-                            dimension,
-                            pi,
-                            lambda,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount);
-                };
-                break;
-            case 11:
-                clusteringAlgorithm = [dataElementsCount,
-                                       dimension,
-                                       avxMmAlignedDataIterator,
-                                       distanceComputationThreadsCount,
-                                       stage4ThreadsCount,
-                                       stage5ThreadsCount](auto &pi, auto &lambda) -> void {
-                    auto piIterator = pi.begin();
-                    auto lambdaIterator = lambda.begin();
-
-                    ParallelClustering<true, true, true>::cluster<
-                            DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
-                            avxMmAlignedDataIterator,
-                            dataElementsCount,
-                            dimension,
-                            piIterator,
-                            lambdaIterator,
-                            distanceComputationThreadsCount,
-                            stage4ThreadsCount,
-                            stage5ThreadsCount);
-                };
-                break;
-            default:
-                std::cerr << "Unknown version" << ' ' << version << std::endl;
-                exit(1);
-        }
-    } else {
-        switch (version) {
-            case 1:
-                clusteringAlgorithm = [&data, dataElementsCount, dimension](
-                                              auto &pi, auto &lambda) noexcept -> void {
-                    auto piIterator = pi.begin();
-                    auto lambdaIterator = lambda.begin();
-                    SequentialClustering::cluster(
-                            data.begin(), dataElementsCount, dimension, piIterator, lambdaIterator);
-                };
-                break;
-            case 2:
-                clusteringAlgorithm = [&data, dataElementsCount, uniqueArrayData, dimension](
-                                              auto &pi, auto &lambda) noexcept -> void {
-                    auto piIterator = pi.begin();
-                    auto lambdaIterator = lambda.begin();
-                    SequentialClustering::cluster(uniqueArrayData,
-                                                  dataElementsCount,
-                                                  dimension,
-                                                  piIterator,
-                                                  lambdaIterator);
-                };
-                break;
-            default:
-                std::cerr << "Unknown version" << ' ' << version << std::endl;
-                exit(1);
-        }
+        return arguments;
+    } catch (std::exception &exception) {
+        std::cerr << exception.what() << std::endl;
+        exit(1);
     }
-
-    return clusteringAlgorithm;
 }
 
-template <typename C, typename D>
-void printElapsedTime(std::chrono::time_point<C, D> start, std::chrono::time_point<C, D> end) {
+void printThreadsCount(std::size_t threadsCount) {
 
-    using namespace std::literals::chrono_literals;
-
-    auto duration = end - start;
-
-    auto nanoseconds = duration % 1us;
-    auto microseconds = (duration % 1ms) / 1us;
-    auto milliseconds = (duration % 1s) / 1ms;
-    auto seconds = (duration % 1min) / 1s;
-    auto minute = duration / 1min;
-
-    std::cout << minute << " minutes " << seconds << " seconds " << milliseconds << " ms (";
-    if (milliseconds > 0) {
-        std::cout << std::setfill('0') << milliseconds;
-        std::cout << ".";
+    if (threadsCount == 0) {
+        std::cout << "all the available CPU core threads";
+    } else {
+        std::cout << threadsCount << " thread";
+        if (threadsCount != 1) {
+            std::cout << 's';
+        }
     }
-    if (microseconds > 0) {
-        int width = (milliseconds > 0) ? 3 : 0;
-        std::cout << std::setfill('0') << std::setw(width) << microseconds;
-        std::cout << ".";
+}
+
+void initializeDataStructure(bool isParallel,
+                             std::size_t version,
+                             std::size_t dimension,
+                             const double *dataBegin,
+                             std::size_t dataElementsCount,
+                             double *&uniqueVectorData,
+                             std::vector<double *> &indirectData,
+                             std::vector<double *> &alignedIndirectData,
+                             double *&alignedData,
+                             std::function<void()> &freeFunction) {
+    if (version == 1) {
+        // Fill two levels
+        for (std::size_t i = 0; i < dataElementsCount; i += dimension) {
+            auto *point = new double[dimension];
+            // Copy the doubles
+            memcpy(point, &(dataBegin[i]), dimension * sizeof(double));
+            indirectData.push_back(point);
+        }
+        freeFunction = [&indirectData]() -> void {
+            for (double *point : indirectData) {
+                delete[] point;
+            }
+        };
+    } else if (isParallel) {
+        switch (version) {
+            case 2:
+            case 3:
+            case 5:
+            case 6:
+            case 7: {
+                const std::size_t pointDimension =
+                        (version == 3 || version == 7)
+                                ? ParallelClustering<>::computeAvxDimension(dimension)
+                                : ParallelClustering<>::computeSseDimension(dimension);
+                const std::size_t alignment = (version == 3 || version == 7)
+                                                      ? ParallelClustering<>::AVX_PACK_SIZE
+                                                      : ParallelClustering<>::SSE_PACK_SIZE;
+
+                std::size_t elementIndex = 0;
+                for (std::size_t i = 0; i < dataElementsCount; i += dimension) {
+                    auto *reallocatedPoint = static_cast<double *>(_mm_malloc(
+                            pointDimension * sizeof(double), alignment * sizeof(double)));
+                    // Copy the doubles
+                    memcpy(reallocatedPoint, &(dataBegin[i]), dimension * sizeof(double));
+                    // Fill the remaining coordinates with 0
+                    memset(&(reallocatedPoint[dimension]),
+                           0,
+                           (pointDimension - dimension) * sizeof(double));
+
+                    // Add the point
+                    alignedIndirectData[elementIndex] = reallocatedPoint;
+                    elementIndex++;
+                }
+                freeFunction = [&alignedIndirectData]() -> void {
+                    for (double *point : alignedIndirectData) {
+                        _mm_free(point);
+                    }
+                };
+            } break;
+            case 4:
+            case 8:
+            case 9:
+            case 10:
+            case 11: {
+                const std::size_t pointDimension =
+                        (version == 8) ? ParallelClustering<>::computeSseDimension(dimension)
+                                       : ParallelClustering<>::computeAvxDimension(dimension);
+                const std::size_t alignment = (version == 8) ? ParallelClustering<>::SSE_PACK_SIZE
+                                                             : ParallelClustering<>::AVX_PACK_SIZE;
+
+                std::size_t size = sizeof(double) * (dataElementsCount * pointDimension);
+                alignedData = static_cast<double *>(_mm_malloc(size, alignment * sizeof(double)));
+                memset(alignedData, 0, size);
+
+                std::size_t start = 0;
+                for (std::size_t i = 0; i < dataElementsCount; i += dimension) {
+                    memcpy(&(alignedData[start]), &(dataBegin[i]), dimension * sizeof(double));
+                    start += pointDimension;
+                }
+                freeFunction = [&alignedData]() -> void { _mm_free(alignedData); };
+            } break;
+            default:
+                std::cerr << "The version" << ' ' << version << " is not implemented." << std::endl;
+                exit(1);
+        }
+    } else if (version == 2) {
+        uniqueVectorData = new double[dataElementsCount];
+        for (std::size_t i = 0; i < dataElementsCount; i += dimension) {
+            memcpy(&(uniqueVectorData[i]), &(dataBegin[i]), dimension * sizeof(double));
+        }
+        freeFunction = [&uniqueVectorData]() -> void { delete[] uniqueVectorData; };
+    } else {
+        std::cerr << "The version" << ' ' << version << " is not implemented." << std::endl;
+        exit(1);
     }
-    int width = (microseconds > 0) ? 3 : 0;
-    std::cout << std::setfill('0') << std::setw(width) << nanoseconds.count();
-    std::cout << " ns)" << std::endl;
 }
 
 void printValues(const std::vector<double *> &data,
@@ -678,16 +459,8 @@ bool checkTest(const std::filesystem::path &filePath,
                 DataWriter::writePiLambda(previousResultsPath, expectedPi, expectedLambda);
             }
         }
-        /*for (std::size_t i = 0; i < expectedPi.size(); i++) {
-            expectedResult.emplace_back(std::make_pair(expectedPi[i], expectedLambda[i]));
-        }*/
     }
     // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
-
-    /*std::vector<std::pair<std::size_t, double>> result{};
-    for (std::size_t i = 0; i < pi.size(); i++) {
-        result.emplace_back(std::make_pair(pi[i], lambda[i]));
-    }*/
 
     return ResultsChecker::checkResults(resultPi.cbegin(),
                                         resultPi.cend(),
@@ -696,7 +469,7 @@ bool checkTest(const std::filesystem::path &filePath,
                                         expectedPi.cbegin(),
                                         expectedPi.cend(),
                                         expectedLambda.cbegin(),
-                                        expectedLambda.cend());  // check(expectedResult, result);
+                                        expectedLambda.cend());
 }
 
 template <typename T>
@@ -705,74 +478,4 @@ void addAll(std::vector<T> &vector, const std::initializer_list<T> values) {
     for (const T &value : values) {
         vector.template emplace_back(value);
     }
-}
-
-bool check(std::vector<std::pair<std::size_t, double>> &expected,
-           std::vector<std::pair<std::size_t, double>> &result) {
-
-    std::vector<std::size_t> orderedIndexes{};
-    for (std::size_t i = 0; i < expected.size(); i++) {
-        orderedIndexes.push_back(i);
-    }
-    std::sort(orderedIndexes.begin(),
-              orderedIndexes.end(),
-              [&expected](const auto &a, const auto &b) -> bool {
-                  return expected[a].second < expected[b].second;
-              });
-
-    std::vector<std::size_t> orderedExpectedIndexes{};
-    for (std::size_t i = 0; i < result.size(); i++) {
-        orderedExpectedIndexes.push_back(i);
-    }
-    std::sort(orderedExpectedIndexes.begin(),
-              orderedExpectedIndexes.end(),
-              [&result](const auto &a, const auto &b) -> bool {
-                  return result[a].second < result[b].second;
-              });
-
-    auto orderedExpectedIndexesIterator = orderedExpectedIndexes.cbegin();
-    for (std::size_t index : orderedIndexes) {
-
-        std::size_t piToCheck = result[index].first;
-        double lambdaToCheck = result[index].second;
-
-        std::vector<std::size_t>::difference_type back = 0;
-        bool continueSearch = true;
-        while (areAlmostLess(expected[*orderedExpectedIndexesIterator].second, lambdaToCheck)) {
-            ++orderedExpectedIndexesIterator;
-        }
-
-        while (areAlmostEqual(lambdaToCheck, expected[*orderedExpectedIndexesIterator].second) &&
-               continueSearch) {
-            if (piToCheck != expected[*orderedExpectedIndexesIterator].first) {
-                ++orderedExpectedIndexesIterator;
-                back++;
-            } else {
-                continueSearch = false;
-            }
-        }
-
-        if (continueSearch) {
-            std::cerr << "Expected" << ' ' << index << " being in the cluster" << ' ' << piToCheck
-                      << " at distance" << ' ' << lambdaToCheck << " but it is not" << std::endl;
-            return false;
-        }
-        orderedExpectedIndexesIterator -= back;
-    }
-
-    return true;
-}
-
-[[gnu::const]] bool areAlmostLess(const double first, const double second) {
-
-    return (first - second) < -0.0001;
-}
-
-[[gnu::const]] bool areAlmostEqual(const double first, const double second) {
-
-    if (first > std::numeric_limits<double>::max() && second > std::numeric_limits<double>::max()) {
-        return true;
-    }
-
-    return fabs(first - second) < 0.0001;
 }

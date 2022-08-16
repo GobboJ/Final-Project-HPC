@@ -11,25 +11,25 @@ include_directories(${PARALLEL_IMPLEMENTATION_INCLUDE_DIR})
 
 # Define the main executable
 add_executable(
-    Final_Project_HPC_Main
-    src/cli/CliArgumentException.cpp
-    src/cli/CliArgumentException.h
-    src/cli/CliArguments.cpp
-    src/cli/CliArguments.h
-    src/cli/CliArgumentsParser.cpp
-    src/cli/CliArgumentsParser.h
-    src/data/DataReader.cpp
-    src/data/DataReader.h
-    src/data/DataWriter.cpp
-    src/data/DataWriter.h
-    src/data/IoException.cpp
-    src/data/IoException.h
-    src/data/MalformedFileException.cpp
-    src/data/MalformedFileException.h
-    src/main.cpp
-    src/data/ResultsChecker.cpp
-    src/data/ResultsChecker.h
-)
+        Final_Project_HPC_Main
+        src/cli/CliArgumentException.cpp
+        src/cli/CliArgumentException.h
+        src/cli/CliArguments.cpp
+        src/cli/CliArguments.h
+        src/cli/CliArgumentsParser.cpp
+        src/cli/CliArgumentsParser.h
+        src/data/DataReader.cpp
+        src/data/DataReader.h
+        src/data/DataWriter.cpp
+        src/data/DataWriter.h
+        src/data/IoException.cpp
+        src/data/IoException.h
+        src/data/MalformedFileException.cpp
+        src/data/MalformedFileException.h
+        src/main.cpp
+        src/data/ResultsChecker.cpp
+        src/data/ResultsChecker.h
+        src/ClusteringAlgorithmExecutor.h src/ClusteringAlgorithmExecutor.cpp)
 target_link_libraries(
     Final_Project_HPC_Main Final_Project_HPC_Sequential_Library Final_Project_HPC_Parallel_Library
 )

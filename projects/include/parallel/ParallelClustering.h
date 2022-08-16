@@ -43,10 +43,10 @@ private:
     template <typename... Ts>
     static constexpr std::false_type always_false{};
 
+public:
     static const constexpr std::size_t SSE_PACK_SIZE = 2;
     static const constexpr std::size_t AVX_PACK_SIZE = 4;
-
-public:
+    
     /**
      * Parallel implementation of the clustering algorithm.
      *
@@ -106,11 +106,9 @@ public:
 
         Timer::start<0>();
         // Computes the number of SSE registers that are needed to store a data sample
-        const std::size_t sseDimension =
-                ParallelClustering::computeSseBlocksCount(dimension) * SSE_PACK_SIZE;
+        const std::size_t sseDimension = ParallelClustering::computeSseDimension(dimension);
         // Computes the number of AVX registers that are needed to store a data sample
-        const std::size_t avxDimension =
-                ParallelClustering::computeAvxBlocksCount(dimension) * AVX_PACK_SIZE;
+        const std::size_t avxDimension = ParallelClustering::computeAvxDimension(dimension);
 
         std::size_t pointRealDimension;
         std::size_t stride;
@@ -172,10 +170,10 @@ public:
         // Perform the clustering algorithm for all the remaining data samples
         for (std::size_t n = 1; n < dataSamplesCount; n++) {
             Timer::stop<0>();
-            
+
             // Log the progress every 1000 samples
             Logger::updateProgress<1000, 0, 1, 2, 3, 4, 5>(n, dataSamplesCount);
-            
+
             /***************************************************************************************
              * 1) Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
              **************************************************************************************/
@@ -224,14 +222,14 @@ public:
 
             fixStructure<P, L>(piBegin, lambdaBegin, n, stage4ThreadsCount);
             Timer::stop<4>();
-            
+
             Timer::start<0>();
             // Move to the next data sample
             utils::DataIteratorUtils::moveNext<D>(currentData, stride);
             ++distanceEnd;
         }
         Timer::stop<6>();
-        
+
         // Compute the square roots, if until now the algorithm has used the squares of the
         // distances
         Timer::start<5>();
@@ -258,14 +256,14 @@ public:
         Logger::updateProgress<1, 0, 1, 2, 3, 4, 5>(dataSamplesCount, dataSamplesCount);
     }
 
-    static inline std::size_t computeSseBlocksCount(std::size_t dimension) {
+    static inline std::size_t computeSseDimension(std::size_t dimension) {
 
-        return 1 + ((dimension - 1) / SSE_PACK_SIZE);
+        return 1 + (((dimension - 1) / SSE_PACK_SIZE) * SSE_PACK_SIZE);
     }
 
-    static inline std::size_t computeAvxBlocksCount(std::size_t dimension) {
+    static inline std::size_t computeAvxDimension(std::size_t dimension) {
 
-        return 1 + ((dimension - 1) / AVX_PACK_SIZE);
+        return 1 + (((dimension - 1) / AVX_PACK_SIZE) * AVX_PACK_SIZE);
     }
 
 private:
@@ -421,9 +419,10 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
         for (std::size_t i = 0; i <= n - 1; i++) {
             // Reference to pi[i]
             std::size_t &piOfI = PiLambdaIteratorUtils::getElementAt<std::size_t, P>(piIterator, i);
-            double lambdaOfI =  PiLambdaIteratorUtils::getElementAt<double, L>(lambdaIterator, i);
-            double lambdaOfPiOfI =  PiLambdaIteratorUtils::getElementAt<double, L>(lambdaIterator, piOfI);
-            
+            double lambdaOfI = PiLambdaIteratorUtils::getElementAt<double, L>(lambdaIterator, i);
+            double lambdaOfPiOfI =
+                    PiLambdaIteratorUtils::getElementAt<double, L>(lambdaIterator, piOfI);
+
             /***********************************************************************************
              * if lambda(i) >= lambda(pi(i))
              **********************************************************************************/

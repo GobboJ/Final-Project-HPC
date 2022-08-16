@@ -8,6 +8,9 @@
 #ifndef FINAL_PROJECT_HPC_TYPES_H
 #define FINAL_PROJECT_HPC_TYPES_H
 
+#include <iterator>
+#include <type_traits>
+
 namespace cluster::utils {
 
 //     U                T

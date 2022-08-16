@@ -771,10 +771,7 @@ private:
     }
 };
 
-DataIteratorType DataIteratorUtils::lastIteratorType = DataIteratorType::NONE;
-DataLevelIteratorType DataIteratorUtils::lastFirstLevelIteratorType = DataLevelIteratorType::NONE;
-DataLevelIteratorType DataIteratorUtils::lastSecondLevelIteratorType = DataLevelIteratorType::NONE;
-bool DataIteratorUtils::printSummaries = false;
+
 }  // namespace cluster::utils
 
 #endif  // FINAL_PROJECT_HPC_DATAITERATORUTILS_H

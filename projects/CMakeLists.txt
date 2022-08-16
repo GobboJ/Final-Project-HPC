@@ -10,33 +10,33 @@ add_compile_definitions(TIMERS)
 add_compile_definitions(PRINT_ITERATIONS)
 
 add_library(
-    Final_Project_HPC_Sequential_Library STATIC
-    include/sequential/SequentialClustering.h
-    include/utils/ContiguousDoubleMemoryDataIterator.h
-    include/utils/DataIteratorUtils.h
-    include/utils/IteratorType.h
-    include/utils/Logger.h
-    include/utils/PiLambdaIteratorUtils.h
-    include/utils/Timer.h
-    include/utils/Types.h
-    src/utils/ContiguousDoubleMemoryDataIterator.cpp
-    src/utils/Timer.cpp
-)
+        Final_Project_HPC_Sequential_Library STATIC
+        include/sequential/SequentialClustering.h
+        include/utils/ContiguousDoubleMemoryDataIterator.h
+        include/utils/DataIteratorUtils.h
+        include/utils/IteratorType.h
+        include/utils/Logger.h
+        include/utils/PiLambdaIteratorUtils.h
+        include/utils/Timer.h
+        include/utils/Types.h
+        src/utils/ContiguousDoubleMemoryDataIterator.cpp
+        src/utils/Timer.cpp
+        src/utils/DataIteratorUtils.cpp src/utils/PiLambdaIteratorUtils.cpp)
 
 add_library(
-    Final_Project_HPC_Parallel_Library STATIC
-    include/parallel/DistanceComputers.h
-    include/parallel/ParallelClustering.h
-    include/utils/ContiguousDoubleMemoryDataIterator.h
-    include/utils/DataIteratorUtils.h
-    include/utils/IteratorType.h
-    include/utils/Logger.h
-    include/utils/PiLambdaIteratorUtils.h
-    include/utils/Timer.h
-    include/utils/Types.h
-    src/utils/ContiguousDoubleMemoryDataIterator.cpp
-    src/utils/Timer.cpp
-)
+        Final_Project_HPC_Parallel_Library STATIC
+        include/parallel/DistanceComputers.h
+        include/parallel/ParallelClustering.h
+        include/utils/ContiguousDoubleMemoryDataIterator.h
+        include/utils/DataIteratorUtils.h
+        include/utils/IteratorType.h
+        include/utils/Logger.h
+        include/utils/PiLambdaIteratorUtils.h
+        include/utils/Timer.h
+        include/utils/Types.h
+        src/utils/ContiguousDoubleMemoryDataIterator.cpp
+        src/utils/Timer.cpp
+        src/utils/DataIteratorUtils.cpp src/utils/PiLambdaIteratorUtils.cpp)
 target_link_libraries(Final_Project_HPC_Parallel_Library PRIVATE OpenMP::OpenMP_CXX)
 
 # Export the include directory

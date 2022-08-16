@@ -9,6 +9,7 @@
 #define FINAL_PROJECT_HPC_PILAMBDAITERATORUTILS_H
 
 #include "Types.h"
+#include "IteratorType.h"
 #include <type_traits>
 
 namespace cluster::utils {
@@ -135,10 +136,6 @@ private:
 #endif
     }
 };
-
-PiLambdaIteratorType PiLambdaIteratorUtils::lastPiIteratorType = PiLambdaIteratorType::NONE;
-PiLambdaIteratorType PiLambdaIteratorUtils::lastLambdaIteratorType = PiLambdaIteratorType::NONE;
-bool PiLambdaIteratorUtils::printSummaries = false;
 }  // namespace cluster::utils
 
 #endif  // FINAL_PROJECT_HPC_PILAMBDAITERATORUTILS_H
