@@ -202,11 +202,15 @@ public:
                 // Reference to pi[i]
                 std::size_t &piOfI =
                         PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(iteratorOverPi);
+                double lambdaOfI =
+                        PiLambdaIteratorUtils::getCurrentElement<double, L>(iteratorOverLambda);
+                double lambdaOfPiOfI =
+                        PiLambdaIteratorUtils::getElementAt<double, L>(lambdaBegin, piOfI);
 
                 /***********************************************************************************
                  * if lambda(i) >= lambda(pi(i))
                  **********************************************************************************/
-                if (*iteratorOverLambda >= lambdaIterator[piOfI]) {
+                if (lambdaOfI >= lambdaOfPiOfI) {
                     /*******************************************************************************
                      * set pi(i) to n + 1
                      ******************************************************************************/

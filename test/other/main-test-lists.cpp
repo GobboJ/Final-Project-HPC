@@ -107,8 +107,8 @@ int main() {
         ++reverseIterator;
     }
 
-    //testDataType(list, expectedPi, expectedLambda);
-    //testDataType(vectorsList.cbegin(), expectedPi, expectedLambda);
+    testDataType(list, expectedPi, expectedLambda);
+    testDataType(vectorsList.cbegin(), expectedPi, expectedLambda);
     testDataType(constIteratorsForwardList, expectedPi, expectedLambda);
     testDataType(onlyIterableForwardList.cbegin(), expectedPi, expectedLambda);
 
