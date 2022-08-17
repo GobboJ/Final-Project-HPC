@@ -55,18 +55,45 @@ public:
      */
     static bool printSummaries;
 
+    /***********************************************************************************************
+     *
+     * Contiguous iterators, contiguous iterables and contiguous const iterables.
+     *
+     **********************************************************************************************/
+
+    /**
+     * Creates a more efficient iterator from the specified one.
+     *
+     * @tparam D Type of the iterator that iterates over the data.
+     * @param iterator Iterator used to iterate over the data.
+     * @param name String printed to the console before the type of the supplied iterator, so to
+     * better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D, std::enable_if_t<ContiguousIterator<D, const double>, bool> = true>
-    static inline const double *createEfficientIterator(const D &iterator, const char *name) {
+    static inline const double *createEfficientIterator(const D &iterator, const char *const name) {
 
         printSummary(name, DataType::CONTIGUOUS, DataLevelType::ITERATOR, DataLevelType::NONE);
         return &(iterator[0]);
     }
 
+    /**
+     * Creates a more efficient iterator from the iterator returned by the <code>begin()</code>
+     * method, or the <code>cbegin()</code> one if present, called on the specified data structure.
+     *
+     * @tparam D Type of the data structure to iterate over efficiently.
+     * @param data Data structure holding the data to iterate efficiently.
+     * @param name String printed to the console before the type of the supplied data structure, so
+     * to better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<ContiguousIterable<D, const double> ||
                                        ContiguousConstIterable<D, const double>,
                                bool> = true>
-    static inline const double *createEfficientIterator(const D &data, const char *name) {
+    static inline const double *createEfficientIterator(const D &data, const char *const name) {
 
         if constexpr (ContiguousConstIterable<D, const double>) {
             printSummary(
@@ -78,46 +105,118 @@ public:
         }
     }
 
-    template <typename I,
-              std::enable_if_t<ContiguousIterator<I, const double> ||
-                                       ContiguousIterable<I, const double> ||
-                                       ContiguousConstIterable<I, const double>,
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I This type parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @param currentElement Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
+    template <typename D,
+              typename I = const double *,
+              std::enable_if_t<ContiguousIterator<D, const double> ||
+                                       ContiguousIterable<D, const double> ||
+                                       ContiguousConstIterable<D, const double>,
                                bool> = true>
     static inline const double *getCurrentSample(const double *const currentElement) {
 
         return currentElement;
     }
 
-    template <typename I,
-              std::enable_if_t<ContiguousIterator<I, const double> ||
-                                       ContiguousIterable<I, const double> ||
-                                       ContiguousConstIterable<I, const double>,
+    /**
+     * Returns a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I This type parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @param startElement Efficient iterator pointing to the first element of the data structure it
+     * is iterating over.
+     * @param index Index of the element to return.
+     * @param stride Number of <code>double</code> values between the first attribute of a data
+     * sample and the first attribute of the following one. This is, therefore, the dimension of the
+     * data samples, taking also into account possible paddings.
+     * @return a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     */
+    template <typename D,
+              typename I = const double *,
+              std::enable_if_t<ContiguousIterator<D, const double> ||
+                                       ContiguousIterable<D, const double> ||
+                                       ContiguousConstIterable<D, const double>,
                                bool> = true>
     static inline const double *getSampleAt(
-            const double *const startElement, const std::size_t index, std::size_t stride) {
+            const double *const startElement, const std::size_t index, const std::size_t stride) {
 
         return &(startElement[index * stride]);
     }
 
-    template <typename I,
-              std::enable_if_t<ContiguousIterator<I, const double> ||
-                                       ContiguousIterable<I, const double> ||
-                                       ContiguousConstIterable<I, const double>,
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I This type parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @param currentElement Efficient iterator pointing to the current element.
+     * @param stride Number of <code>double</code> values between the first attribute of a data
+     * sample and the first attribute of the following one. This is, therefore, the dimension of the
+     * data samples, taking also into account possible paddings.
+     */
+    template <typename D,
+              typename I = const double *,
+              std::enable_if_t<ContiguousIterator<D, const double> ||
+                                       ContiguousIterable<D, const double> ||
+                                       ContiguousConstIterable<D, const double>,
                                bool> = true>
-    static inline void moveNext(const double *&currentElement, std::size_t stride) {
+    static inline void moveNext(const double *&currentElement, const std::size_t stride) {
 
         currentElement += stride;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Contiguous iterators of contiguous iterators.
+     *
+     **********************************************************************************************/
+
+    /**
+     * Creates a more efficient iterator from the specified one.
+     *
+     * @tparam D Type of the iterator that iterates over the data.
+     * @param iterator Iterator used to iterate over the data.
+     * @param name String printed to the console before the type of the supplied iterator, so to
+     * better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<ContiguousIteratorOfIterators<D, const double>, bool> = true>
-    static inline auto *createEfficientIterator(const D &iterator, const char *name) {
+    static inline auto *createEfficientIterator(const D &iterator, const char *const name) {
 
         printSummary(name, DataType::CONTIGUOUS, DataLevelType::ITERATOR, DataLevelType::ITERATOR);
         return &(iterator[0]);
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElement Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIteratorOfIterators<D, const double>, bool> = true>
@@ -126,30 +225,74 @@ public:
         return &((*currentElement)[0]);
     }
 
+    /**
+     * Returns a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param startElement Efficient iterator pointing to the first element of the data structure it
+     * is iterating over.
+     * @param index Index of the element to return.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @return A pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIteratorOfIterators<D, const double>, bool> = true>
-    static inline const double *getSampleAt(
-            const I &startElement, const std::size_t index, std::size_t stride) {
+    static inline const double *getSampleAt(const I &startElement,
+                                            const std::size_t index,
+                                            [[maybe_unused]] const std::size_t stride) {
 
         return &(startElement[index][0]);
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElement Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIteratorOfIterators<D, const double>, bool> = true>
-    static inline void moveNext(I &currentElement, std::size_t stride) {
+    static inline void moveNext(I &currentElement, [[maybe_unused]] const std::size_t stride) {
 
         ++currentElement;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Contiguous iterators of contiguous iterables and contiguous iterators of contiguous const
+     * iterables.
+     *
+     **********************************************************************************************/
 
+    /**
+     * Creates a more efficient iterator from the specified one.
+     *
+     * @tparam D Type of the iterator that iterates over the data.
+     * @param iterator Iterator used to iterate over the data.
+     * @param name String printed to the console before the type of the supplied iterator, so to
+     * better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<ContiguousIteratorOfIterables<D, const double> ||
                                        ContiguousIteratorOfConstIterables<D, const double>,
                                bool> = true>
-    static inline auto *createEfficientIterator(const D &data, const char *name) {
+    static inline auto *createEfficientIterator(const D &iterator, const char *const name) {
 
         if constexpr (ContiguousIteratorOfConstIterables<D, const double>) {
             printSummary(name,
@@ -160,55 +303,113 @@ public:
             printSummary(
                     name, DataType::CONTIGUOUS, DataLevelType::ITERATOR, DataLevelType::ITERABLE);
         }
-        return &(data[0]);
+        return &(iterator[0]);
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIteratorOfIterables<D, const double> ||
                                        ContiguousIteratorOfConstIterables<D, const double>,
                                bool> = true>
-    static inline const double *getCurrentSample(const I &currentElement) {
+    static inline const double *getCurrentSample(const I &currentElementIterator) {
 
         if constexpr (ContiguousIteratorOfConstIterables<D, const double>) {
-            return &(((*currentElement).cbegin())[0]);
+            return &(((*currentElementIterator).cbegin())[0]);
         } else {
-            return &(((*currentElement).begin())[0]);
+            return &(((*currentElementIterator).begin())[0]);
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param startElementIterator Efficient iterator pointing to the first element of the data
+     * structure it is iterating over.
+     * @param index Index of the element to return.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @return A pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIteratorOfIterables<D, const double> ||
                                        ContiguousIteratorOfConstIterables<D, const double>,
                                bool> = true>
-    static inline const double *getSampleAt(
-            const I &startElement, const std::size_t index, std::size_t stride) {
+    static inline const double *getSampleAt(const I &startElementIterator,
+                                            const std::size_t index,
+                                            [[maybe_unused]] const std::size_t stride) {
 
         if constexpr (ContiguousIteratorOfConstIterables<D, const double>) {
-            return &((startElement[index].cbegin())[0]);
+            return &((startElementIterator[index].cbegin())[0]);
         } else {
-            return &((startElement[index].begin())[0]);
+            return &((startElementIterator[index].begin())[0]);
         }
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIteratorOfIterables<D, const double> ||
                                        ContiguousIteratorOfConstIterables<D, const double>,
                                bool> = true>
-    static inline void moveNext(I &currentElement, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
-        ++currentElement;
+        ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Contiguous iterables of contiguous iterators and contiguous const iterables of contiguous
+     * iterators.
+     *
+     **********************************************************************************************/
 
+    /**
+     * Creates a more efficient iterator from the iterator returned by the <code>begin()</code>
+     * method, or the <code>cbegin()</code> one if present, called on the specified data structure.
+     *
+     * @tparam D Type of the data structure to iterate over efficiently.
+     * @param data Data structure holding the data to iterate efficiently.
+     * @param name String printed to the console before the type of the supplied data structure, so
+     * to better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<ContiguousIterableOfIterators<D, const double> ||
                                        ContiguousConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline auto *createEfficientIterator(const D &data, const char *name) {
+    static inline auto *createEfficientIterator(const D &data, const char *const name) {
 
         if constexpr (ContiguousConstIterableOfIterators<D, const double>) {
             printSummary(name,
@@ -223,6 +424,18 @@ public:
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIterableOfIterators<D, const double> ||
@@ -233,36 +446,83 @@ public:
         return &((*currentElementIterator)[0]);
     }
 
+    /**
+     * Returns a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param startElementIterator Efficient iterator pointing to the first element of the data
+     * structure it is iterating over.
+     * @param index Index of the element to return.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @return A pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIterableOfIterators<D, const double> ||
                                        ContiguousConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline const double *getSampleAt(
-            const I &startElementIterator, const std::size_t index, std::size_t stride) {
+    static inline const double *getSampleAt(const I &startElementIterator,
+                                            const std::size_t index,
+                                            [[maybe_unused]] const std::size_t stride) {
 
         return &(startElementIterator[index][0]);
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIterableOfIterators<D, const double> ||
                                        ContiguousConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
         ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Contiguous iterables of contiguous iterables, contiguous iterables of contiguous const
+     * iterables, contiguous const iterables of contiguous iterables and contiguous const iterables
+     * of contiguous const iterables.
+     *
+     **********************************************************************************************/
 
+    /**
+     * Creates a more efficient iterator from the iterator returned by the <code>begin()</code>
+     * method, or the <code>cbegin()</code> one if present, called on the specified data structure.
+     *
+     * @tparam D Type of the data structure to iterate over efficiently.
+     * @param data Data structure holding the data to iterate efficiently.
+     * @param name String printed to the console before the type of the supplied data structure, so
+     * to better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<ContiguousIterableOfIterables<D, const double> ||
                                        ContiguousIterableOfConstIterables<D, const double> ||
                                        ContiguousConstIterableOfIterables<D, const double> ||
                                        ContiguousConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline auto *createEfficientIterator(const D &data, const char *name) {
+    static inline auto *createEfficientIterator(const D &data, const char *const name) {
 
         if constexpr (ContiguousConstIterableOfIterables<D, const double> ||
                       ContiguousConstIterableOfConstIterables<D, const double>) {
@@ -296,6 +556,18 @@ public:
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIterableOfIterables<D, const double> ||
@@ -313,6 +585,22 @@ public:
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param startElementIterator Efficient iterator pointing to the first element of the data
+     * structure it is iterating over.
+     * @param index Index of the element to return.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @return A pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIterableOfIterables<D, const double> ||
@@ -320,8 +608,9 @@ public:
                                        ContiguousConstIterableOfIterables<D, const double> ||
                                        ContiguousConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline const double *getSampleAt(
-            const I &startElementIterator, const std::size_t index, std::size_t stride) {
+    static inline const double *getSampleAt(const I &startElementIterator,
+                                            const std::size_t index,
+                                            [[maybe_unused]] const std::size_t stride) {
 
         if constexpr (ContiguousIterableOfConstIterables<D, const double> ||
                       ContiguousConstIterableOfConstIterables<D, const double>) {
@@ -331,6 +620,18 @@ public:
         }
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<ContiguousIterableOfIterables<D, const double> ||
@@ -338,20 +639,47 @@ public:
                                        ContiguousConstIterableOfIterables<D, const double> ||
                                        ContiguousConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
         ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Random iterators of contiguous iterators.
+     *
+     **********************************************************************************************/
 
+    /**
+     * Creates a more efficient iterator from the specified one.
+     *
+     * @tparam D Type of the iterator that iterates over the data.
+     * @param iterator Iterator used to iterate over the data.
+     * @param name String printed to the console before the type of the supplied iterator, so to
+     * better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D, std::enable_if_t<RandomIteratorOfIterators<D, const double>, bool> = true>
-    static inline D createEfficientIterator(const D &iterator, const char *name) {
+    static inline D createEfficientIterator(const D &iterator, const char *const name) {
 
         printSummary(name, DataType::RANDOM, DataLevelType::ITERATOR, DataLevelType::ITERATOR);
         return iterator;
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIteratorOfIterators<D, const double>, bool> = true>
@@ -360,29 +688,74 @@ public:
         return &((*currentElementIterator)[0]);
     }
 
+    /**
+     * Returns a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param startElementIterator Efficient iterator pointing to the first element of the data
+     * structure it is iterating over.
+     * @param index Index of the element to return.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @return A pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIteratorOfIterators<D, const double>, bool> = true>
-    static inline const double *getSampleAt(
-            const I &startElementIterator, const std::size_t index, std::size_t stride) {
+    static inline const double *getSampleAt(const I &startElementIterator,
+                                            const std::size_t index,
+                                            [[maybe_unused]] const std::size_t stride) {
 
         return &(startElementIterator[index][0]);
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIteratorOfIterators<D, const double>, bool> = true>
-    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
         ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Random iterators of contiguous iterables and random iterators of contiguous const iterables.
+     *
+     **********************************************************************************************/
+
+    /**
+     * Creates a more efficient iterator from the specified one.
+     *
+     * @tparam D Type of the iterator that iterates over the data.
+     * @param iterator Iterator used to iterate over the data.
+     * @param name String printed to the console before the type of the supplied iterator, so to
+     * better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<RandomIteratorOfIterables<D, const double> ||
                                        RandomIteratorOfConstIterables<D, const double>,
                                bool> = true>
-    static inline D createEfficientIterator(const D &iterator, const char *name) {
+    static inline D createEfficientIterator(const D &iterator, const char *const name) {
 
         if constexpr (RandomIteratorOfConstIterables<D, const double>) {
             printSummary(
@@ -393,6 +766,18 @@ public:
         return iterator;
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIteratorOfIterables<D, const double> ||
@@ -407,13 +792,30 @@ public:
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param startElementIterator Efficient iterator pointing to the first element of the data
+     * structure it is iterating over.
+     * @param index Index of the element to return.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @return A pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIteratorOfIterables<D, const double> ||
                                        RandomIteratorOfConstIterables<D, const double>,
                                bool> = true>
-    static inline const double *getSampleAt(
-            const I &startElementIterator, const std::size_t index, std::size_t stride) {
+    static inline const double *getSampleAt(const I &startElementIterator,
+                                            const std::size_t index,
+                                            [[maybe_unused]] const std::size_t stride) {
 
         if constexpr (RandomIteratorOfConstIterables<D, const double>) {
             return &((startElementIterator[index].cbegin())[0]);
@@ -422,22 +824,51 @@ public:
         }
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIteratorOfIterables<D, const double> ||
                                        RandomIteratorOfConstIterables<D, const double>,
                                bool> = true>
-    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
         ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Random iterables of contiguous iterators and random const iterables of contiguous iterators.
+     *
+     **********************************************************************************************/
+
+    /**
+     * Creates a more efficient iterator from the iterator returned by the <code>begin()</code>
+     * method, or the <code>cbegin()</code> one if present, called on the specified data structure.
+     *
+     * @tparam D Type of the data structure to iterate over efficiently.
+     * @param data Data structure holding the data to iterate efficiently.
+     * @param name String printed to the console before the type of the supplied data structure, so
+     * to better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<RandomIterableOfIterators<D, const double> ||
                                        RandomConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline auto createEfficientIterator(const D &data, const char *name) {
+    static inline auto createEfficientIterator(const D &data, const char *const name) {
 
         if constexpr (RandomConstIterableOfIterators<D, const double>) {
             printSummary(
@@ -449,45 +880,105 @@ public:
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIterableOfIterators<D, const double> ||
                                        RandomConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline const double *getCurrentSample(const I &currentElement) {
+    static inline const double *getCurrentSample(const I &currentElementIterator) {
 
-        return &((*currentElement)[0]);
+        return &((*currentElementIterator)[0]);
     }
 
+    /**
+     * Returns a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param startElementIterator Efficient iterator pointing to the first element of the data
+     * structure it is iterating over.
+     * @param index Index of the element to return.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @return A pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIterableOfIterators<D, const double> ||
                                        RandomConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline const double *getSampleAt(
-            const I &startElement, const std::size_t index, std::size_t stride) {
+    static inline const double *getSampleAt(const I &startElementIterator,
+                                            const std::size_t index,
+                                            [[maybe_unused]] const std::size_t stride) {
 
-        return &(startElement[index][0]);
+        return &(startElementIterator[index][0]);
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIterableOfIterators<D, const double> ||
                                        RandomConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline void moveNext(I &currentElement, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
-        ++currentElement;
+        ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Random iterables of contiguous iterables, random iterables of contiguous const iterables,
+     * random const iterables of contiguous iterables and random const iterables of contiguous const
+     * iterables.
+     *
+     **********************************************************************************************/
+
+    /**
+     * Creates a more efficient iterator from the iterator returned by the <code>begin()</code>
+     * method, or the <code>cbegin()</code> one if present, called on the specified data structure.
+     *
+     * @tparam D Type of the data structure to iterate over efficiently.
+     * @param data Data structure holding the data to iterate efficiently.
+     * @param name String printed to the console before the type of the supplied data structure, so
+     * to better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<RandomIterableOfIterables<D, const double> ||
                                        RandomIterableOfConstIterables<D, const double> ||
                                        RandomConstIterableOfIterables<D, const double> ||
                                        RandomConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline auto createEfficientIterator(const D &data, const char *name) {
+    static inline auto createEfficientIterator(const D &data, const char *const name) {
 
         if constexpr (RandomConstIterableOfIterables<D, const double> ||
                       RandomConstIterableOfConstIterables<D, const double>) {
@@ -517,6 +1008,18 @@ public:
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIterableOfIterables<D, const double> ||
@@ -524,16 +1027,32 @@ public:
                                        RandomConstIterableOfIterables<D, const double> ||
                                        RandomConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline const double *getCurrentSample(const I &currentElement) {
+    static inline const double *getCurrentSample(const I &currentElementIterator) {
 
         if constexpr (RandomIterableOfConstIterables<D, const double> ||
                       RandomConstIterableOfConstIterables<D, const double>) {
-            return &(((*currentElement).cbegin())[0]);
+            return &(((*currentElementIterator).cbegin())[0]);
         } else {
-            return &(((*currentElement).begin())[0]);
+            return &(((*currentElementIterator).begin())[0]);
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param startElementIterator Efficient iterator pointing to the first element of the data
+     * structure it is iterating over.
+     * @param index Index of the element to return.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     * @return A pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * structure the specified efficient iterator is iterating over.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIterableOfIterables<D, const double> ||
@@ -541,17 +1060,30 @@ public:
                                        RandomConstIterableOfIterables<D, const double> ||
                                        RandomConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline const double *getSampleAt(
-            const I &startElement, const std::size_t index, std::size_t stride) {
+    static inline const double *getSampleAt(const I &startElementIterator,
+                                            const std::size_t index,
+                                            [[maybe_unused]] const std::size_t stride) {
 
         if constexpr (RandomIterableOfConstIterables<D, const double> ||
                       RandomConstIterableOfConstIterables<D, const double>) {
-            return &((startElement[index].cbegin())[0]);
+            return &((startElementIterator[index].cbegin())[0]);
         } else {
-            return &((startElement[index].begin())[0]);
+            return &((startElementIterator[index].begin())[0]);
         }
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<RandomIterableOfIterables<D, const double> ||
@@ -559,20 +1091,47 @@ public:
                                        RandomConstIterableOfIterables<D, const double> ||
                                        RandomConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline void moveNext(I &currentElement, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
-        ++currentElement;
+        ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Input iterators of contiguous iterators.
+     *
+     **********************************************************************************************/
 
+    /**
+     * Creates a more efficient iterator from the specified one.
+     *
+     * @tparam D Type of the iterator that iterates over the data.
+     * @param iterator Iterator used to iterate over the data.
+     * @param name String printed to the console before the type of the supplied iterator, so to
+     * better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D, std::enable_if_t<InputIteratorOfIterators<D, const double>, bool> = true>
-    static inline D createEfficientIterator(const D &iterator, const char *name) {
+    static inline D createEfficientIterator(const D &iterator, const char *const name) {
 
         printSummary(name, DataType::INPUT, DataLevelType::ITERATOR, DataLevelType::ITERATOR);
         return iterator;
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<InputIteratorOfIterators<D, const double>, bool> = true>
@@ -581,20 +1140,48 @@ public:
         return &((*currentElementIterator)[0]);
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<InputIteratorOfIterators<D, const double>, bool> = true>
-    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
         ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Input iterators of contiguous iterables and input iterators of contiguous const iterables.
+     *
+     **********************************************************************************************/
+
+    /**
+     * Creates a more efficient iterator from the specified one.
+     *
+     * @tparam D Type of the iterator that iterates over the data.
+     * @param iterator Iterator used to iterate over the data.
+     * @param name String printed to the console before the type of the supplied iterator, so to
+     * better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<InputIteratorOfIterables<D, const double> ||
                                        InputIteratorOfConstIterables<D, const double>,
                                bool> = true>
-    static inline D createEfficientIterator(const D &iterator, const char *name) {
+    static inline D createEfficientIterator(const D &iterator, const char *const name) {
 
         if constexpr (InputIteratorOfConstIterables<D, const double>) {
             printSummary(
@@ -605,6 +1192,18 @@ public:
         return iterator;
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<InputIteratorOfIterables<D, const double> ||
@@ -619,22 +1218,51 @@ public:
         }
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<InputIteratorOfIterables<D, const double> ||
                                        InputIteratorOfConstIterables<D, const double>,
                                bool> = true>
-    static inline void moveNext(I &currentElementIterator, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
         ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Input iterables of contiguous iterators and input const iterables of contiguous iterators.
+     *
+     **********************************************************************************************/
+
+    /**
+     * Creates a more efficient iterator from the iterator returned by the <code>begin()</code>
+     * method, or the <code>cbegin()</code> one if present, called on the specified data structure.
+     *
+     * @tparam D Type of the data structure to iterate over efficiently.
+     * @param data Data structure holding the data to iterate efficiently.
+     * @param name String printed to the console before the type of the supplied data structure, so
+     * to better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<InputIterableOfIterators<D, const double> ||
                                        InputConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline auto createEfficientIterator(const D &data, const char *name) {
+    static inline auto createEfficientIterator(const D &data, const char *const name) {
 
         if constexpr (InputConstIterableOfIterators<D, const double>) {
             printSummary(
@@ -646,34 +1274,77 @@ public:
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<InputIterableOfIterators<D, const double> ||
                                        InputConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline const double *getCurrentSample(const I &currentElement) {
+    static inline const double *getCurrentSample(const I &currentElementIterator) {
 
-        return &((*currentElement)[0]);
+        return &((*currentElementIterator)[0]);
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<InputIterableOfIterators<D, const double> ||
                                        InputConstIterableOfIterators<D, const double>,
                                bool> = true>
-    static inline void moveNext(I &currentElement, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
-        ++currentElement;
+        ++currentElementIterator;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /***********************************************************************************************
+     *
+     * Input iterables of contiguous iterables, input iterables of contiguous const iterables, input
+     * const iterables of contiguous iterables and input const iterables of contiguous const
+     * iterables.
+     *
+     **********************************************************************************************/
+
+    /**
+     * Creates a more efficient iterator from the iterator returned by the <code>begin()</code>
+     * method, or the <code>cbegin()</code> one if present, called on the specified data structure.
+     *
+     * @tparam D Type of the data structure to iterate over efficiently.
+     * @param data Data structure holding the data to iterate efficiently.
+     * @param name String printed to the console before the type of the supplied data structure, so
+     * to better distinguish it among the messages printed to the console. This is useful for test
+     * purposes.
+     * @return The created iterator.
+     */
     template <typename D,
               std::enable_if_t<InputIterableOfIterables<D, const double> ||
                                        InputIterableOfConstIterables<D, const double> ||
                                        InputConstIterableOfIterables<D, const double> ||
                                        InputConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline auto createEfficientIterator(const D &data, const char *name) {
+    static inline auto createEfficientIterator(const D &data, const char *const name) {
 
         if constexpr (InputConstIterableOfIterables<D, const double> ||
                       InputConstIterableOfConstIterables<D, const double>) {
@@ -703,6 +1374,18 @@ public:
         }
     }
 
+    /**
+     * Returns a pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the element to return.
+     * @return A pointer to the first attribute of the data sample pointed by the specified
+     * efficient iterator.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<InputIterableOfIterables<D, const double> ||
@@ -710,16 +1393,28 @@ public:
                                        InputConstIterableOfIterables<D, const double> ||
                                        InputConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline const double *getCurrentSample(const I &currentElement) {
+    static inline const double *getCurrentSample(const I &currentElementIterator) {
 
         if constexpr (InputIterableOfConstIterables<D, const double> ||
                       InputConstIterableOfConstIterables<D, const double>) {
-            return &(((*currentElement).cbegin())[0]);
+            return &(((*currentElementIterator).cbegin())[0]);
         } else {
-            return &(((*currentElement).begin())[0]);
+            return &(((*currentElementIterator).begin())[0]);
         }
     }
 
+    /**
+     * Moves the specified efficient iterator one step forward, so that it points to the next data
+     * sample in the data structure the iterator is iterating over.
+     *
+     * @tparam D Type of the data structure/iterator supplied to the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @tparam I Type of the efficient iterator created invoking the
+     * <code>DataIteratorUtils::createEfficientIterator</code> method.
+     * @param currentElementIterator Efficient iterator pointing to the current element.
+     * @param stride This parameter is ignored. It is defined just to make all the overloads
+     * uniform.
+     */
     template <typename D,
               typename I,
               std::enable_if_t<InputIterableOfIterables<D, const double> ||
@@ -727,9 +1422,10 @@ public:
                                        InputConstIterableOfIterables<D, const double> ||
                                        InputConstIterableOfConstIterables<D, const double>,
                                bool> = true>
-    static inline void moveNext(I &currentElement, std::size_t stride) {
+    static inline void moveNext(I &currentElementIterator,
+                                [[maybe_unused]] const std::size_t stride) {
 
-        ++currentElement;
+        ++currentElementIterator;
     }
 
 private:

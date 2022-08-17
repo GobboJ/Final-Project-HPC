@@ -58,12 +58,18 @@ CliArguments CliArgumentsParser::parseArguments() {
     CliArguments result{};
 
     // Check if the help has been requested
-    if (this->argumentsCount == 1 && strcmp(this->argumentsVector[1], "-h") == 0) {
+    if (this->argumentsCount == 2 && (strcmp(this->argumentsVector[1], "-h") == 0 ||
+                                      strcmp(this->argumentsVector[1], "--help") == 0)) {
         // Print the usage and exit
         usage();
         // NOLINTNEXTLINE(concurrency-mt-unsafe)
         exit(0);
     }
+
+    // Flag indicating whether the version of the clustering algorithm to use have been specified
+    bool versionSpecified = false;
+    // Flag indicating whether the file containing the samples to cluster have been specified
+    bool filePathSpecified = false;
 
     // Parse all the arguments
     while (this->nextArgumentIndex < this->argumentsCount) {
@@ -84,9 +90,11 @@ CliArguments CliArgumentsParser::parseArguments() {
             this->nextArgumentIndex++;
             this->parseOutputOption(result);
         } else if (argument == "-p") {
+            versionSpecified = true;
             this->nextArgumentIndex++;
             this->parseAlgorithmVersion(result, true);
         } else if (argument == "-s") {
+            versionSpecified = true;
             this->nextArgumentIndex++;
             this->parseAlgorithmVersion(result, false);
         } else if (argument == "-t") {
@@ -96,8 +104,19 @@ CliArguments CliArgumentsParser::parseArguments() {
             this->nextArgumentIndex++;
             this->parseTestResultsPath(result);
         } else {
+            filePathSpecified = true;
             this->parseInputFilePath(result);
         }
+    }
+
+    // Require the mandatory parameters to be specified
+    if (!versionSpecified) {
+        throw CliArgumentException("None of the mandatory options -p and -s has been specified.");
+    }
+    if (!filePathSpecified) {
+        throw CliArgumentException(
+                "The path of the file containing the data samples to cluster has not been "
+                "specified.");
     }
 
     return result;
@@ -312,7 +331,8 @@ void CliArgumentsParser::parseTestResultsPath(CliArguments &result) {
 
     // Extract the path
     const std::string textResultsPathString = this->getCurrentArgumentAndMoveNext(
-            "The test file results path is missing in the --test-results-path option.");
+            "The path of the file containing the test results is missing in the "
+            "--test-results-path option.");
 
     // Normalize the path
     std::filesystem::path textResultsPath{textResultsPathString};
@@ -323,8 +343,8 @@ void CliArgumentsParser::parseTestResultsPath(CliArguments &result) {
     requireFilePathValidity(textResultsPath,
                             "The directory"s + ' ' + textResultsPath.parent_path().string() +
                                     " where the test results file will be generated does not exist",
-                            "The test results file path"s + ' ' + textResultsPath.string() +
-                                    " refers to a non-regular file");
+                            "The path of the file containing the test results"s + ' ' +
+                                    textResultsPath.string() + " refers to a non-regular file");
     // Set the path
     result.setPreviousTestResultsToBeUsed(true);
     result.setTestResultsFilePath(textResultsPath);
@@ -518,6 +538,7 @@ void CliArgumentsParser::usage() {
 
     std::cout <<
             R""(SYNOPSYS
+    main -h | --help
     main OPTIONS... INPUT_FILE_PATH
 
 DESCRIPTION
@@ -554,7 +575,7 @@ OPTIONS
         the INPUT_FILE_PATH file are considered containing coordinates of the
         points.
 
-    -h
+    -h, --help
         Prints this help.
     
     -l FIRST LAST
