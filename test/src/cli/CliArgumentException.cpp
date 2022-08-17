@@ -1,7 +1,8 @@
 /*
  * CliArgumentsException implementation.
  *
- * @author DeB, Jonathan
+ * @author DeB
+ * @author Jonathan
  * @version 1.0 2022-08-05
  * @since 1.0
  */

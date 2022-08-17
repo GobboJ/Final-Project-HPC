@@ -6,14 +6,16 @@
 #include <iostream>
 
 namespace cluster::utils {
+
 /**
  * Utility class allowing to log to the console the progress of the application.<br>
  * The logging can be enabled or disabled by using the <code>PRINT_ITERATIONS</code> macro. In
  * particular, if it is not defined, then any invocation to any of the methods provided by this
  * class has no effect, hence the logging is disabled.
  *
- * @author DeB, Jonathan
- * @version 1.0.1 2022-08-05
+ * @author DeB
+ * @author Jonathan
+ * @version 1.0.2 2022-08-16
  * @since 1.0
  */
 class Logger {
@@ -112,7 +114,7 @@ private:
 
         // Print a text informing of what stage the timer is related to
         if constexpr (S == 0) {
-            std::cout << "Init   : ";
+            std::cout << "Service: ";
         } else {
             std::cout << "Stage" << ' ' << S << ": ";
         }

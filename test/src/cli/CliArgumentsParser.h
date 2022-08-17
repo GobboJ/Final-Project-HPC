@@ -8,10 +8,12 @@
 #include <unordered_map>
 
 namespace cluster::test::cli {
+
 /**
- * Description.
+ * Parser that parses the arguments specified in the command line.
  *
- * @author DeB, Jonathan
+ * @author DeB
+ * @author Jonathan
  * @version 1.1.1 2022-08-06
  * @since 1.0
  */
@@ -101,13 +103,19 @@ private:
      * Parses the -t option.
      *
      * @param result Container where the parsed arguments will be placed.
-     * @throws CliArgumentException If there are not enough non-parsed arguments left, or if the
-     * specified file where the tests results will be read or stored is not a valid path.
+     * @throws CliArgumentException If there are not enough non-parsed arguments left
      */
     void parseTestOption(CliArguments &result);
 
+    /**
+     * Parses the --test-results-path option.
+     *
+     * @param result Container where the parsed arguments will be placed.
+     * @throws CliArgumentException If there are not enough non-parsed arguments left, or if the
+     * specified file where the tests results will be read or stored is not a valid path.
+     */
     void parseTestResultsPath(CliArguments &result);
-    
+
     /**
      * Parses the input file path.
      *
@@ -208,7 +216,6 @@ private:
      * Vector containing the command line arguments.
      */
     const char *const *argumentsVector;
-    
 };
 }  // namespace cluster::test::cli
 #endif  // FINAL_PROJECT_HPC_CLIARGUMENTSPARSER_H

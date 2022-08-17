@@ -22,9 +22,9 @@ class ArrayOnlyIterableSubContainer {
 public:
     ArrayOnlyIterableSubContainer(const std::string &firstLevelName,
                                   const std::string &secondLevelName,
-                                  utils::DataIteratorType iteratorType,
-                                  utils::DataLevelIteratorType firstLevelIteratorType,
-                                  utils::DataLevelIteratorType secondLevelIteratorType) :
+                                  utils::DataType iteratorType,
+                                  utils::DataLevelType firstLevelIteratorType,
+                                  utils::DataLevelType secondLevelIteratorType) :
         normal{ArrayTypeNameComposer::composeName(firstLevelName, secondLevelName),
                iteratorType,
                firstLevelIteratorType,
@@ -32,28 +32,28 @@ public:
         normalIterator{
                 ArrayTypeNameComposer::composeName(firstLevelName, secondLevelName, "", "iterator"),
                 iteratorType,
-                utils::DataLevelIteratorType::ITERATOR,
+                utils::DataLevelType::ITERATOR,
                 secondLevelIteratorType},
         normalConstIterator{ArrayTypeNameComposer::composeName(
                                     firstLevelName, secondLevelName, "", "const_iterator"),
                             iteratorType,
-                            utils::DataLevelIteratorType::ITERATOR,
+                            utils::DataLevelType::ITERATOR,
                             secondLevelIteratorType},
         iterators{ArrayTypeNameComposer::composeName(firstLevelName, secondLevelName, "iterator"),
                   iteratorType,
                   firstLevelIteratorType,
-                  utils::DataLevelIteratorType::ITERATOR},
+                  utils::DataLevelType::ITERATOR},
         iteratorsIterator{ArrayTypeNameComposer::composeName(
                                   firstLevelName, secondLevelName, "iterator", "iterator"),
                           iteratorType,
-                          utils::DataLevelIteratorType::ITERATOR,
-                          utils::DataLevelIteratorType::ITERATOR},
+                          utils::DataLevelType::ITERATOR,
+                          utils::DataLevelType::ITERATOR},
         iteratorsConstIterator{
                 ArrayTypeNameComposer::composeName(
                         firstLevelName, secondLevelName, "iterator", "const_iterator"),
                 iteratorType,
-                utils::DataLevelIteratorType::ITERATOR,
-                utils::DataLevelIteratorType::ITERATOR} {
+                utils::DataLevelType::ITERATOR,
+                utils::DataLevelType::ITERATOR} {
     }
 
     ArrayOnlyIterableSubContainer(const ArrayOnlyIterableSubContainer &) = delete;

@@ -7,7 +7,8 @@ namespace cluster::test::cli {
 /**
  * Exception thrown when one of the arguments specified via command line is incorrect.
  *
- * @author DeB, Jonathan
+ * @author DeB
+ * @author Jonathan
  * @version 1.0 2022-08-05
  * @since 1.0
  */

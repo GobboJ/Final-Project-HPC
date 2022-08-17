@@ -18,20 +18,20 @@ class PointerSubContainer {
 
 public:
     PointerSubContainer(const std::string &secondLevelName,
-                        utils::DataIteratorType iteratorType,
-                        utils::DataLevelIteratorType secondLevelIteratorType) :
+                        utils::DataType iteratorType,
+                        utils::DataLevelType secondLevelIteratorType) :
         normal{PointerTypeNameComposer::composeName(secondLevelName, ""),
                iteratorType,
-               utils::DataLevelIteratorType::ITERATOR,
+               utils::DataLevelType::ITERATOR,
                secondLevelIteratorType},
         normalIterator{PointerTypeNameComposer::composeName(secondLevelName, "iterator"),
                        iteratorType,
-                       utils::DataLevelIteratorType::ITERATOR,
-                       utils::DataLevelIteratorType::ITERATOR},
+                       utils::DataLevelType::ITERATOR,
+                       utils::DataLevelType::ITERATOR},
         normalConstIterator{PointerTypeNameComposer::composeName(secondLevelName, "const_iterator"),
                             iteratorType,
-                            utils::DataLevelIteratorType::ITERATOR,
-                            utils::DataLevelIteratorType::ITERATOR} {
+                            utils::DataLevelType::ITERATOR,
+                            utils::DataLevelType::ITERATOR} {
 
         normal = new IC[N];
         normalIterator = new typename IC::iterator[N];

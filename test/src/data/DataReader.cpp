@@ -1,13 +1,14 @@
 /*
  * DataReader implementation.
  *
- * @author DeB, Jonathan
+ * @author DeB
+ * @author Jonathan
  * @version 1.2 2022-08-06
  * @since 1.0
  */
 #include "DataReader.h"
-#include "MalformedFileException.h"
 #include "IoException.h"
+#include "MalformedFileException.h"
 #include <fstream>
 
 namespace cluster::test::data {

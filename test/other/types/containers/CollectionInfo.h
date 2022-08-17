@@ -17,9 +17,9 @@ class CollectionInfo {
 
 public:
     CollectionInfo(std::string name,
-                   utils::DataIteratorType iteratorType,
-                   utils::DataLevelIteratorType firstLevelIteratorType,
-                   utils::DataLevelIteratorType secondLevelIteratorType) :
+                   utils::DataType iteratorType,
+                   utils::DataLevelType firstLevelIteratorType,
+                   utils::DataLevelType secondLevelIteratorType) :
         name(name),
         iteratorType(iteratorType),
         firstLevelIteratorType(firstLevelIteratorType),
@@ -28,9 +28,9 @@ public:
     }
 
     std::string name;
-    utils::DataIteratorType iteratorType;
-    utils::DataLevelIteratorType firstLevelIteratorType;
-    utils::DataLevelIteratorType secondLevelIteratorType;
+    utils::DataType iteratorType;
+    utils::DataLevelType firstLevelIteratorType;
+    utils::DataLevelType secondLevelIteratorType;
     T field;
 };
 

@@ -1,12 +1,13 @@
 /*
  * CliArgumentsParser implementation.
  *
- * @author DeB, Jonathan
+ * @author DeB
+ * @author Jonathan
  * @version 1.1.1 2022-08-06
  * @since 1.0
  */
-#include "CliArgumentsParser.h"
 #include "CliArgumentException.h"
+#include "CliArgumentsParser.h"
 #include <cstring>
 #include <filesystem>
 #include <iostream>
@@ -290,7 +291,7 @@ void CliArgumentsParser::parseAlgorithmVersion(CliArguments &result, bool isPara
 }
 
 /**
- * Parses the -t option.
+ * Parses the --test-results-path option.
  *
  * @param result Container that will contain the parsed arguments.
  * @throws CliArgumentException If the specified command line arguments are not correct.
@@ -301,6 +302,12 @@ void CliArgumentsParser::parseTestOption(CliArguments &result) {
     result.setTestModeEnabled(true);
 }
 
+/**
+ * Parses the -t option.
+ *
+ * @param result Container that will contain the parsed arguments.
+ * @throws CliArgumentException If the specified command line arguments are not correct.
+ */
 void CliArgumentsParser::parseTestResultsPath(CliArguments &result) {
 
     // Extract the path
@@ -615,7 +622,7 @@ OPTIONS
         This option is mandatory, and cannot be specified together with the -p
         option.
     
-    -t [TEST_RESULT_PATH]
+    -t
         Enables the test mode. This implies that the results of the execution of
         the specified implementation of the clustering algorithm are checked
         against the results of the sequential implementation.
@@ -623,24 +630,103 @@ OPTIONS
         If the two results are different, then the program terminates with exit
         code 1. Otherwise, it terminates with exit code 0.
         
-        To avoid the execution of the sequential implementation every time the
-        program is executed, it is possible to specify a file, the
-        TEST_RESULT_PATH file, where the results of the sequential
-        implementation will be read from.
+        If this option is omitted, then the test mode is disabled.
+    
+    --test-results-path TEST_RESULTS_PATH
+        Avoids the execution of the sequential implementation every time the
+        program is executed, by reading results of the sequential implementation
+        from the TEST_RESULTS_PATH file.
         
         If the file does not exist, then the sequential implementation of the
         clustering algorithm is executed, and the results are stored in the
         specified path.
-        
-        If, instead, TEST_RESULT_PATH is omitted, then the sequential
-        implementation of the clustering algorithm is always executed.
-        
-        If this option is omitted, then the test mode is disabled.
 
+        If this option is omitted, then the sequential implementation of the
+        clustering algorithm is always executed to retrieve the correct results.
+        
+        This option takes effect only if the -t option is specified as well.
+       
 SEQUENTIAL VERSIONS
-
+        1   Sequential implementation that uses a data structure with two levels
+            of indirection to hold the samples to cluster.
+        2   Sequential implementation that uses a unique contiguous array to
+            hold the samples to cluster.
 PARALLEL VERSIONS
-
+        1   Parallel implementation that uses a data structure with two levels
+            of indirection to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using threads.
+        2   Parallel implementation that uses a data structure with two levels
+            of indirection to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using SSE
+            instructions.
+        3   Parallel implementation that uses a data structure with two levels
+            of indirection to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using AVX
+            instructions.
+        4   Parallel implementation that uses a unique aligned and contiguous
+            array to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using both
+            threads and AVX instructions.
+        5   Parallel implementation that uses a data structure with two levels
+            of indirection to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using both
+            threads and SSE instructions. Moreover, the rearrangement of the
+            structure of the dendrogram after a new point it added is performed
+            in parallel by using threads.
+        6   Parallel implementation that uses a data structure with two levels
+            of indirection to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using both
+            threads and SSE instructions. This implementation does not store
+            into memory the partial sums when computing the distances, but it
+            keeps them into the registers. Moreover, the rearrangement of the
+            structure dendrogram after a new point it added is performed in
+            parallel by using threads.
+        7   Parallel implementation that uses a data structure with two levels
+            of indirection to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using both
+            threads and AVX instructions. This implementation does not store
+            into memory the partial sums when computing the distances, but it
+            keeps them into the registers. Moreover, the rearrangement of the
+            structure dendrogram after a new point it added is performed in
+            parallel by using threads.
+        8   Parallel implementation that uses a unique aligned and contiguous
+            array to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using both
+            threads and SSE instructions. This implementation does not store
+            into memory the partial sums when computing the distances, but it
+            keeps them into the registers. Moreover, the rearrangement of the
+            structure dendrogram after a new point it added is performed in
+            parallel by using threads.
+        9   Parallel implementation that uses a unique aligned and contiguous
+            array to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using both
+            threads and AVX instructions. This implementation does not store
+            into memory the partial sums when computing the distances, but it
+            keeps them into the registers. Moreover, the rearrangement of the
+            structure dendrogram after a new point it added is performed in
+            parallel by using threads.
+        10  Parallel implementation that uses a unique aligned and contiguous
+            array to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using both
+            threads and AVX instructions. This implementation does not store
+            into memory the partial sums when computing the distances, but it
+            keeps them into the registers. Moreover, the rearrangement of the
+            structure dendrogram after a new point it added is performed in
+            parallel by using threads. In addition, this implementation does not
+            compute the square root while computing the distances, but perform
+            this computation at the end of the algorithm.
+        11  Parallel implementation that uses a unique aligned and contiguous
+            array to hold the samples to cluster, and parallelizes the
+            computation of the distance between two data samples using both
+            threads and AVX instructions. This implementation does not store
+            into memory the partial sums when computing the distances, but it
+            keeps them into the registers. Moreover, the rearrangement of the
+            structure dendrogram after a new point it added is performed in
+            parallel by using threads. In addition, this implementation does not
+            compute the square root while computing the distances, but perform
+            this computation in parallel using threads at the end of the
+            algorithm.
+        
 EXIT CODE
     0   If the -t option has not been specified, of if it has been specified and
         the results of the specified implementation of the clustering algorithm

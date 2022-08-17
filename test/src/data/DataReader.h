@@ -9,7 +9,8 @@ namespace cluster::test::data {
 /**
  * Reader that reads the data from files.
  *
- * @author DeB, Jonathan
+ * @author DeB
+ * @author Jonathan
  * @version 1.2 2022-08-06
  * @since 1.0
  */

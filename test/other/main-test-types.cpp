@@ -5,12 +5,11 @@
  * @version 1.0 2022-08-07
  * @since version date
  */
-#include "ContiguousDoubleMemoryDataIterator.h"
-#include "ParallelClustering.h"
-#include "../src/data/ResultsChecker.h"
-#include "SequentialClustering.h"
 #include "../src/data/DataReader.h"
 #include "../src/data/DataWriter.h"
+#include "../src/data/ResultsChecker.h"
+#include "ParallelClustering.h"
+#include "SequentialClustering.h"
 #include "types/CollectionCreator.h"
 #include "types/DataTypesTester.h"
 #include "types/PiLambdaTypesTester.h"
@@ -41,7 +40,7 @@ using cluster::utils::ConstIterable;
 using cluster::utils::ContiguousConstIterable;
 using cluster::utils::ContiguousIterable;
 using cluster::utils::ContiguousIterator;
-using cluster::utils::DataIteratorType;
+using cluster::utils::DataIteratorUtils;
 using cluster::utils::DataIteratorUtils;
 using cluster::utils::InputIterator;
 using cluster::utils::Iterable;
@@ -198,10 +197,9 @@ std::tuple<Ts &...> wrapReferences(Ts &...arguments) {
 }
 
 template <typename T>
-std::pair<T &, DataIteratorType> wrapDataStructure(T &dataStructure,
-                                                   DataIteratorType iteratorType) {
+std::pair<T &, DataType> wrapDataStructure(T &dataStructure, DataType iteratorType) {
 
-    return std::pair<T &, DataIteratorType>(dataStructure, iteratorType);
+    return std::pair<T &, DataType>(dataStructure, iteratorType);
 }
 
 template <typename C>
@@ -281,7 +279,7 @@ void testParallelDataStructureTypes(
 */
     // Fill indirect arrays
     auto *const arraysContainer = new ArrayContainer<std::array, ELEMENTS, DIMENSION>(
-            "std::array", DataIteratorType::CONTIGUOUS);
+            "std::array", DataType::CONTIGUOUS);
     CollectionCreator::createIndirectArrays<decltype(*arraysContainer), DIMENSION>(indirectParsedData, *arraysContainer);
     /*
     // Fill indirect vectors

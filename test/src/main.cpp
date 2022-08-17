@@ -1,5 +1,12 @@
+/**
+ * Main test file.
+ *
+ * @author DeB
+ * @author Jonathan
+ * @version 1.8 2022-06-16
+ * @since 1.0
+ */
 #include "ClusteringAlgorithmExecutor.h"
-#include "ContiguousDoubleMemoryDataIterator.h"
 #include "ParallelClustering.h"
 #include "SequentialClustering.h"
 #include "Types.h"
@@ -21,7 +28,6 @@
 #include <vector>
 #include <xmmintrin.h>
 
-using cluster::parallel::DistanceComputers;
 using cluster::parallel::ParallelClustering;
 using cluster::sequential::SequentialClustering;
 using cluster::test::ResultsChecker;
@@ -31,6 +37,39 @@ using cluster::test::data::DataReader;
 using cluster::test::data::DataWriter;
 using cluster::test::main::ClusteringAlgorithmExecutor;
 
+/**
+ * Parses the arguments specified in the command line.
+ *
+ * @param argc Number of arguments specified in the command line.
+ * @param argv Array containing the arguments specified in the command line.
+ * @return The parsed arguments.
+ */
+CliArguments parseArguments(int argc, const char *const *argv);
+
+/**
+ * Utility function that prints the specified number of threads.
+ *
+ * @param threadsCount Number of threads to print.
+ */
+void printThreadsCount(std::size_t threadsCount);
+
+/**
+ * Initializes the data structures
+ *
+ * @param isParallel <code>true</code> if the parallel implementation of the clustering
+ * algorithm should be executed, <code>false</code> otherwise.
+ * @param version Version of the algorithm to execute.
+ * @param dimension Dimension of the data samples to cluster.
+ * @param dataBegin Pointer to the first data sample to cluster.
+ * @param dataElementsCount Number of data samples to cluster.
+ * @param uniqueVectorData Data samples to cluster, stored as a unique array.
+ * @param indirectData Data samples to cluster, stored as indirect pointers.
+ * @param alignedIndirectData Data samples to cluster, stored as indirect pointers and
+ * aligned for SSE or AVX.
+ * @param alignedData Data samples to cluster, aligned for SSE or AVX.
+ * @param freeFunction Function that should be called to deallocate the memory this function has
+ * allocated.
+ */
 void initializeDataStructure(bool isParallel,
                              std::size_t version,
                              std::size_t dimension,
@@ -42,23 +81,39 @@ void initializeDataStructure(bool isParallel,
                              double *&alignedData,
                              std::function<void()> &freeFunction);
 
+/**
+ * Print the values of pi and lambda, as well as the distance matrix.
+ *
+ * @param data Data structure holding the samples to cluster.
+ * @param dimension Dimension of the samples to cluster.
+ * @param pi Data structure holding the values of <code>pi</code>.
+ * @param lambda  Data structure holding the values of <code>lambda</code>.
+ */
 void printValues(const std::vector<double *> &data,
                  std::size_t dimension,
                  const std::vector<std::size_t> &pi,
                  const std::vector<double> &lambda);
 
-/*std::function<void(std::vector<std::size_t> &, std::vector<double> &)> getClusteringAlgorithm(
-        const bool isParallel,
-        const std::size_t version,
-        const std::size_t distanceComputationThreadsCount,
-        const std::size_t stage4ThreadsCount,
-        const std::size_t stage5ThreadsCount,
-        std::vector<double *> &data,
-        std::size_t dataElementsCount,
-        double *mmAlignedData,
-        double *uniqueArrayData,
-        const std::size_t dimension);*/
-
+/**
+ * Utility function that checks the results of the clustering algorithms.
+ *
+ * @param filePath Path of the file containing the data samples to cluster.
+ * @param data Data structure holding the samples to cluster.
+ * @param dimension Dimension of the samples to cluster.
+ * @param resultPi Data structure holding the values of <code>pi</code> computed by the clustering
+ * algorithm.
+ * @param resultLambda Data structure holding the values of <code>lambda</code> computed by the
+ * clustering algorithm.
+ * @param usePreviousResults <code>true</code> if the function should use the results already
+ * computed in a previous execution and stored in a file, <code>false</code> if the function should
+ * execute the sequential implementation of the clustering algorithm to compute the correct results.
+ * @param previousResultsPath Path of the file that contains the results already computed in a
+ * previous execution. If the file does not exist, this function executed the sequential
+ * implementation of the clustering algorithm and then stores the results in the file with the
+ * specified path.
+ * @return <code>true</code> if the results of the clustering algorithm are correct,
+ * <code>false</code> otherwise.
+ */
 bool checkTest(const std::filesystem::path &filePath,
                const std::vector<double *> &data,
                std::size_t dimension,
@@ -67,23 +122,26 @@ bool checkTest(const std::filesystem::path &filePath,
                bool usePreviousResults,
                const std::filesystem::path &previousResultsPath);
 
-template <typename T>
-void addAll(std::vector<T> &vector, std::initializer_list<T> values);
-
-CliArguments parseArguments(int argc, char *argv[]);
-
-void printThreadsCount(std::size_t threadsCount);
-
-/*
- * Description.
+/**
+ * Utility function that appends to the specified vector the specified elements.
  *
- * @author DeB
- * @version 1.0 2022-07-09
- * @since version date
+ * @tparam T Type of the elements to append.
+ * @param vector Vector where the elements will be appended.
+ * @param elements Elements to append.
+ */
+template <typename T>
+void addAll(std::vector<T> &vector, std::initializer_list<T> elements);
+
+/**
+ * Main entrypoint of the application.
+ *
+ * @param argc Number of arguments specified in the command line.
+ * @param argv Array containing the arguments specified in the command line.
+ * @return The exit code.
  */
 int main(int argc, char *argv[]) {
 
-    // static_assert(std::random_access_iterator<ContiguousDoubleMemoryIterator>);
+    // Parse the arguments
     CliArguments arguments = parseArguments(argc, argv);
 
     // Read the data
@@ -96,12 +154,14 @@ int main(int argc, char *argv[]) {
                                                          arguments.getLastColumnNumber());
     std::size_t dataElementsCount = data.size() / dimension;
 
+    // Extract the information about the clustering algorithm to execute
     bool isParallel = arguments.isParallel();
     std::size_t version = arguments.getAlgorithmVersion();
     std::size_t distanceComputationThreadsCount = arguments.getDistanceComputationThreadsCount();
-    std::size_t stage4ThreadsCount = arguments.getStructuralFixThreadsCount();
-    std::size_t stage5ThreadsCount = arguments.getSqrtComputationThreadsCount();
+    std::size_t structuralFixThreadsCount = arguments.getStructuralFixThreadsCount();
+    std::size_t sqrtComputationThreadsCount = arguments.getSqrtComputationThreadsCount();
 
+    // Initialize the data structures holding the data samples to cluster
     double *uniqueVectorData = nullptr;
     std::vector<double *> indirectData{};
     std::vector<double *> alignedIndirectData{};
@@ -119,19 +179,7 @@ int main(int argc, char *argv[]) {
                             alignedData,
                             freeFunction);
 
-    // Decide the clustering algorithm
-    /*std::function<void(std::vector<std::size_t> &, std::vector<double> &)> clusteringAlgorithm =
-            getClusteringAlgorithm(isParallel,
-                                   version,
-                                   distanceComputationThreadsCount,
-                                   stage4ThreadsCount,
-                                   stage5ThreadsCount,
-                                   twoLevels,
-                                   dataElementsCount,
-                                   mmAlignedData,
-                                   uniqueVectorData,
-                                   dimension);
-    */
+    // Print the informational summary
     if (isParallel) {
         std::cout << "Parallel clustering version" << ' ' << version;
     } else {
@@ -144,32 +192,31 @@ int main(int argc, char *argv[]) {
     if (isParallel) {
         std::cout << " with:" << std::endl << "    ";
         printThreadsCount(distanceComputationThreadsCount);
-        std::cout << " to compute the distance" << std::endl;
+        std::cout << " to compute the distance" << std::endl << "    ";
         if (version >= 5) {
-            printThreadsCount(stage4ThreadsCount);
-            std::cout << " to execute the stage 4" << std::endl;
+            printThreadsCount(structuralFixThreadsCount);
+            std::cout << " to execute the structural fix" << std::endl << "    ";
         }
         if (version == 11) {
-            printThreadsCount(stage5ThreadsCount);
-            std::cout << " to execute the stage 5" << std::endl;
+            printThreadsCount(sqrtComputationThreadsCount);
+            std::cout << " to execute the square roots computation" << std::endl << "    ";
         }
     } else {
         std::cout << std::endl;
     }
 
+    // Initializes pi and lambda vectors
+    std::vector<std::size_t> pi{};
+    pi.resize(dataElementsCount);
+    std::vector<double> lambda{};
+    lambda.resize(dataElementsCount);
+
+    // Execute the requested clustering algorithm
     ClusteringAlgorithmExecutor executor{dataElementsCount,
                                          dimension,
                                          distanceComputationThreadsCount,
-                                         stage4ThreadsCount,
-                                         stage5ThreadsCount};
-
-    std::vector<std::size_t> pi{};
-    std::vector<double> lambda{};
-
-    // Initializes pi and lambda vectors
-    pi.resize(dataElementsCount);
-    lambda.resize(dataElementsCount);
-
+                                         structuralFixThreadsCount,
+                                         sqrtComputationThreadsCount};
     executor.executeClusteringAlgorithm(isParallel,
                                         version,
                                         indirectData,
@@ -184,12 +231,15 @@ int main(int argc, char *argv[]) {
     // Print the values
     // printValues(data, dimension, pi, lambda);
 
+    // Check the computed pi and lambda, if requested
     if (arguments.isTestModeEnabled()) {
+        // Print a separator
         std::cout << std::endl;
         for (int i = 0; i < 80; i++) {
             std::cout << '-';
         }
         std::cout << std::endl << std::endl;
+        // Check the results
         if (!checkTest(arguments.getInputFilePath(),
                        indirectData,
                        dimension,
@@ -203,7 +253,7 @@ int main(int argc, char *argv[]) {
         std::cout << std::endl << "Test completed successfully" << std::endl << std::endl;
     }
 
-    // Output the files
+    // Output the files, if requested
     std::cout << "Outputting result: ";
     if (arguments.isOutputEnabled()) {
         std::cout << "yes" << std::endl;
@@ -218,25 +268,40 @@ int main(int argc, char *argv[]) {
         std::cout << "no" << std::endl;
     }
 
+    // Deallocate the memory
     freeFunction();
 
     return 0;
 }
 
-CliArguments parseArguments(int argc, char **argv) {
+/**
+ * Parses the arguments specified in the command line.
+ *
+ * @param argc Number of arguments specified in the command line.
+ * @param argv Array containing the arguments specified in the command line.
+ * @return The parsed arguments.
+ */
+CliArguments parseArguments(const int argc, const char *const *const argv) {
 
     try {
+        // Parse the arguments
         CliArgumentsParser parser{argc, argv};
         CliArguments arguments = parser.parseArguments();
 
         return arguments;
     } catch (std::exception &exception) {
+        // Inform the user about the wrong arguments
         std::cerr << exception.what() << std::endl;
         exit(1);
     }
 }
 
-void printThreadsCount(std::size_t threadsCount) {
+/**
+ * Utility function that prints the specified number of threads.
+ *
+ * @param threadsCount Number of threads to print.
+ */
+void printThreadsCount(const std::size_t threadsCount) {
 
     if (threadsCount == 0) {
         std::cout << "all the available CPU core threads";
@@ -248,9 +313,26 @@ void printThreadsCount(std::size_t threadsCount) {
     }
 }
 
-void initializeDataStructure(bool isParallel,
-                             std::size_t version,
-                             std::size_t dimension,
+/**
+ * Initializes the data structures
+ *
+ * @param isParallel <code>true</code> if the parallel implementation of the clustering
+ * algorithm should be executed, <code>false</code> otherwise.
+ * @param version Version of the algorithm to execute.
+ * @param dimension Dimension of the data samples to cluster.
+ * @param dataBegin Pointer to the first data sample to cluster.
+ * @param dataElementsCount Number of data samples to cluster.
+ * @param uniqueVectorData Data samples to cluster, stored as a unique array.
+ * @param indirectData Data samples to cluster, stored as indirect pointers.
+ * @param alignedIndirectData Data samples to cluster, stored as indirect pointers and
+ * aligned for SSE or AVX.
+ * @param alignedData Data samples to cluster, aligned for SSE or AVX.
+ * @param freeFunction Function that should be called to deallocate the memory this function has
+ * allocated.
+ */
+void initializeDataStructure(const bool isParallel,
+                             const std::size_t version,
+                             const std::size_t dimension,
                              const double *dataBegin,
                              std::size_t dataElementsCount,
                              double *&uniqueVectorData,
@@ -258,108 +340,144 @@ void initializeDataStructure(bool isParallel,
                              std::vector<double *> &alignedIndirectData,
                              double *&alignedData,
                              std::function<void()> &freeFunction) {
-    if (version == 1) {
-        // Fill two levels
-        for (std::size_t i = 0; i < dataElementsCount; i += dimension) {
-            auto *point = new double[dimension];
-            // Copy the doubles
-            memcpy(point, &(dataBegin[i]), dimension * sizeof(double));
-            indirectData.push_back(point);
+
+    // Fill two levels
+    for (std::size_t i = 0; i < dataElementsCount; i++) {
+        auto *point = new double[dimension];
+        // Copy the doubles
+        memcpy(point, &(dataBegin[i * dimension]), dimension * sizeof(double));
+        indirectData.push_back(point);
+    }
+    // Set the de-allocation function
+    std::function<void()> indirectDataFreeFunction = [&indirectData]() noexcept -> void {
+        for (double *point : indirectData) {
+            delete[] point;
         }
-        freeFunction = [&indirectData]() -> void {
-            for (double *point : indirectData) {
-                delete[] point;
-            }
-        };
-    } else if (isParallel) {
-        switch (version) {
-            case 2:
-            case 3:
-            case 5:
-            case 6:
-            case 7: {
-                const std::size_t pointDimension =
-                        (version == 3 || version == 7)
-                                ? ParallelClustering<>::computeAvxDimension(dimension)
-                                : ParallelClustering<>::computeSseDimension(dimension);
-                const std::size_t alignment = (version == 3 || version == 7)
-                                                      ? ParallelClustering<>::AVX_PACK_SIZE
-                                                      : ParallelClustering<>::SSE_PACK_SIZE;
+    };
+    freeFunction = indirectDataFreeFunction;
 
-                std::size_t elementIndex = 0;
-                for (std::size_t i = 0; i < dataElementsCount; i += dimension) {
-                    auto *reallocatedPoint = static_cast<double *>(_mm_malloc(
-                            pointDimension * sizeof(double), alignment * sizeof(double)));
-                    // Copy the doubles
-                    memcpy(reallocatedPoint, &(dataBegin[i]), dimension * sizeof(double));
-                    // Fill the remaining coordinates with 0
-                    memset(&(reallocatedPoint[dimension]),
-                           0,
-                           (pointDimension - dimension) * sizeof(double));
+    if (version != 1) {
+        if (isParallel) {
+            switch (version) {
+                case 2:
+                case 3:
+                case 5:
+                case 6:
+                case 7: {
+                    // Compute the alignment and dimension
+                    const std::size_t pointDimension =
+                            (version == 3 || version == 7)
+                                    ? ParallelClustering<>::computeAvxDimension(dimension)
+                                    : ParallelClustering<>::computeSseDimension(dimension);
+                    const std::size_t alignment = (version == 3 || version == 7)
+                                                          ? ParallelClustering<>::AVX_PACK_SIZE
+                                                          : ParallelClustering<>::SSE_PACK_SIZE;
+                    // Fill the indirect aligned data structure
+                    for (std::size_t i = 0; i < dataElementsCount; i++) {
+                        // Create the point
+                        auto *point = static_cast<double *>(_mm_malloc(
+                                pointDimension * sizeof(double), alignment * sizeof(double)));
+                        // Copy the doubles
+                        memcpy(point, &(dataBegin[i * dimension]), dimension * sizeof(double));
+                        // Fill the remaining coordinates with 0
+                        memset(&(point[dimension]),
+                               0,
+                               (pointDimension - dimension) * sizeof(double));
 
-                    // Add the point
-                    alignedIndirectData[elementIndex] = reallocatedPoint;
-                    elementIndex++;
-                }
-                freeFunction = [&alignedIndirectData]() -> void {
-                    for (double *point : alignedIndirectData) {
-                        _mm_free(point);
+                        // Add the point
+                        alignedIndirectData[i] = point;
                     }
-                };
-            } break;
-            case 4:
-            case 8:
-            case 9:
-            case 10:
-            case 11: {
-                const std::size_t pointDimension =
-                        (version == 8) ? ParallelClustering<>::computeSseDimension(dimension)
-                                       : ParallelClustering<>::computeAvxDimension(dimension);
-                const std::size_t alignment = (version == 8) ? ParallelClustering<>::SSE_PACK_SIZE
-                                                             : ParallelClustering<>::AVX_PACK_SIZE;
+                    // Set the de-allocation function
+                    freeFunction = [&alignedIndirectData,
+                                    indirectDataFreeFunction]() noexcept -> void {
+                        indirectDataFreeFunction();
+                        for (double *point : alignedIndirectData) {
+                            _mm_free(point);
+                        }
+                    };
+                } break;
+                case 4:
+                case 8:
+                case 9:
+                case 10:
+                case 11: {
+                    // Compute the alignment and dimension
+                    const std::size_t pointDimension =
+                            (version == 8) ? ParallelClustering<>::computeSseDimension(dimension)
+                                           : ParallelClustering<>::computeAvxDimension(dimension);
+                    const std::size_t alignment = (version == 8)
+                                                          ? ParallelClustering<>::SSE_PACK_SIZE
+                                                          : ParallelClustering<>::AVX_PACK_SIZE;
+                    // Create and clear the data structure
+                    std::size_t size = sizeof(double) * (dataElementsCount * pointDimension);
+                    alignedData =
+                            static_cast<double *>(_mm_malloc(size, alignment * sizeof(double)));
+                    memset(alignedData, 0, size);
 
-                std::size_t size = sizeof(double) * (dataElementsCount * pointDimension);
-                alignedData = static_cast<double *>(_mm_malloc(size, alignment * sizeof(double)));
-                memset(alignedData, 0, size);
-
-                std::size_t start = 0;
-                for (std::size_t i = 0; i < dataElementsCount; i += dimension) {
-                    memcpy(&(alignedData[start]), &(dataBegin[i]), dimension * sizeof(double));
-                    start += pointDimension;
-                }
-                freeFunction = [&alignedData]() -> void { _mm_free(alignedData); };
-            } break;
-            default:
-                std::cerr << "The version" << ' ' << version << " is not implemented." << std::endl;
-                exit(1);
+                    // Fill the indirect aligned data structure
+                    for (std::size_t i = 0; i < dataElementsCount; i++) {
+                        memcpy(&(alignedData[i * pointDimension]),
+                               &(dataBegin[i * dimension]),
+                               dimension * sizeof(double));
+                    }
+                    // Set the de-allocation function
+                    freeFunction = [&alignedData, indirectDataFreeFunction]() noexcept -> void {
+                        indirectDataFreeFunction();
+                        _mm_free(alignedData);
+                    };
+                } break;
+                default:
+                    std::cerr << "The parallel version" << ' ' << version << " is not implemented."
+                              << std::endl;
+                    exit(1);
+            }
+        } else if (version == 2) {
+            // Create the data structure
+            uniqueVectorData = new double[dataElementsCount];
+            // Fill data structure
+            for (std::size_t i = 0; i < dataElementsCount; i++) {
+                memcpy(&(uniqueVectorData[i]),
+                       &(dataBegin[i * dimension]),
+                       dimension * sizeof(double));
+            }
+            // Set the de-allocation function
+            freeFunction = [&uniqueVectorData, indirectDataFreeFunction]() noexcept -> void {
+                indirectDataFreeFunction();
+                delete[] uniqueVectorData;
+            };
+        } else {
+            std::cerr << "The version" << ' ' << version << " is not implemented." << std::endl;
+            exit(1);
         }
-    } else if (version == 2) {
-        uniqueVectorData = new double[dataElementsCount];
-        for (std::size_t i = 0; i < dataElementsCount; i += dimension) {
-            memcpy(&(uniqueVectorData[i]), &(dataBegin[i]), dimension * sizeof(double));
-        }
-        freeFunction = [&uniqueVectorData]() -> void { delete[] uniqueVectorData; };
-    } else {
-        std::cerr << "The version" << ' ' << version << " is not implemented." << std::endl;
-        exit(1);
     }
 }
 
+/**
+ * Print the values of pi and lambda, as well as the distance matrix.
+ *
+ * @param data Data structure holding the samples to cluster.
+ * @param dimension Dimension of the samples to cluster.
+ * @param pi Data structure holding the values of <code>pi</code>.
+ * @param lambda  Data structure holding the values of <code>lambda</code>.
+ */
 void printValues(const std::vector<double *> &data,
-                 std::size_t dimension,
+                 const std::size_t dimension,
                  const std::vector<std::size_t> &pi,
                  const std::vector<double> &lambda) {
 
+    // Print the values of pi
     for (std::size_t i = 0; i < pi.size(); i++) {
         std::cout << "pi[" << i + 1 << "] = " << pi[i] + 1 << std::endl;
     }
     std::cout << std::endl << std::endl;
+    // Print the values of lambda
     for (std::size_t i = 0; i < pi.size(); i++) {
         std::cout << "l[" << i + 1 << "] = " << std::fixed << std::setprecision(2) << lambda[i]
                   << std::endl;
     }
     std::cout << std::endl;
 
+    // String containing a row of the distance matrix, properly formatted
     std::vector<std::string> values{};
 
     for (std::size_t i = 1; i < data.size(); i++) {
@@ -367,18 +485,19 @@ void printValues(const std::vector<double *> &data,
         values.clear();
 
         for (std::size_t j = 0; j < i; j++) {
+            // Compute the distance between the points
             double distance = 0;
             for (std::size_t d = 0; d < dimension; d++) {
                 distance += pow(data[i][d] - data[j][i], 2.0);
             }
-
             distance = sqrt(distance);
+            // Append the value
             std::ostringstream stream{};
             stream << std::fixed << std::setprecision(2) << distance;
             std::cout << stream.str() << ' ';
             values.push_back(stream.str());
         }
-
+        // Checks if all the distances are different
         bool different = true;
         for (std::size_t k = 0; k < values.size() - 1; k++) {
             for (std::size_t j = k + 1; j < values.size(); j++) {
@@ -391,6 +510,26 @@ void printValues(const std::vector<double *> &data,
     }
 }
 
+/**
+ * Utility function that checks the results of the clustering algorithms.
+ *
+ * @param filePath Path of the file containing the data samples to cluster.
+ * @param data Data structure holding the samples to cluster.
+ * @param dimension Dimension of the samples to cluster.
+ * @param resultPi Data structure holding the values of <code>pi</code> computed by the clustering
+ * algorithm.
+ * @param resultLambda Data structure holding the values of <code>lambda</code> computed by the
+ * clustering algorithm.
+ * @param usePreviousResults <code>true</code> if the function should use the results already
+ * computed in a previous execution and stored in a file, <code>false</code> if the function should
+ * execute the sequential implementation of the clustering algorithm to compute the correct results.
+ * @param previousResultsPath Path of the file that contains the results already computed in a
+ * previous execution. If the file does not exist, this function executed the sequential
+ * implementation of the clustering algorithm and then stores the results in the file with the
+ * specified path.
+ * @return <code>true</code> if the results of the clustering algorithm are correct,
+ * <code>false</code> otherwise.
+ */
 bool checkTest(const std::filesystem::path &filePath,
                const std::vector<double *> &data,
                const std::size_t dimension,
@@ -399,11 +538,13 @@ bool checkTest(const std::filesystem::path &filePath,
                const bool usePreviousResults,
                const std::filesystem::path &previousResultsPath) {
 
+    // Create the vectors containing the correct results
     std::vector<std::size_t> expectedPi{};
     std::vector<double> expectedLambda{};
 
     std::string fileName{filePath.filename().string()};
 
+    // Check if the test is a well-known test
     // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
     if (fileName == "two-points.data") {
         addAll<std::size_t>(expectedPi, {1, 1});
@@ -438,23 +579,28 @@ bool checkTest(const std::filesystem::path &filePath,
                 std::numeric_limits<double>::infinity()}  // 6
         );
     } else {
-
-        expectedPi.resize(data.size());
-        expectedLambda.resize(data.size());
-
+        // Retrieve the correct results
         if (usePreviousResults && std::filesystem::is_regular_file(previousResultsPath)) {
+            // Read the results from file
             std::cout << "Reading file '" << previousResultsPath.string()
                       << "' to retrieve the results of the sequential implementation of '"
                       << fileName << "' so to check the results" << std::endl;
             DataReader::readPiLambda(previousResultsPath, expectedPi, expectedLambda);
         } else {
-            cluster::utils::Timer::initTimers();
+            // Resize pi and lambda to hold the results
+            expectedPi.resize(data.size());
+            expectedLambda.resize(data.size());
+
+            // Extract the iterators
             auto piIterator = expectedPi.begin();
             auto lambdaIterator = expectedLambda.begin();
+            // Execute the sequential implementation to get the correct results
+            cluster::utils::Timer::zeroTimers();
             std::cout << "Running sequential implementation of '" << fileName
                       << "' to check the results" << std::endl;
             SequentialClustering::cluster(
                     data.begin(), data.size(), dimension, piIterator, lambdaIterator);
+            // Store the results, if requested
             if (usePreviousResults) {
                 DataWriter::writePiLambda(previousResultsPath, expectedPi, expectedLambda);
             }
@@ -462,6 +608,7 @@ bool checkTest(const std::filesystem::path &filePath,
     }
     // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 
+    // CHeck if the computed results are correct
     return ResultsChecker::checkResults(resultPi.cbegin(),
                                         resultPi.cend(),
                                         resultLambda.cbegin(),
@@ -472,10 +619,17 @@ bool checkTest(const std::filesystem::path &filePath,
                                         expectedLambda.cend());
 }
 
+/**
+ * Utility function that appends to the specified vector the specified elements.
+ *
+ * @tparam T Type of the elements to append.
+ * @param vector Vector where the elements will be appended.
+ * @param elements Elements to append.
+ */
 template <typename T>
-void addAll(std::vector<T> &vector, const std::initializer_list<T> values) {
+void addAll(std::vector<T> &vector, const std::initializer_list<T> elements) {
 
-    for (const T &value : values) {
+    for (const T &value : elements) {
         vector.template emplace_back(value);
     }
 }

@@ -1,8 +1,9 @@
 /*
  * Implementation of the timer.
  *
- * @author DeB, Jonathan
- * @version 1.0 2022-07-25
+ * @author DeB
+ * @author Jonathan
+ * @version 1.1 2022-08-16
  * @since 1.0
  */
 #include "../../include/utils/Timer.h"
@@ -18,8 +19,12 @@ std::array<Timer::TimerTimePoint, Timer::TIMERS_COUNT> Timer::lastTimers{};
  */
 std::array<Timer::TimerDuration, Timer::TIMERS_COUNT> Timer::durations{};
 
-void Timer::reset() {
-    
+/**
+ * Zeroes all the durations of the timers.
+ */
+void Timer::zeroTimers() {
+
+    // Initialize to 0 all the timers
     for (std::size_t i = 0; i < TIMERS_COUNT; i++) {
         durations[i] = TimerDuration::zero();
     }

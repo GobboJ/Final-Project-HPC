@@ -1,7 +1,8 @@
 /*
  * MalformedException implementation.
  *
- * @author DeB, Jonathan
+ * @author DeB
+ * @author Jonathan
  * @version 1.1 2022-08-06
  * @since 1.0
  */

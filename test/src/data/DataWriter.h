@@ -1,8 +1,8 @@
 #ifndef FINAL_PROJECT_HPC_DATAWRITER_H
 #define FINAL_PROJECT_HPC_DATAWRITER_H
 
-#include <vector>
 #include <filesystem>
+#include <vector>
 
 namespace cluster::test::data {
 
@@ -10,6 +10,7 @@ namespace cluster::test::data {
  * Writer that writes some information to files.
  *
  * @author DeB
+ * @author Jonathan
  * @version 1.1 2022-08-06
  * @since 1.0
  */
@@ -27,8 +28,8 @@ public:
      * z1, x2, y2, z2, x3, y3, z3]
      * </pre>
      * @param dimension Dimension of each point.
-     * @param piVector Vector containing the values of pi.
-     * @param lambdaVector Vector containing the values of lambda.
+     * @param piVector Vector containing the values of <code>pi</code>.
+     * @param lambdaVector Vector containing the values of <code>lambda</code>.
      * @throws IOException If an I/O error occurs while writing to the file.
      */
     static void createOutputFile(const std::filesystem::path &outputFilePath,
@@ -39,14 +40,14 @@ public:
 
     /**
      * Outputs a file containing code to visualize a dendrogram in Mathematica, given pi and lambda.
-     * @param outputFilePath Path of the file where the output will be written.
      *
-     * @param piVector The Pi vector.
-     * @param lambdaVector The Lambda vector.
+     * @param first Path of the file where the output will be written.
+     * @param second Vector containing the values of <code>pi</code>.
+     * @param lambdaVector Vector containing the values of <code>lambda</code>.
      * @throws IOException If an I/O error occurs while writing to the file.
      */
-    static void createMathematicaOutputFile(const std::filesystem::path &outputFilePath,
-                                            const std::vector<std::size_t> &piVector,
+    static void createMathematicaOutputFile(const std::filesystem::path &first,
+                                            const std::vector<std::size_t> &second,
                                             const std::vector<double> &lambdaVector);
 
     /**

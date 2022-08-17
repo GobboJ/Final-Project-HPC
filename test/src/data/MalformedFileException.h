@@ -7,7 +7,8 @@ namespace cluster::test::data {
 /**
  * Exception thrown when the input data file does not follow the correct format.
  *
- * @author DeB, Jonathan
+ * @author DeB
+ * @author Jonathan
  * @version 1.1 2022-08-06
  * @since 1.0
  */

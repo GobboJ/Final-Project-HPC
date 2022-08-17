@@ -20,7 +20,7 @@ namespace cluster::test::types {
  * @since version date
  */
 class DataTypesTester {
-    using DataIteratorType = cluster::utils::DataIteratorType;
+    using DataIteratorType = cluster::utils::DataType;
     using DataIteratorTypeUtils = cluster::utils::DataIteratorTypeUtils;
     using DataIteratorUtils = cluster::utils::DataIteratorUtils;
 
@@ -108,9 +108,9 @@ private:
             std::cout << "\033[" << this->maxResultLength + 3 << "D"
                       << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m";
 
-            if (DataIteratorUtils::lastIteratorType != dataInfo.iteratorType ||
-                DataIteratorUtils::lastFirstLevelIteratorType != dataInfo.firstLevelIteratorType ||
-                DataIteratorUtils::lastSecondLevelIteratorType !=
+            if (DataIteratorUtils::lastDataType != dataInfo.iteratorType ||
+                DataIteratorUtils::lastFirstLevelDataType != dataInfo.firstLevelIteratorType ||
+                DataIteratorUtils::lastSecondLevelDataType !=
                         dataInfo.secondLevelIteratorType) {
                 std::cout << " \033[31m("
                           << DataIteratorTypeUtils::getDescription(dataInfo.iteratorType,

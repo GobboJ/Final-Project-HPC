@@ -1,4 +1,3 @@
-
 #ifndef FINAL_PROJECT_HPC_TIMER_H
 #define FINAL_PROJECT_HPC_TIMER_H
 #include <array>
@@ -7,6 +6,7 @@
 #include <iostream>
 
 namespace cluster::utils {
+
 /**
  * Utility class allowing to measure the time needed to execute a block of code. To use this class,
  * just invoke the <code>Timer::start</code> method before the first line of the block of code to
@@ -20,14 +20,15 @@ namespace cluster::utils {
  * </pre>
  * <br>
  * This class allows to use up to 10 timers, numbered from <code>0</code> to <code>9</code>.
- * However, before using them, remember to initialize them invoking the
- * <code>Timer::initTimers</code> method.<br>
+ * However, before using them, remember to zero them invoking the
+ * <code>Timer::zeroTimers</code> method.<br>
  * The timers can be enabled or disabled by using the <code>TIMERS</code> macro. In particular, if
  * it is not defined, then any invocation to any of the methods provided by this class has no
  * effect, hence the timers are disabled.
  *
  * @author DeB
- * @version 1.0.1 2022-08-05
+ * @author Jonathan
+ * @version 1.1 2022-08-16
  * @since 1.0
  */
 class Timer {
@@ -53,16 +54,10 @@ private:
 
 public:
     /**
-     * Utility method that initializes all the 10 timers. This method must be called before any
+     * Utility method that zeroes all the 10 timers. This method must be called before any
      * timer is used.
      */
-    static inline void initTimers() {
-
-        // Initialize to 0 all the timers
-        for (std::size_t i = 0; i < TIMERS_COUNT; i++) {
-            durations[i] = TimerDuration::zero();
-        }
-    }
+    static void zeroTimers();
 
     /**
      * Starts or resumes the timer with the specified identifier.
@@ -98,38 +93,44 @@ public:
 
     /**
      * Prints to the console, in a human-readable format, the duration held by the timer with the
-     * specified identifier.
+     * specified identifier.<br>
+     * This method allows also to compute the mean execution time of the block(s) of code enclosed
+     * between the <code>Timer::start</code> and <code>Timer::stop</code> invocations of the timer
+     * with the specified identifier.
      *
      * @tparam N Identifier of the timer to print.
+     * @param times The number of times the block(s) of code enclosed between the timer invocations
+     * is executed. This value is used to divide the total timer duration so to compute the mean
+     * execution time of the block(s) of code.
      */
     template <std::size_t N>
-    static void print(std::size_t mean = 1) {
+    static void print(std::size_t times = 1) {
 
         // Check the validity of the identifier of the timer
         static_assert(N < TIMERS_COUNT, "Invalid timer index");
 
         // Print the duration of the timer
-        printDuration(durations[N] / mean);
+        printDuration(durations[N] / times);
     }
 
     /**
      * Prints to the console, in a human-readable format, the sum of the durations held by all the
-     * specified timers. If no identifier is specified, then the <code>0</code> duration is printed.
+     * specified timers. If no identifier is specified, then the <code>0</code> duration is
+     * printed.<br>
+     * This method allows also to compute the mean execution time of all the blocks of code enclosed
+     * between the <code>Timer::start</code> and <code>Timer::stop</code> invocations of all the
+     * timers with the specified identifiers.
      *
      * @tparam Ns Identifiers of the timers whose sum of the durations is printed.
+     * @param times The number of times the blocks of code enclosed between the invocations of
+     * timers are executed. This value is used to divide the total timer durations so to compute the
+     * mean execution time of the blocks of code.
      */
     template <std::size_t... Ns>
-    static void printTotal(std::size_t mean = 1) {
-        
+    static void printTotal(std::size_t times = 1) {
+
         // Sum the durations and print the result
-        printDuration(sum<Ns...>() / mean);
-    }
-
-    static void reset();
-
-    template <std::size_t N>
-    static TimerDuration getTimerDuration() {
-        return durations[N];
+        printDuration(sum<Ns...>() / times);
     }
 
 private:
@@ -189,6 +190,10 @@ private:
      */
     template <std::size_t N, std::size_t... Ns>
     static TimerDuration sum() {
+
+        // Check the validity of the identifier of the timer
+        static_assert(N < TIMERS_COUNT, "Invalid timer index");
+
         if constexpr (sizeof...(Ns) == 0) {
             return durations[N];
         } else {
@@ -211,7 +216,7 @@ public:
     /**
      * Does nothing because the <code>TIMERS</code> macro is not defined.
      */
-    static inline void initTimers() {
+    static inline void zeroTimers() {
     }
 
     /**
@@ -230,18 +235,21 @@ public:
 
     /**
      * Does nothing because the <code>TIMERS</code> macro is not defined.
+     *
+     * @param times Ignored.
      */
     template <std::size_t>
-    static inline void print() {
+    static inline void print([[maybe_unused]] std::size_t times = 1) {
     }
 
     /**
      * Does nothing because the <code>TIMERS</code> macro is not defined.
      *
      * @tparam ... Ignored.
+     * @param times Ignored.
      */
     template <std::size_t...>
-    static void printTotal() {
+    static inline void printTotal([[maybe_unused]] std::size_t times = 1) {
     }
 #endif
 };

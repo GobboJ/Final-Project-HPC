@@ -20,16 +20,16 @@ class PointerOnlyConstIterableSubContainer {
 
 public:
     PointerOnlyConstIterableSubContainer(const std::string &secondLevelName,
-                                         utils::DataIteratorType iteratorType,
-                                         utils::DataLevelIteratorType secondLevelIteratorType) :
+                                         utils::DataType iteratorType,
+                                         utils::DataLevelType secondLevelIteratorType) :
         normal{PointerTypeNameComposer::composeName(secondLevelName, ""),
                iteratorType,
-               utils::DataLevelIteratorType::ITERATOR,
+               utils::DataLevelType::ITERATOR,
                secondLevelIteratorType},
         normalConstIterator{PointerTypeNameComposer::composeName(secondLevelName, "const_iterator"),
                             iteratorType,
-                            utils::DataLevelIteratorType::ITERATOR,
-                            utils::DataLevelIteratorType::ITERATOR} {
+                            utils::DataLevelType::ITERATOR,
+                            utils::DataLevelType::ITERATOR} {
 
         normal = new IC[N];
         normalConstIterator = new typename IC::const_iterator[N];

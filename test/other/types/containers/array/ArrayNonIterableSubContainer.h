@@ -22,9 +22,9 @@ class ArrayNonIterableSubContainer {
 public:
     ArrayNonIterableSubContainer(const std::string &firstLevelName,
                                  const std::string &secondLevelName,
-                                 utils::DataIteratorType iteratorType,
-                                 utils::DataLevelIteratorType firstLevelIteratorType,
-                                 utils::DataLevelIteratorType secondLevelIteratorType) :
+                                 utils::DataType iteratorType,
+                                 utils::DataLevelType firstLevelIteratorType,
+                                 utils::DataLevelType secondLevelIteratorType) :
         normal{ArrayTypeNameComposer::composeName(firstLevelName, secondLevelName),
                iteratorType,
                firstLevelIteratorType,
@@ -32,12 +32,12 @@ public:
         normalIterator{
                 ArrayTypeNameComposer::composeName(firstLevelName, secondLevelName, "", "iterator"),
                 iteratorType,
-                utils::DataLevelIteratorType::ITERATOR,
+                utils::DataLevelType::ITERATOR,
                 secondLevelIteratorType},
         normalConstIterator{ArrayTypeNameComposer::composeName(
                                     firstLevelName, secondLevelName, "", "const_iterator"),
                             iteratorType,
-                            utils::DataLevelIteratorType::ITERATOR,
+                            utils::DataLevelType::ITERATOR,
                             secondLevelIteratorType}
 
     {

@@ -30,7 +30,7 @@ using cluster::test::types::CollectionCreator;
 using cluster::test::types::DataTypesTest;
 using cluster::test::types::DataTypesTester;
 using cluster::test::types::containers::array::ArrayContainer;
-using cluster::utils::DataIteratorType;
+using cluster::utils::DataIteratorUtils;
 using cluster::utils::DataIteratorUtils;
 using cluster::utils::PiLambdaIteratorUtils;
 

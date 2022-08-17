@@ -18,11 +18,11 @@ class PointerNonIterableSubContainer {
 
 public:
     PointerNonIterableSubContainer(const std::string &secondLevelName,
-                                   utils::DataIteratorType iteratorType,
-                                   utils::DataLevelIteratorType secondLevelIteratorType) :
+                                   utils::DataType iteratorType,
+                                   utils::DataLevelType secondLevelIteratorType) :
         normal{PointerTypeNameComposer::composeName(secondLevelName, ""),
                iteratorType,
-               utils::DataLevelIteratorType::ITERATOR,
+               utils::DataLevelType::ITERATOR,
                secondLevelIteratorType} {
 
         normal = new IC[N];

@@ -1,9 +1,9 @@
 #ifndef FINAL_PROJECT_HPC_SEQUENTIALCLUSTERING_H
 #define FINAL_PROJECT_HPC_SEQUENTIALCLUSTERING_H
 
-#include "Timer.h"
 #include "../../include/utils/Types.h"
 #include "Logger.h"
+#include "Timer.h"
 
 namespace cluster::sequential {
 
@@ -12,10 +12,11 @@ namespace cluster::sequential {
  *
  * @author DeB
  * @author Jonathan
- * @version 1.2 2022-08-01
+ * @version 1.3 2022-08-16
  * @since 1.0
  */
 class SequentialClustering {
+    // Imports
     using Logger = utils::Logger;
     using Timer = utils::Timer;
     using PiLambdaIteratorUtils = utils::PiLambdaIteratorUtils;
@@ -24,70 +25,64 @@ public:
     /**
      * Sequential implementation of the clustering algorithm.
      *
-     * @tparam D Type of the iterator that iterates over the data samples to cluster.
-     * @tparam P Type of the iterator that allows to fill the data structure holding the
-     * <code>pi</code> values.
-     * @tparam L Type of the iterator that allows to fill the data structure holding the
-     * <code>lambda</code> values.
-     * @param dataIterator Iterator over the set of data samples to cluster.
+     * @tparam D Type of the data structure/iterator holding the data samples to cluster.
+     * @tparam P Type of the data structure/iterator holding the <code>pi</code> values.
+     * @tparam L Type of the data structure/iterator holding the <code>lambda</code> values.
+     * @param data Data structure/iterator holding the data samples to cluster.
      * @param dataSamplesCount Number of data samples.
      * @param dimension Number of attributes of each sample.
-     * @param piIterator Output iterator that will be used to fill the underlying data structure
-     * with the <code>pi</code> values. The underlying data structure <b>MUST BE</b> big enough to
-     * contain all the <code>pi</code> values, which are exactly <code>dataSamplesCount</code>.
-     * @param lambdaIterator Output iterator that will be used to fill the underlying data structure
-     * with the <code>lambda</code> values. The underlying data structure <b>MUST BE</b> big enough
-     * to contain all the <code>lambda</code> values, which are exactly
+     * @param pi Data structure/iterator holding the <code>pi</code> values. This data structure
+     * <b>MUST BE</b> big enough to contain all the <code>pi</code> values, which are exactly
      * <code>dataSamplesCount</code>.
+     * @param lambda Data structure/iterator holding the <code>lambda</code> values. This data
+     * structure <b>MUST BE</b> big enough to contain all the <code>pi</code> values, which are
+     * exactly <code>dataSamplesCount</code>.
      */
     template <utils::SequentialDataIterator D, utils::PiIterator P, utils::LambdaIterator L>
     static void cluster(const D &data,
                         const std::size_t dataSamplesCount,
                         const std::size_t dimension,
-                        P &piIterator,
-                        L &lambdaIterator) {
-
-        // Initialize the timers and start logging the console output, if requested
-        // Timer::initTimers();
-        Logger::startLoggingProgress<0, 1, 2, 3, 4>(dataSamplesCount);
+                        P &pi,
+                        L &lambda) {
 
         Timer::start<0>();
-        // Initialize the part-row values
+        // Array containing the part-row values
         auto *__restrict__ const m = new double[dataSamplesCount];
 
+        // Efficient iterator pointing to the first element of pi
         const auto piBegin = PiLambdaIteratorUtils::createEfficientIterator<std::size_t, P>(
-                piIterator, "First element of pi");
+                pi, "First element of pi");
+        // Efficient iterator pointing to the first element of lambda
         const auto lambdaBegin = PiLambdaIteratorUtils::createEfficientIterator<double, L>(
-                lambdaIterator, "First element of lambda");
+                lambda, "First element of lambda");
 
-        // Iterator pointing to pi[i], with i ranging from 0 to dataSamplesCount-1.
-        // Initially it points to pi[0], i.e., the first element of pi.
+        // Efficient iterator pointing to the n-th element of pi
         auto currentPi = piBegin;
-        // Iterator pointing to lambda[i], with i ranging from 0 to dataSamplesCount-1.
-        // Initially it points to lambda[0], i.e., the first element of lambda.
+        // Efficient iterator pointing to the n-th element of lambda
         auto currentLambda = lambdaBegin;
-        // Iterator pointing to the n-th element of the dataset.
-        // Initially it points to the first element of the dataset.
+
+        // Efficient iterator pointing to the n-th element of the dataset.
         auto currentData = utils::DataIteratorUtils::createEfficientIterator(data, "Current data");
-        auto startData =
+        auto dataBegin =
                 utils::DataIteratorUtils::createEfficientIterator(data, "First element of data");
 
         Timer::stop<0>();
 
-        /*******************************************************************************************
-         * 1) Set pi(1) to 0, lambda(1) to infinity
-         ******************************************************************************************/
-        Timer::start<1>();
+        // Log the initial progress
+        Logger::startLoggingProgress<0, 1, 2, 3, 4>(dataSamplesCount);
 
+        Timer::start<1>();
+        // **** 1) Set pi(1) to 0, lambda(1) to infinity ****
         initializeNewPoint<P, L>(currentPi, currentLambda, 0);
         Timer::stop<1>();
 
         Timer::start<9>();
         // No more operations need to be performed for the first point, so move to the second
-        // element of the dataset
         utils::DataIteratorUtils::moveNext<D>(currentData, dimension);
 
-        double *distanceEnd = &(m[1]);
+        // Useful pointer pointing to the element following the last element of m containing a valid
+        // distance
+        const double *distanceEnd = &(m[1]);
 
         // Perform the clustering algorithm for all the remaining data samples
         for (std::size_t n = 1; n < dataSamplesCount; n++) {
@@ -97,129 +92,30 @@ public:
             // Log the progress every 1000 samples
             Logger::updateProgress<1000, 0, 1, 2, 3, 4>(n, dataSamplesCount);
 
-            /***************************************************************************************
-             * 1) Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
-             **************************************************************************************/
             Timer::start<1>();
-
+            // **** 1) Set pi(n + 1) to n + 1, lambda(n + 1) to infinity ****
             initializeNewPoint<P, L>(currentPi, currentLambda, n);
-
             Timer::stop<1>();
 
-            /***************************************************************************************
-             * 2) Set M(i) to d(i, n + 1) for i = 1,..,n
-             **************************************************************************************/
             Timer::start<2>();
-
-            // Iterator over all the m[i] with 0 <= i < n
-            auto *__restrict__ mIterator = &(m[0]);
-            // Iterator over the first n-1 elements of the dataset
-            auto distanceDataIterator = startData;
-            // Value of the n-th value of the dataset
+            // Pointer to the n-th data sample of the dataset
             const double *__restrict__ const currentDataN =
-                    utils::DataIteratorUtils::getCurrentElement<D>(currentData);
-            const double *currentDataNEnd = currentDataN + dimension;
-
-            // Compute the distances between *distanceDataIterator, which refers to the i-th element
-            // of the dataset, and *currentDataN, which instead refers to the i-th element of the
-            // dataset
-            while (mIterator != distanceEnd) {
-                const double *const __restrict__ element =
-                        utils::DataIteratorUtils::getCurrentElement<D>(distanceDataIterator);
-                *mIterator = SequentialClustering::distance(currentDataN, currentDataNEnd, element);
-                ++mIterator;
-                utils::DataIteratorUtils::moveNext<D>(distanceDataIterator, dimension);
-            }
-
+                    utils::DataIteratorUtils::getCurrentSample<D>(currentData);
+            // Pointer to the first byte after the n-th data sample of the dataset
+            const double *__restrict__ const currentDataNEnd = currentDataN + dimension;
+            // **** 2) Set M(i) to d(i, n + 1) for i = 1,..,n ****
+            computeDistances<D>(
+                    dataBegin, dimension, currentDataN, currentDataNEnd, m, distanceEnd);
             Timer::stop<2>();
 
-            /***************************************************************************************
-             * 3) For i from 1 to n
-             **************************************************************************************/
             Timer::start<3>();
-
-            // Iterator over the first n-1 values of pi
-            auto iteratorOverPi = piBegin;
-            // Iterator over the first n-1 values of lambda
-            auto iteratorOverLambda = lambdaBegin;
-
-            // Iterator over the first n-1 values of m
-            const double *__restrict__ distanceIterator = &(m[0]);
-
-            while (distanceIterator != distanceEnd) {
-                // Reference to pi[i]
-                std::size_t &piOfI =
-                        PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(iteratorOverPi);
-                // Reference to lambda[i]
-                double &lambdaOfI =
-                        PiLambdaIteratorUtils::getCurrentElement<double, L>(iteratorOverLambda);
-                // Value of m[i]
-                const double mOfI = *distanceIterator;
-                // Reference to m[pi[i]]
-                double &mOfPiOfI = m[piOfI];
-
-                /***********************************************************************************
-                 * if lambda(i) >= M(i)
-                 **********************************************************************************/
-                if (lambdaOfI >= mOfI) {
-                    /*******************************************************************************
-                     * set M(pi(i)) to min { M(pi(i)), lambda(i) }
-                     ******************************************************************************/
-                    mOfPiOfI = std::min(mOfPiOfI, lambdaOfI);
-
-                    /*******************************************************************************
-                     * set lambda(i) to M(i)
-                     ******************************************************************************/
-                    lambdaOfI = mOfI;
-
-                    /*******************************************************************************
-                     * set pi(i) to n + 1
-                     ******************************************************************************/
-                    piOfI = n;
-                } else {  // if lambda(i) < M(i)
-                    /*******************************************************************************
-                     * set M(pi(i)) to min { M(pi(i)), M(i) }
-                     ******************************************************************************/
-                    mOfPiOfI = std::min(mOfPiOfI, mOfI);
-                }
-                // Move to the next element
-                utils::PiLambdaIteratorUtils::moveNext<std::size_t, P>(iteratorOverPi);
-                utils::PiLambdaIteratorUtils::moveNext<double, L>(iteratorOverLambda);
-                ++distanceIterator;
-            }
+            // **** 3) For i from 1 to n ****
+            addNewPoint<P, L>(piBegin, lambdaBegin, m, distanceEnd, n);
             Timer::stop<3>();
 
-            /***************************************************************************************
-             * 4) For i from 1 to n
-             **************************************************************************************/
             Timer::start<4>();
-
-            // Move the iterators to the beginning
-            iteratorOverPi = piBegin;
-            iteratorOverLambda = lambdaBegin;
-
-            for (std::size_t i = 0; i <= n - 1; i++) {
-                // Reference to pi[i]
-                std::size_t &piOfI =
-                        PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(iteratorOverPi);
-                double lambdaOfI =
-                        PiLambdaIteratorUtils::getCurrentElement<double, L>(iteratorOverLambda);
-                double lambdaOfPiOfI =
-                        PiLambdaIteratorUtils::getElementAt<double, L>(lambdaBegin, piOfI);
-
-                /***********************************************************************************
-                 * if lambda(i) >= lambda(pi(i))
-                 **********************************************************************************/
-                if (lambdaOfI >= lambdaOfPiOfI) {
-                    /*******************************************************************************
-                     * set pi(i) to n + 1
-                     ******************************************************************************/
-                    piOfI = n;
-                }
-                // Move to the next element of pi and lambda
-                utils::PiLambdaIteratorUtils::moveNext<std::size_t, P>(iteratorOverPi);
-                utils::PiLambdaIteratorUtils::moveNext<double, L>(iteratorOverLambda);
-            }
+            // **** 4) For i from 1 to n
+            fixStructure<P, L>(piBegin, lambdaBegin, n);
             Timer::stop<4>();
 
             Timer::start<0>();
@@ -230,7 +126,6 @@ public:
 
         // Deallocate m, since it is not needed anymore
         delete[] m;
-
         Timer::stop<0>();
 
         // Log the final progress
@@ -238,25 +133,179 @@ public:
     }
 
 private:
+    /**
+     * Initialize the value of <code>pi</code> and <code>lambda</code> for a new point.<br>
+     * This method takes care of advancing the specified efficient iterators to the next element of
+     * <code>pi</code> and <code>lambda</code>.
+     *
+     * @tparam P Type of the data structure/iterator holding <code>pi</code>.
+     * @tparam L Type of the data structure/iterator holding <code>lambda</code>.
+     * @tparam EP Type of the efficient iterator iterating over <code>pi</code>.
+     * @tparam EL Type of the efficient iterator iterating over <code>lambda</code>.
+     * @param currentPi Efficient iterator pointing to the current element of <code>pi</code>.
+     * @param currentLambda Efficient iterator pointing to the current element of
+     * <code>lambda</code>.
+     * @param n Index of the new point to add.
+     */
     template <typename P, typename L, typename EP, typename EL>
-    static inline void initializeNewPoint(EP &currentPi, EL &currentLambda, std::size_t n) {
+    static inline void initializeNewPoint(EP &currentPi, EL &currentLambda, const std::size_t n) {
 
-        // Set pi[n] to n
+        // **** Set pi[n] to n ****
         PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(currentPi) = n;
         PiLambdaIteratorUtils::moveNext<std::size_t, P>(currentPi);
 
-        // Set lambda[n] to infinity
+        // **** Set lambda[n] to infinity ****
         PiLambdaIteratorUtils::getCurrentElement<double, L>(currentLambda) =
                 std::numeric_limits<double>::infinity();
         PiLambdaIteratorUtils::moveNext<double, L>(currentLambda);
     }
 
     /**
+     * Computes the distances between the point to add and all the points that have already
+     * been added to the dendrogram.
+     *
+     * @tparam D Type of the data structure/iterator holding the data samples to cluster.
+     * @tparam ED Type of the efficient iterator iterating over the data structure holding the data
+     * samples to cluster.
+     * @param dataBegin Efficient iterator pointing to the first data sample.
+     * @param dimension Dimension of the data samples.
+     * @param currentDataN Pointer to the first attribute of the point to add.
+     * @param currentDataNEnd Pointer to the attribute following the last attribute of the point to
+     * add. This value acts as a placeholder, and it is used to identify the end of the data sample.
+     * @param mBegin Pointer to the first element of <code>m</code>.
+     * @param mEnd Pointer to the element following the last valid element of <code>m</code>. This
+     * value acts as a placeholder, and it is used to identify the last element of <code>m</code>
+     * that will be filled with valid distances.
+     */
+    template <typename D, typename ED>
+    static inline void computeDistances(ED dataBegin,
+                                        const std::size_t dimension,
+                                        const double *__restrict__ const currentDataN,
+                                        const double *__restrict__ const currentDataNEnd,
+                                        double *__restrict__ const mBegin,
+                                        const double *__restrict__ const mEnd) {
+
+        // Iterator over all the m[i] with 0 <= i < n
+        auto *__restrict__ mIterator = mBegin;
+
+        // Compute the distances between the n-th element of the data set and all the elements
+        // already added to the dendrogram
+        while (mIterator != mEnd) {
+            // Extract the data sample
+            const double *const __restrict__ dataSample =
+                    utils::DataIteratorUtils::getCurrentSample<D>(dataBegin);
+            // Compute the distance
+            *mIterator = SequentialClustering::distance(currentDataN, currentDataNEnd, dataSample);
+            // Move to the next element
+            ++mIterator;
+            utils::DataIteratorUtils::moveNext<D>(dataBegin, dimension);
+        }
+    }
+
+    /**
+     * Adds to the dendrogram the new point.
+     *
+     * @tparam P Type of the data structure/iterator holding <code>pi</code>.
+     * @tparam L Type of the data structure/iterator holding <code>lambda</code>.
+     * @tparam EP Type of the efficient iterator iterating over <code>pi</code>.
+     * @tparam EL Type of the efficient iterator iterating over <code>lambda</code>.
+     * @param piBegin Efficient iterator pointing to the first element of <code>pi</code>.
+     * @param lambdaBegin Efficient iterator pointing to the first element of <code>lambda</code>.
+     * @param mBegin Pointer pointing to the first element of <code>m</code>.
+     * @param mEnd Pointer pointing to the element <code>m[n]</code>. This value acts as a
+     * placeholder, and it is used to identify the last element of <code>m</code> that contains a
+     * valid distance.
+     * @param n Index of the point to add.
+     */
+    template <typename P, typename L, typename EP, typename EL>
+    static inline void addNewPoint(EP piBegin,
+                                   EL lambdaBegin,
+                                   double *__restrict__ const mBegin,
+                                   const double *__restrict__ const mEnd,
+                                   const std::size_t n) {
+
+        // Iterator over the first n-1 values of m
+        const double *__restrict__ distanceIterator = mBegin;
+
+        while (distanceIterator != mEnd) {
+            // Reference to pi[i]
+            std::size_t &piI = PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(piBegin);
+            // Reference to lambda[i]
+            double &lambdaI = PiLambdaIteratorUtils::getCurrentElement<double, L>(lambdaBegin);
+            // Value of m[i]
+            const double currentDistance = *distanceIterator;
+            // Reference to m[pi[i]]
+            double &mPiI = mBegin[piI];
+
+            // **** if lambda(i) >= M(i) ****
+            if (lambdaI >= currentDistance) {
+                // **** set M(pi(i)) to min { M(pi(i)), lambda(i) } ****
+                mPiI = std::min(mPiI, lambdaI);
+                // **** set lambda(i) to M(i) ****
+                lambdaI = currentDistance;
+                // **** set pi(i) to n + 1 ****
+                piI = n;
+            } else {  // **** if lambda(i) < M(i) ****
+                // **** set M(pi(i)) to min { M(pi(i)), M(i) } ****
+                mPiI = std::min(mPiI, currentDistance);
+            }
+            // Move to the next element
+            utils::PiLambdaIteratorUtils::moveNext<std::size_t, P>(piBegin);
+            utils::PiLambdaIteratorUtils::moveNext<double, L>(lambdaBegin);
+            ++distanceIterator;
+        }
+    }
+
+    /**
+     * Fixes the structure of the dendrogram by updating the representative of a point if its
+     * representative connects to the newly added point before connecting to the point.
+     *
+     * @tparam P Type of the data structure/iterator holding <code>pi</code>.
+     * @tparam L Type of the data structure/iterator holding <code>lambda</code>.
+     * @tparam EP Type of the efficient iterator iterating over <code>pi</code>.
+     * @tparam EL Type of the efficient iterator iterating over <code>lambda</code>.
+     * @param piBegin Efficient iterator pointing to the first element of <code>pi</code>.
+     * @param lambdaBegin Efficient iterator pointing to the first element of <code>lambda</code>.
+     * @param n Index of the newly added point.
+     */
+    template <typename P, typename L, typename EP, typename EL>
+    static inline void fixStructure(const EP &piBegin, const EL &lambdaBegin, const std::size_t n) {
+
+        // Iterator pointing to pi[i]
+        EP currentPi = piBegin;
+        // Iterator pointing to lambda[i]
+        EL currentLambda = lambdaBegin;
+
+        // Loop over all the previously added points
+        for (std::size_t i = 0; i <= n - 1; i++) {
+            // Reference to pi[i]
+            std::size_t &piI = PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(currentPi);
+            // Value of lambda[i]
+            const double lambdaI =
+                    PiLambdaIteratorUtils::getCurrentElement<double, L>(currentLambda);
+            // Value of lambda[pi[i]]
+            const double lambdaPiI =
+                    PiLambdaIteratorUtils::getElementAt<double, L>(lambdaBegin, piI);
+
+            // **** if lambda(i) >= lambda(pi(i)) ****
+            if (lambdaI >= lambdaPiI) {
+                // **** set pi(i) to n + 1 ****
+                piI = n;
+            }
+            // Move to the next element of pi and lambda
+            utils::PiLambdaIteratorUtils::moveNext<std::size_t, P>(currentPi);
+            utils::PiLambdaIteratorUtils::moveNext<double, L>(currentLambda);
+        }
+    }
+
+    /**
      * Computes the Euclidean distance between two points.
      *
-     * @param firstPoint The first point.
-     * @param secondPoint The second point.
-     * @param dimension The dimension of each point.
+     * * @param firstPointBegin Pointer to the first attribute of the first data sample.
+     * @param firstPointEnd Pointer to the attribute following the last attribute of the first
+     * data sample. This value acts as a placeholder, and it is used to identify the end of the
+     * first point.
+     * @param secondPointBegin Pointer to the first attribute of the second data sample.
      * @return The distance between the two points.
      */
     static inline double distance(const double *__restrict__ const firstPointBegin,

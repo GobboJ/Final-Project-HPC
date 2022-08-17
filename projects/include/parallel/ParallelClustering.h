@@ -1,12 +1,12 @@
 #ifndef FINAL_PROJECT_HPC_PARALLELCLUSTERING_H
 #define FINAL_PROJECT_HPC_PARALLELCLUSTERING_H
 
-#include "Timer.h"
+#include "../utils/DataIteratorUtils.h"
 #include "../utils/Types.h"
 #include "DistanceComputers.h"
-#include "../utils/DataIteratorUtils.h"
 #include "Logger.h"
 #include "PiLambdaIteratorUtils.h"
+#include "Timer.h"
 #include <cmath>
 #include <immintrin.h>
 #include <limits>
@@ -19,16 +19,36 @@ namespace cluster::parallel {
 /**
  * Class providing a parallel implementation of the clustering algorithm.<br>
  * This class offers only one method that takes several template arguments that can be used to
- * customize its behaviour.
+ * customize its behaviour.<br>
+ * Moreover, this method uses the first 6 timers offered by the <code>Timer</code> class to measure
+ * the time taken by each step of the algorithm.
+ *
+ * @tparam PD <code>true</code> if the clustering method should parallelize the computation of the
+ * distance using threads, <code>false</code> otherwise.
+ * @tparam PF <code>true</code> if the clustering method should parallelize using threads the
+ * computation of the structural fix after a new point is added to the dendrogram,
+ * <code>false</code> otherwise.
+ * @tparam PS <code>true</code> if the clustering method should parallelize the computation of the
+ * square roots using threads, <code>false</code> otherwise. This template argument take effect
+ * only if the distance computation algorithm is one of:
+ * <ul>
+ *      <li><code>DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT</code>;</li>
+ *      <li><code>DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT</code>.</li>
+ * </ul>
+ * In all the other cases, it has no effect.
+ * @tparam A <code>true</code> if the clustering method should check for the memory alignment of the
+ * data samples, <code>false</code> otherwise. This template argument take effect only if the
+ * distance computation algorithm is not <code>DistanceComputers::CLASSICAL</code>.
  *
  * @author DeB
  * @author Jonathan
- * @version 1.5 2022-08-01
+ * @version 1.6 2022-08-16
  * @since 1.0
  */
-template <bool S2 = true, bool S4 = false, bool S5 = false>
+template <bool PD = true, bool PF = false, bool PS = false, bool A = false>
 class ParallelClustering {
 
+    // Imports
     using Logger = utils::Logger;
     using Timer = utils::Timer;
     using PiLambdaIteratorUtils = utils::PiLambdaIteratorUtils;
@@ -44,183 +64,161 @@ private:
     static constexpr std::false_type always_false{};
 
 public:
+    /**
+     * Size of the SSE pack.
+     */
     static const constexpr std::size_t SSE_PACK_SIZE = 2;
+
+    /**
+     * Size of the AVX pack.
+     */
     static const constexpr std::size_t AVX_PACK_SIZE = 4;
-    
+
     /**
      * Parallel implementation of the clustering algorithm.
      *
      * @tparam C Enumeration constant specifying the algorithm to use to compute the distance
      * between two data samples.
-     * @tparam D Type of the iterator that iterates over the data samples to cluster.
-     * @tparam P Type of the iterator that allows to fill the data structure holding the
-     * <code>pi</code> values.
-     * @tparam L Type of the iterator that allows to fill the data structure holding the
-     * <code>lambda</code> values.
-     * @tparam S2 <code>true</code> if this method should parallelize the computation of the
-     * distance using threads, <code>false</code> otherwise.
-     * @tparam S4 <code>true</code> if this method should parallelize the computation of the
-     * stage 4 using threads, <code>false</code> otherwise.
-     * @tparam S5 <code>true</code> if this method should parallelize the computation of the
-     * square roots using threads, <code>false</code> otherwise. This template argument take effect
-     * only if the distance computation algorithm is one of:
-     * <ul>
-     *      <li><code>SSE_OPTIMIZED_NO_SQUARE_ROOT</code>;</li>
-     *      <li><code>AVX_OPTIMIZED_NO_SQUARE_ROOT</code>.</li>
-     * </ul>
-     * In all the other cases, it has no effect.
-     * @param data Iterator over the set of data samples to cluster.
+     * @tparam D Type of the data structure/iterator holding the data samples to cluster.
+     * @tparam P Type of the data structure/iterator holding the <code>pi</code> values.
+     * @tparam L Type of the data structure/iterator holding the <code>lambda</code> values.
+     * @param data Data structure/iterator holding the data samples to cluster.
      * @param dataSamplesCount Number of data samples.
      * @param dimension Number of attributes of each sample.
-     * @param piIterator Output iterator that will be used to fill the underlying data structure
-     * with the <code>pi</code> values. The underlying data structure <b>MUST BE</b> big enough to
-     * contain all the <code>pi</code> values, which are exactly <code>dataSamplesCount</code>.
-     * @param lambdaIterator Output iterator that will be used to fill the underlying data structure
-     * with the <code>lambda</code> values. The underlying data structure <b>MUST BE</b> big enough
-     * to contain all the <code>lambda</code> values, which are exactly
+     * @param pi Data structure/iterator holding the <code>pi</code> values. This data structure
+     * <b>MUST BE</b> big enough to contain all the <code>pi</code> values, which are exactly
      * <code>dataSamplesCount</code>.
+     * @param lambda Data structure/iterator holding the <code>lambda</code> values. This data
+     * structure <b>MUST BE</b> big enough to contain all the <code>pi</code> values, which are
+     * exactly <code>dataSamplesCount</code>.
      * @param distanceComputationThreadsCount Number of threads to use to parallelize the
      * computation of the distance between the data samples. If not specified, or if <code>0</code>
      * is specified, then this method uses the default number of threads computed by OpenMP.<br>
-     * This parameter is ignored only if <code>S2</code> is <code>false</code>.
-     * @param stage4ThreadsCount Number of threads to use to parallelize the computation of stage 4.
-     * If not specified, or if <code>0</code> is specified, then this method uses the default number
-     * of threads computed by OpenMP.<br>
-     * This parameter is ignored only if <code>S4</code> is <code>false</code>.
+     * This parameter takes effect only if <code>S2</code> is <code>true</code>.
+     * @param structuralFixThreadsCount Number of threads to use to parallelize the computation of
+     * structural fix after a new data sample is added to the dendrogram. If not specified, or if
+     * <code>0</code> is specified, then this method uses the default number of threads computed by
+     * OpenMP.<br> This parameter takes effect only if <code>S4</code> is <code>true</code>.
      * @param squareRootThreadsCount Number of threads to use to parallelize the computation of
      * square roots of the distances. If not specified, or if <code>0</code> is specified, then this
-     * method uses the default number of threads computed by OpenMP.<br> This parameter is ignored
-     * only if <code>S5</code> is <code>false</code>, or if the distance computation algorithm is
-     * neither <code>SSE_OPTIMIZED_NO_SQUARE_ROOT</code> nor
-     * <code>AVX_OPTIMIZED_NO_SQUARE_ROOT</code>.
+     * method uses the default number of threads computed by OpenMP.<br> This parameter takes effect
+     * only if <code>S5</code> is <code>true</code>, and if the distance computation algorithm is
+     * either <code>DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT</code> or
+     * <code>DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT</code>.
+     * @throws std::invalid_argument If the data samples alignment check has been requested and one
+     * of the data samples in not correctly aligned.
      */
-    template <DistanceComputers C, typename D, utils::PiIterator P, utils::LambdaIterator L>
+    template <DistanceComputers C,
+              utils::ParallelDataIterator D,
+              utils::PiIterator P,
+              utils::LambdaIterator L>
     static void cluster(const D &data,
                         const std::size_t dataSamplesCount,
                         const std::size_t dimension,
-                        P &piIterator,
-                        L &lambdaIterator,
+                        P &pi,
+                        L &lambda,
                         const std::size_t distanceComputationThreadsCount = 0,
-                        const std::size_t stage4ThreadsCount = 0,
+                        const std::size_t structuralFixThreadsCount = 0,
                         const std::size_t squareRootThreadsCount = 0) {
 
         Timer::start<0>();
-        // Computes the number of SSE registers that are needed to store a data sample
-        const std::size_t sseDimension = ParallelClustering::computeSseDimension(dimension);
-        // Computes the number of AVX registers that are needed to store a data sample
-        const std::size_t avxDimension = ParallelClustering::computeAvxDimension(dimension);
 
-        std::size_t pointRealDimension;
+        // Computes the stride of the data samples, i.e., the number of doubles between the first
+        // attribute of a data sample and the first attribute of the following sample if they are
+        // contiguous in memory
+        // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
         std::size_t stride;
         if constexpr (C == DistanceComputers::AVX || C == DistanceComputers::AVX_OPTIMIZED ||
                       C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT) {
-            pointRealDimension = avxDimension;
-            stride = avxDimension;
+            stride = ParallelClustering::computeAvxDimension(dimension);
         } else if constexpr (C == DistanceComputers::SSE || C == DistanceComputers::SSE_OPTIMIZED ||
                              C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT) {
-            pointRealDimension = sseDimension;
-            stride = sseDimension;
+            stride = ParallelClustering::computeSseDimension(dimension);
         } else {
-            pointRealDimension = dimension;
             stride = dimension;
         }
 
-        // Initialize the part-row values
-        auto *__restrict__ m = new double[dataSamplesCount];
+        // Array containing the part-row values
+        auto *const __restrict__ m = new double[dataSamplesCount];
 
+        // Efficient iterator pointing to the first element of pi
         const auto piBegin = PiLambdaIteratorUtils::createEfficientIterator<std::size_t, P>(
-                piIterator, "First element of pi");
+                pi, "First element of pi");
+        // Efficient iterator pointing to the first element of lambda
         const auto lambdaBegin = PiLambdaIteratorUtils::createEfficientIterator<double, L>(
-                lambdaIterator, "First element of lambda");
+                lambda, "First element of lambda");
 
-        // Iterator pointing to pi[i], with i ranging from 0 to dataSamplesCount-1.
-        // Initially it points to pi[0], i.e., the first element of pi.
+        // Efficient iterator pointing to the n-th element of pi
         auto currentPi = piBegin;
-        // Iterator pointing to lambda[i], with i ranging from 0 to dataSamplesCount-1.
-        // Initially it points to lambda[0], i.e., the first element of lambda.
+        // Efficient iterator pointing to the n-th element of lambda
         auto currentLambda = lambdaBegin;
 
-        // Iterator pointing to the n-th element of the dataset.
-        // Initially it points to the first element of the dataset.
+        // Efficient iterator pointing to the n-th element of the dataset.
         auto currentData = utils::DataIteratorUtils::createEfficientIterator(data, "Current data");
-        auto startData =
+        // Efficient iterator pointing to the first element of the dataset
+        auto dataBegin =
                 utils::DataIteratorUtils::createEfficientIterator(data, "First element of data");
 
         Timer::stop<0>();
 
-        // Initialize the timers and start logging the console output, if requested
-        // Timer::initTimers();
+        // Check the alignment of the first data sample, if requested
+        checkAlignment<C>(0, utils::DataIteratorUtils::getCurrentSample<D>(currentData));
+
+        // Log the initial progress
         Logger::startLoggingProgress<0, 1, 2, 3, 4, 5>(dataSamplesCount);
 
-        /*******************************************************************************************
-         * 1) Set pi(1) to 0, lambda(1) to infinity
-         ******************************************************************************************/
         Timer::start<1>();
-
+        // **** 1) Set pi(1) to 0, lambda(1) to infinity ****
         initializeNewPoint<P, L>(currentPi, currentLambda, 0);
         Timer::stop<1>();
 
         Timer::start<0>();
-        // No more operations need to be performed for the first point, so move to the second
-        // element of the dataset
+        // No more operations need to be performed for the first data sample, so move to the second
         utils::DataIteratorUtils::moveNext<D>(currentData, stride);
 
-        double *distanceEnd = &(m[1]);
+        // Useful pointer pointing to the element following the last element of m containing a valid
+        // distance
+        const double *distanceEnd = &(m[1]);
 
         // Perform the clustering algorithm for all the remaining data samples
         for (std::size_t n = 1; n < dataSamplesCount; n++) {
             Timer::stop<0>();
+            // Check the alignment of the data sample, if requested
+            checkAlignment<C>(n, utils::DataIteratorUtils::getCurrentSample<D>(currentData));
 
             // Log the progress every 1000 samples
             Logger::updateProgress<1000, 0, 1, 2, 3, 4, 5>(n, dataSamplesCount);
 
-            /***************************************************************************************
-             * 1) Set pi(n + 1) to n + 1, lambda(n + 1) to infinity
-             **************************************************************************************/
             Timer::start<1>();
-
+            // **** 1) Set pi(n + 1) to n + 1, lambda(n + 1) to infinity ****
             initializeNewPoint<P, L>(currentPi, currentLambda, n);
-
             Timer::stop<1>();
 
-            /***************************************************************************************
-             * 2) Set M(i) to d(i, n + 1) for i = 1,..,n
-             **************************************************************************************/
             Timer::start<2>();
-
-            // Value of the n-th value of the dataset
+            // Pointer to the n-th data sample of the dataset
             const double *__restrict__ const currentDataN =
-                    utils::DataIteratorUtils::getCurrentElement<D>(currentData);
-            // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-            const double *currentDataNEnd = currentDataN + pointRealDimension;
+                    utils::DataIteratorUtils::getCurrentSample<D>(currentData);
+            // Pointer to the first byte after the n-th data sample of the dataset
+            const double *__restrict__ const currentDataNEnd = currentDataN + stride;
 
+            // **** 2) Set M(i) to d(i, n + 1) for i = 1,..,n ****
             computeDistances<C, D>(n,
-                                   startData,
+                                   dataBegin,
                                    stride,
                                    currentDataN,
                                    currentDataNEnd,
                                    m,
                                    distanceComputationThreadsCount);
-
             Timer::stop<2>();
 
-            /***************************************************************************************
-             * 3) For i from 1 to n
-             **************************************************************************************/
             Timer::start<3>();
-
-            // Iterator over the first n-1 values of m
-
+            // **** 3) For i from 1 to n ****
             addNewPoint<P, L>(piBegin, lambdaBegin, m, distanceEnd, n);
-
             Timer::stop<3>();
 
-            /***************************************************************************************
-             * 4) For i from 1 to n
-             **************************************************************************************/
             Timer::start<4>();
-
-            fixStructure<P, L>(piBegin, lambdaBegin, n, stage4ThreadsCount);
+            //***  4) For i from 1 to n ****
+            fixStructure<P, L>(piBegin, lambdaBegin, n, structuralFixThreadsCount);
             Timer::stop<4>();
 
             Timer::start<0>();
@@ -238,7 +236,7 @@ public:
 
             // Compute the square root of all the values in lambda
 #pragma omp parallel for default(none) shared(lambdaBegin, dataSamplesCount) \
-        num_threads(squareRootThreadsCount) if (S5)
+        num_threads(squareRootThreadsCount) if (PS)
             for (std::size_t i = 0; i < dataSamplesCount - 1; i++) {
                 double &lambdaToModify =
                         utils::PiLambdaIteratorUtils::getElementAt<double, L>(lambdaBegin, i);
@@ -256,181 +254,258 @@ public:
         Logger::updateProgress<1, 0, 1, 2, 3, 4, 5>(dataSamplesCount, dataSamplesCount);
     }
 
-    static inline std::size_t computeSseDimension(std::size_t dimension) {
+    /**
+     * Computes the dimension the data sample must have if the distance computer uses SSE
+     * instructions.
+     *
+     * @param dimension Dimension of the data sample.
+     * @return The computed dimension.
+     */
+    static inline std::size_t computeSseDimension(const std::size_t dimension) {
 
-        return 1 + (((dimension - 1) / SSE_PACK_SIZE) * SSE_PACK_SIZE);
+        return (1 + (((dimension - 1) / SSE_PACK_SIZE))) * SSE_PACK_SIZE;
     }
 
-    static inline std::size_t computeAvxDimension(std::size_t dimension) {
+    /**
+     * Computes the dimension the data sample must have if the distance computer uses AVX
+     * instructions.
+     *
+     * @param dimension Dimension of the data sample.
+     * @return The computed dimension.
+     */
+    static inline std::size_t computeAvxDimension(const std::size_t dimension) {
 
-        return 1 + (((dimension - 1) / AVX_PACK_SIZE) * AVX_PACK_SIZE);
+        return (1 + (((dimension - 1) / AVX_PACK_SIZE))) * AVX_PACK_SIZE;
     }
 
 private:
-    static void checkAlignment() {
-        /*
-         * // Check alignment
-if constexpr (C != DistanceComputers::CLASSICAL) {
-    constexpr std::size_t pointSize =
-            (C == DistanceComputers::SSE || C == DistanceComputers::SSE_OPTIMIZED ||
-             C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT)
-                    ? SSE_PACK_SIZE
-                    : AVX_PACK_SIZE;
-    constexpr std::size_t alignment = pointSize * sizeof(double);
+    /**
+     * Utility method that checks if the specified data sample is correctly aligned. If it is not,
+     * then an exception is thrown.<br>
+     * This method takes effect only if <code>A</code> is <code>true</code> and only if the
+     * specified distance computer is not <code>DistanceComputers::CLASSICAL</code>.
+     *
+     * @tparam C Distance computer to use to compute the distances between the data samples. Based
+     * on this parameter, this method computes the correct alignment the data samples must have.
+     * @param n Index of the sample to check.
+     * @param currentDataSample Data of the sample to check.
+     * @throws std::invalid_argument If the sample is not correctly aligned.
+     */
+    template <DistanceComputers C>
+    static inline void checkAlignment(const std::size_t n, const double *const currentDataSample) {
 
-D iterator = dataIterator;
-for (std::size_t i = 0; i < dataSamplesCount; i++) {
-    std::size_t remainingSize = 1;
-    const void *pointer = const_cast<double *>(*iterator);
-    if (static_cast<uintptr_t>(pointer) % alignment == 0) {
-        std::string errorMessage{"The element"};
-        errorMessage += " ";
-        errorMessage += std::to_string(i);
-        errorMessage += " is not";
-        errorMessage += " ";
-        errorMessage += std::to_string(alignment);
-        errorMessage += "-bytes aligned";
-        throw std::invalid_argument(errorMessage);
-    }
-    for (int j = 0; j < pointSize; j++) {
-        ++iterator;
-    }
-}
-}
-         */
+        if constexpr (A && C != DistanceComputers::CLASSICAL) {
+            // Compute the alignment
+            const constexpr std::size_t packSize =
+                    (C == DistanceComputers::SSE || C == DistanceComputers::SSE_OPTIMIZED ||
+                     C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT)
+                            ? SSE_PACK_SIZE
+                            : AVX_PACK_SIZE;
+            const constexpr std::size_t alignment = packSize * sizeof(double);
+
+            // Check the pointer alignment
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            const auto pointer = reinterpret_cast<uintptr_t>(currentDataSample);
+            if (pointer % alignment != 0) {
+                // Compose the message of the exception
+                std::string errorMessage{"The data sample"};
+                errorMessage += " ";
+                errorMessage += std::to_string(n);
+                errorMessage += " is not";
+                errorMessage += " ";
+                errorMessage += std::to_string(alignment);
+                errorMessage += "-bytes aligned";
+                // Throw the exception signalling that the sample is not correctly aligned
+                throw std::invalid_argument(errorMessage);
+            }
+        }
     }
 
+    /**
+     * Initialize the value of <code>pi</code> and <code>lambda</code> for a new point.<br>
+     * This method takes care of advancing the specified efficient iterators to the next element of
+     * <code>pi</code> and <code>lambda</code>.
+     *
+     * @tparam P Type of the data structure/iterator holding <code>pi</code>.
+     * @tparam L Type of the data structure/iterator holding <code>lambda</code>.
+     * @tparam EP Type of the efficient iterator iterating over <code>pi</code>.
+     * @tparam EL Type of the efficient iterator iterating over <code>lambda</code>.
+     * @param currentPi Efficient iterator pointing to the current element of <code>pi</code>.
+     * @param currentLambda Efficient iterator pointing to the current element of
+     * <code>lambda</code>.
+     * @param n Index of the new point to add.
+     */
     template <typename P, typename L, typename EP, typename EL>
-    static inline void initializeNewPoint(EP &currentPi, EL &currentLambda, std::size_t n) {
+    static inline void initializeNewPoint(EP &currentPi, EL &currentLambda, const std::size_t n) {
 
-        // Set pi[n] to n
+        // **** Set pi[n] to n ****
         PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(currentPi) = n;
         PiLambdaIteratorUtils::moveNext<std::size_t, P>(currentPi);
 
-        // Set lambda[n] to infinity
+        // **** Set lambda[n] to infinity ****
         PiLambdaIteratorUtils::getCurrentElement<double, L>(currentLambda) =
                 std::numeric_limits<double>::infinity();
         PiLambdaIteratorUtils::moveNext<double, L>(currentLambda);
     }
 
+    /**
+     * Computes the distances between the point to add and all the points that have already
+     * been added to the dendrogram.
+     *
+     * @tparam C Distance computer to use to compute the distances.
+     * @tparam D Type of the data structure/iterator holding the data samples to cluster.
+     * @tparam ED Type of the efficient iterator iterating over the data structure holding the data
+     * samples to cluster.
+     * @param n Index of the point to add.
+     * @param dataBegin Efficient iterator pointing to the first data sample.
+     * @param stride Number of <code>double</code>s between the first attribute of a data samples
+     * and the first attribute of the following sample. This parameter is ignored if the data
+     * samples are not contiguous in memory.
+     * @param currentDataN Pointer to the first attribute of the point to add.
+     * @param currentDataNEnd Pointer to the attribute following the last attribute of the point to
+     * add. This value acts as a placeholder, and it is used to identify the end of the data sample.
+     * @param m Array containing the part row values this method will initialize.
+     * @param distanceComputationThreadsCount Number of threads to use to compute the distances in
+     * parallel. This parameter is ignored if <code>S2</code> is <code>false</code>.
+     */
     template <DistanceComputers C, typename D, typename ED>
-    static inline void computeDistances(std::size_t n,
-                                        const ED &dataIterator,
+    static inline void computeDistances(const std::size_t n,
+                                        const ED &dataBegin,
                                         const std::size_t stride,
-                                        const double *__restrict__ currentDataN,
-                                        const double *__restrict__ currentDataNEnd,
+                                        const double *const __restrict__ currentDataN,
+                                        const double *const __restrict__ currentDataNEnd,
                                         double *__restrict__ const m,
-                                        std::size_t distanceComputationThreadsCount) {
+                                        const std::size_t distanceComputationThreadsCount) {
 
         // Compute the distance between the n-th element of the dataset and all the
 // already-processed ones
-#pragma omp parallel for default(none)                                    \
-        shared(n, m, dataIterator, currentDataN, currentDataNEnd, stride) \
-                num_threads(distanceComputationThreadsCount) if (S2)
+#pragma omp parallel for default(none)                                 \
+        shared(n, m, dataBegin, currentDataN, currentDataNEnd, stride) \
+                num_threads(distanceComputationThreadsCount) if (PD)
         for (std::size_t i = 0; i <= n - 1; i++) {
-            const double *const __restrict__ element =
-                    utils::DataIteratorUtils::getElementAt<D>(dataIterator, i, stride);
-            // Compute the distance by using the requested algorithm
+            // Extract the i-th data sample
+            const double *const __restrict__ dataSample =
+                    utils::DataIteratorUtils::getSampleAt<D>(dataBegin, i, stride);
+
+            // Compute the distance between the newly added point and the extracted data sample by
+            // using the requested algorithm
             if constexpr (C == DistanceComputers::CLASSICAL) {
-                m[i] = ParallelClustering::distance(currentDataN, currentDataNEnd, element);
+                m[i] = ParallelClustering::distance(currentDataN, currentDataNEnd, dataSample);
             } else if constexpr (C == DistanceComputers::SSE) {
-                m[i] = ParallelClustering::distanceSse(currentDataN, currentDataNEnd, element);
+                m[i] = ParallelClustering::distanceSse(currentDataN, currentDataNEnd, dataSample);
             } else if constexpr (C == DistanceComputers::AVX) {
-                m[i] = ParallelClustering::distanceAvx(currentDataN, currentDataNEnd, element);
+                m[i] = ParallelClustering::distanceAvx(currentDataN, currentDataNEnd, dataSample);
             } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED) {
                 m[i] = ParallelClustering::distanceSseOptimized(
-                        currentDataN, currentDataNEnd, element);
+                        currentDataN, currentDataNEnd, dataSample);
             } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED) {
                 m[i] = ParallelClustering::distanceAvxOptimized(
-                        currentDataN, currentDataNEnd, element);
+                        currentDataN, currentDataNEnd, dataSample);
             } else if constexpr (C == DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT) {
                 m[i] = ParallelClustering::distanceSseOptimizedNoSquareRoot(
-                        currentDataN, currentDataNEnd, element);
+                        currentDataN, currentDataNEnd, dataSample);
             } else if constexpr (C == DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT) {
                 m[i] = ParallelClustering::distanceAvxOptimizedNoSquareRoot(
-                        currentDataN, currentDataNEnd, element);
+                        currentDataN, currentDataNEnd, dataSample);
             } else {
-                // https://stackoverflow.com/a/53945549
                 static_assert(always_false<ED>,
                               "The specified distance computer is not supported.");
             }
         }
     }
 
+    /**
+     * Adds to the dendrogram the new point.
+     *
+     * @tparam P Type of the data structure/iterator holding <code>pi</code>.
+     * @tparam L Type of the data structure/iterator holding <code>lambda</code>.
+     * @tparam EP Type of the efficient iterator iterating over <code>pi</code>.
+     * @tparam EL Type of the efficient iterator iterating over <code>lambda</code>.
+     * @param piBegin Efficient iterator pointing to the first element of <code>pi</code>.
+     * @param lambdaBegin Efficient iterator pointing to the first element of <code>lambda</code>.
+     * @param mBegin Pointer pointing to the first element of <code>m</code>.
+     * @param mEnd Pointer pointing to the element <code>m[n]</code>. This value acts as a
+     * placeholder, and it is used to identify the last element of <code>m</code> that contains a
+     * valid distance.
+     * @param n Index of the point to add.
+     */
     template <typename P, typename L, typename EP, typename EL>
-    static inline void addNewPoint(EP currentPi,
-                                   EL currentLambda,
-                                   double *distanceBegin,
-                                   const double *const distanceEnd,
-                                   std::size_t n) {
+    static inline void addNewPoint(EP piBegin,
+                                   EL lambdaBegin,
+                                   double *__restrict__ const mBegin,
+                                   const double *__restrict__ const mEnd,
+                                   const std::size_t n) {
 
-        double *mBegin = distanceBegin;
-        double *distanceIterator = distanceBegin;
+        // Pointer used as iterator to iterate over m
+        const double *distanceIterator = mBegin;
 
-        while (distanceIterator != distanceEnd) {
+        // Iterate all the valid distances in m
+        while (distanceIterator != mEnd) {
             // Reference to pi[i]
-            std::size_t &piI = PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(currentPi);
+            std::size_t &piI = PiLambdaIteratorUtils::getCurrentElement<std::size_t, P>(piBegin);
             // Reference to lambda[i]
-            double &lambdaI = PiLambdaIteratorUtils::getCurrentElement<double, L>(currentLambda);
+            double &lambdaI = PiLambdaIteratorUtils::getCurrentElement<double, L>(lambdaBegin);
             // Value of m[i]
             const double currentDistance = *distanceIterator;
             // Reference to m[pi[i]]
             double &mPiI = mBegin[piI];
 
-            /***********************************************************************************
-             * if lambda(i) >= M(i)
-             **********************************************************************************/
+            // **** if lambda(i) >= M(i) ****
             if (lambdaI >= currentDistance) {
-                /*******************************************************************************
-                 * set M(pi(i)) to min { M(pi(i)), lambda(i) }
-                 ******************************************************************************/
+                // **** set M(pi(i)) to min { M(pi(i)), lambda(i) } ****
                 mPiI = std::min(mPiI, lambdaI);
-
-                /*******************************************************************************
-                 * set lambda(i) to M(i)
-                 ******************************************************************************/
+                // **** set lambda(i) to M(i) ****
                 lambdaI = currentDistance;
 
-                /*******************************************************************************
-                 * set pi(i) to n + 1
-                 ******************************************************************************/
+                // **** set pi(i) to n + 1 ****
                 piI = n;
-            } else {  // if lambda(i) < M(i)
-                /*******************************************************************************
-                 * set M(pi(i)) to min { M(pi(i)), M(i) }
-                 ******************************************************************************/
+            } else {  // **** if lambda(i) < M(i) ****
+                // **** set M(pi(i)) to min { M(pi(i)), M(i) } ****
                 mPiI = std::min(mPiI, currentDistance);
             }
             // Move to the next element
-            PiLambdaIteratorUtils::moveNext<std::size_t, P>(currentPi);
-            PiLambdaIteratorUtils::moveNext<double, L>(currentLambda);
+            PiLambdaIteratorUtils::moveNext<std::size_t, P>(piBegin);
+            PiLambdaIteratorUtils::moveNext<double, L>(lambdaBegin);
             ++distanceIterator;
         }
     }
 
+    /**
+     * Fixes the structure of the dendrogram by updating the representative of a point if its
+     * representative connects to the newly added point before connecting to the point.
+     *
+     * @tparam P Type of the data structure/iterator holding <code>pi</code>.
+     * @tparam L Type of the data structure/iterator holding <code>lambda</code>.
+     * @tparam EP Type of the efficient iterator iterating over <code>pi</code>.
+     * @tparam EL Type of the efficient iterator iterating over <code>lambda</code>.
+     * @param piBegin Efficient iterator pointing to the first element of <code>pi</code>.
+     * @param lambdaBegin Efficient iterator pointing to the first element of <code>lambda</code>.
+     * @param n Index of the newly added point.
+     * @param structuralFixThreadsCount Number of threads to use to execute the structural fix in
+     * parallel.
+     */
     template <typename P, typename L, typename EP, typename EL>
-    static inline void fixStructure(const EP &piIterator,
-                                    const EL &lambdaIterator,
-                                    std::size_t n,
-                                    std::size_t stage4ThreadsCount) {
+    static inline void fixStructure(const EP &piBegin,
+                                    const EL &lambdaBegin,
+                                    const std::size_t n,
+                                    const std::size_t structuralFixThreadsCount) {
 
-#pragma omp parallel for default(none) shared(n, lambdaIterator, piIterator) \
-        num_threads(stage4ThreadsCount) if (S4)
+        // Loop over all the previously added points
+#pragma omp parallel for default(none) shared(n, piBegin, lambdaBegin) \
+        num_threads(structuralFixThreadsCount) if (PF)
         for (std::size_t i = 0; i <= n - 1; i++) {
             // Reference to pi[i]
-            std::size_t &piOfI = PiLambdaIteratorUtils::getElementAt<std::size_t, P>(piIterator, i);
-            double lambdaOfI = PiLambdaIteratorUtils::getElementAt<double, L>(lambdaIterator, i);
-            double lambdaOfPiOfI =
-                    PiLambdaIteratorUtils::getElementAt<double, L>(lambdaIterator, piOfI);
+            std::size_t &piI = PiLambdaIteratorUtils::getElementAt<std::size_t, P>(piBegin, i);
+            // Value of lambda[i]
+            const double lambdaI = PiLambdaIteratorUtils::getElementAt<double, L>(lambdaBegin, i);
+            // Value of lambda[pi[i]]
+            const double lambdaPiI =
+                    PiLambdaIteratorUtils::getElementAt<double, L>(lambdaBegin, piI);
 
-            /***********************************************************************************
-             * if lambda(i) >= lambda(pi(i))
-             **********************************************************************************/
-            if (lambdaOfI >= lambdaOfPiOfI) {
-                /*******************************************************************************
-                 * set pi(i) to n + 1
-                 ******************************************************************************/
-                piOfI = n;
+            // **** if lambda(i) >= lambda(pi(i)) ****
+            if (lambdaI >= lambdaPiI) {
+                // **** set pi(i) to n + 1 ****
+                piI = n;
             }
         }
     }
@@ -438,9 +513,11 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
     /**
      * Computes the Euclidean distance between two points.
      *
-     * @param firstPoint The first point.
-     * @param secondPoint The second point.
-     * @param dimension The dimension of each point.
+     * @param firstPointBegin Pointer to the first attribute of the first data sample.
+     * @param firstPointEnd Pointer to the attribute following the last attribute of the first
+     * data sample. This value acts as a placeholder, and it is used to identify the end of the
+     * first point.
+     * @param secondPointBegin Pointer to the first attribute of the second data sample.
      * @return The distance between the two points.
      */
     static inline double distance(const double *__restrict__ const firstPointBegin,
@@ -463,9 +540,11 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
     /**
      * Computes the distance between two points using SSE instructions.
      *
-     * @param firstPoint The first point.
-     * @param secondPoint The second point.
-     * @param blocksCount Number of SSE registers that are needed to store one of the two points.
+     * @param firstPointBegin Pointer to the first attribute of the first data sample.
+     * @param firstPointEnd Pointer to the attribute following the last attribute of the first
+     * data sample. This value acts as a placeholder, and it is used to identify the end of the
+     * first point.
+     * @param secondPointBegin Pointer to the first attribute of the second data sample.
      * @return The distance between the two points.
      */
     static inline double distanceSse(const double *__restrict__ const firstPointBegin,
@@ -504,9 +583,11 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
      * Computes the distance between two points using SSE instructions. This implementation keeps
      * the partial sum in the registers instead of storing it into memory.
      *
-     * @param firstPoint The first point.
-     * @param secondPoint The second point.
-     * @param blocksCount Number of SSE registers that are needed to store one of the two points.
+     * @param firstPointBegin Pointer to the first attribute of the first data sample.
+     * @param firstPointEnd Pointer to the attribute following the last attribute of the first
+     * data sample. This value acts as a placeholder, and it is used to identify the end of the
+     * first point.
+     * @param secondPointBegin Pointer to the first attribute of the second data sample.
      * @return The distance between the two points.
      */
     static inline double distanceSseOptimized(
@@ -549,10 +630,12 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
      * Computes the square of the distance between two points using SSE instructions. This
      * implementation keeps the partial sum in the registers instead of storing it into memory.
      *
-     * @param firstPoint The first point.
-     * @param secondPoint The second point.
-     * @param blocksCount Number of SSE registers that are needed to store one of the two points.
-     * @return The square of the distance between the two points.
+     * @param firstPointBegin Pointer to the first attribute of the first data sample.
+     * @param firstPointEnd Pointer to the attribute following the last attribute of the first
+     * data sample. This value acts as a placeholder, and it is used to identify the end of the
+     * first point.
+     * @param secondPointBegin Pointer to the first attribute of the second data sample.
+     * @return The distance between the two points.
      */
     static inline double distanceSseOptimizedNoSquareRoot(
             const double *__restrict__ const firstPointBegin,
@@ -593,9 +676,11 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
     /**
      * Computes the distance between two points using AVX instructions.
      *
-     * @param firstPoint The first point.
-     * @param secondPoint The second point.
-     * @param blocksCount Number of AVX registers that are needed to store one of the two points.
+     * @param firstPointBegin Pointer to the first attribute of the first data sample.
+     * @param firstPointEnd Pointer to the attribute following the last attribute of the first
+     * data sample. This value acts as a placeholder, and it is used to identify the end of the
+     * first point.
+     * @param secondPointBegin Pointer to the first attribute of the second data sample.
      * @return The distance between the two points.
      */
     static inline double distanceAvx(const double *__restrict__ const firstPointBegin,
@@ -643,9 +728,11 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
      * Computes the distance between two points using AVX instructions. This implementation keeps
      * the partial sum in the registers instead of storing it into memory.
      *
-     * @param firstPoint The first point.
-     * @param secondPoint The second point.
-     * @param blocksCount Number of AVX registers that are needed to store one of the two points.
+     * @param firstPointBegin Pointer to the first attribute of the first data sample.
+     * @param firstPointEnd Pointer to the attribute following the last attribute of the first
+     * data sample. This value acts as a placeholder, and it is used to identify the end of the
+     * first point.
+     * @param secondPointBegin Pointer to the first attribute of the second data sample.
      * @return The distance between the two points.
      */
     static inline double distanceAvxOptimized(
@@ -696,10 +783,12 @@ for (std::size_t i = 0; i < dataSamplesCount; i++) {
      * Computes the square the distance between two points using AVX instructions. This
      * implementation keeps the partial sum in the registers instead of storing it into memory.
      *
-     * @param firstPoint The first point.
-     * @param secondPoint The second point.
-     * @param blocksCount Number of AVX registers that are needed to store one of the two points.
-     * @return The square of the distance between the two points.
+     * @param firstPointBegin Pointer to the first attribute of the first data sample.
+     * @param firstPointEnd Pointer to the attribute following the last attribute of the first
+     * data sample. This value acts as a placeholder, and it is used to identify the end of the
+     * first point.
+     * @param secondPointBegin Pointer to the first attribute of the second data sample.
+     * @return The distance between the two points.
      */
     static inline double distanceAvxOptimizedNoSquareRoot(
             const double *__restrict__ const firstPointBegin,

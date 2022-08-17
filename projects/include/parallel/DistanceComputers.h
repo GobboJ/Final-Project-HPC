@@ -1,10 +1,3 @@
-/*
- * Description.
- *
- * @author DeB
- * @version 1.0 2022-08-07
- * @since version date
- */
 #ifndef FINAL_PROJECT_HPC_DISTANCECOMPUTERS_H
 #define FINAL_PROJECT_HPC_DISTANCECOMPUTERS_H
 
@@ -29,22 +22,24 @@ enum class DistanceComputers {
     /**
      * Computes the Euclidean distance between two data samples using SSE instructions.<br>
      * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-     * be 16 bytes-aligned.<br>
-     * If the number of attributes <i>d</i> of each sample is not multiple of <code>16 /
-     * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-     * many <code>0</code> as needed to reach the closes multiple of <code>16 /
-     * sizeof(double)</code> number of elements.
+     * be 16 bytes-aligned (i.e., the memory address of the first attribute of each data sample must
+     * be a multiple of 16).<br>
+     * Moreover, the number of attributes of the data samples must be a multiple of
+     * <code>ParallelClustering::SSE_PACK_SIZE</code>. If it is not the case, then the data samples
+     * must be padded with <code>0</code> at the end until the number of attributes becomes a
+     * multiple of <code>ParallelClustering::SSE_PACK_SIZE</code>.
      */
     SSE,
 
     /**
      * Computes the Euclidean distance between two data samples using AVX instructions.<br>
      * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-     * be 32 bytes-aligned.<br>
-     * If the number of attributes <i>d</i> of each sample is not multiple of <code>32 /
-     * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-     * many <code>0</code> as needed to reach the closes multiple of <code>32 /
-     * sizeof(double)</code> number of elements.
+     * be 32 bytes-aligned (i.e., the memory address of the first attribute of each data sample must
+     * be a multiple of 32).<br>
+     * Moreover, the number of attributes of the data samples must be a multiple of
+     * <code>ParallelClustering::AVX_PACK_SIZE</code>. If it is not the case, then the data samples
+     * must be padded with <code>0</code> at the end until the number of attributes becomes a
+     * multiple of <code>ParallelClustering::AVX_PACK_SIZE</code>.
      */
     AVX,
 
@@ -53,11 +48,12 @@ enum class DistanceComputers {
      * With respect to the <code>DistanceComputers::SSE</code> algorithm, this one does not
      * store any partial sum into memory, but keeps them in the registers.<br>
      * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-     * be 16 bytes-aligned.<br>
-     * If the number of attributes <i>d</i> of each sample is not multiple of <code>16 /
-     * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-     * many <code>0</code> as needed to reach the closes multiple of <code>16 /
-     * sizeof(double)</code> number of elements.
+     * be 16 bytes-aligned (i.e., the memory address of the first attribute of each data sample must
+     * be a multiple of 16).<br>
+     * Moreover, the number of attributes of the data samples must be a multiple of
+     * <code>ParallelClustering::SSE_PACK_SIZE</code>. If it is not the case, then the data samples
+     * must be padded with <code>0</code> at the end until the number of attributes becomes a
+     * multiple of <code>ParallelClustering::SSE_PACK_SIZE</code>.
      */
     SSE_OPTIMIZED,
 
@@ -66,11 +62,12 @@ enum class DistanceComputers {
      * With respect to the <code>DistanceComputers::AVX</code> algorithm, this one does not
      * store any partial sum into memory, but keeps them in the registers.<br>
      * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-     * be 32 bytes-aligned.<br>
-     * If the number of attributes <i>d</i> of each sample is not multiple of <code>32 /
-     * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-     * many <code>0</code> as needed to reach the closes multiple of <code>32 /
-     * sizeof(double)</code> number of elements.
+     * be 32 bytes-aligned (i.e., the memory address of the first attribute of each data sample must
+     * be a multiple of 32).<br>
+     * Moreover, the number of attributes of the data samples must be a multiple of
+     * <code>ParallelClustering::AVX_PACK_SIZE</code>. If it is not the case, then the data samples
+     * must be padded with <code>0</code> at the end until the number of attributes becomes a
+     * multiple of <code>ParallelClustering::AVX_PACK_SIZE</code>.
      */
     AVX_OPTIMIZED,
 
@@ -81,11 +78,12 @@ enum class DistanceComputers {
      * Moreover, this algorithm computes the squares of the distances, avoiding the computation
      * of the square roots.<br>
      * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-     * be 16 bytes-aligned.<br>
-     * If the number of attributes <i>d</i> of each sample is not multiple of <code>16 /
-     * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-     * many <code>0</code> as needed to reach the closes multiple of <code>16 /
-     * sizeof(double)</code> number of elements.
+     * be 16 bytes-aligned (i.e., the memory address of the first attribute of each data sample must
+     * be a multiple of 16).<br>
+     * Moreover, the number of attributes of the data samples must be a multiple of
+     * <code>ParallelClustering::SSE_PACK_SIZE</code>. If it is not the case, then the data samples
+     * must be padded with <code>0</code> at the end until the number of attributes becomes a
+     * multiple of <code>ParallelClustering::SSE_PACK_SIZE</code>.
      */
     SSE_OPTIMIZED_NO_SQUARE_ROOT,
 
@@ -96,11 +94,12 @@ enum class DistanceComputers {
      * Moreover, this algorithm computes the squares of the distances, avoiding the computation
      * of the square roots.<br>
      * The attributes of each data sample <b>MUST BE</b> stored sequentially in memory, and must
-     * be 32 bytes-aligned.<br>
-     * If the number of attributes <i>d</i> of each sample is not multiple of <code>32 /
-     * sizeof(double)</code>, then the <i>d</i> attributes <b>MUST BE</b> followed by as
-     * many <code>0</code> as needed to reach the closes multiple of <code>32 /
-     * sizeof(double)</code> number of elements.
+     * be 32 bytes-aligned (i.e., the memory address of the first attribute of each data sample must
+     * be a multiple of 32).<br>
+     * Moreover, the number of attributes of the data samples must be a multiple of
+     * <code>ParallelClustering::AVX_PACK_SIZE</code>. If it is not the case, then the data samples
+     * must be padded with <code>0</code> at the end until the number of attributes becomes a
+     * multiple of <code>ParallelClustering::AVX_PACK_SIZE</code>.
      */
     AVX_OPTIMIZED_NO_SQUARE_ROOT
 };

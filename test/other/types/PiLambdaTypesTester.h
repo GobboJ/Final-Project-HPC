@@ -24,7 +24,7 @@ namespace cluster::test::types {
 template <typename D>
 class PiLambdaTypesTester {
 
-    using PiLambdaIteratorType = cluster::utils::PiLambdaIteratorType;
+    using PiLambdaIteratorType = cluster::utils::PiLambdaType;
     using PiLambdaIteratorTypeUtils = cluster::utils::PiLambdaIteratorTypeUtils;
     using PiLambdaIteratorUtils = cluster::utils::PiLambdaIteratorUtils;
 
@@ -253,9 +253,9 @@ private:
 
                 std::cout << ((result) ? "\033[32mOK" : "\033[31mError") << "\033[0m";
                 bool correctPiIteratorType =
-                        PiLambdaIteratorUtils::lastPiIteratorType == piIteratorType;
+                        PiLambdaIteratorUtils::lastPiType == piIteratorType;
                 bool correctLambdaIteratorType =
-                        PiLambdaIteratorUtils::lastLambdaIteratorType == lambdaIteratorsType;
+                        PiLambdaIteratorUtils::lastLambdaType == lambdaIteratorsType;
 
                 if (!correctPiIteratorType || !correctLambdaIteratorType) {
                     std::cout << " \033[31m(\033[0m";

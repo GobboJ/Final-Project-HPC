@@ -50,7 +50,8 @@ add_executable(
     types/containers/pointer/PointerTypeNameComposer.h
     types/DataTypesTester.h
     types/PiLambdaTypesTester.h
-    types/TypesPrinter.h)
+    types/TypesPrinter.h
+)
 
 target_link_libraries(
     Final_Project_HPC_Test_Types Final_Project_HPC_Sequential_Library
@@ -61,6 +62,7 @@ target_link_libraries(
 # target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY)
 target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY_TEST)
 
+# Define the test executable for array-only types
 add_executable(
     Final_Project_HPC_Test_Array_Types
     ../src/data/DataReader.cpp
@@ -85,8 +87,8 @@ add_executable(
     types/containers/array/ArraySubContainer.h
     types/containers/array/ArrayTypeNameComposer.h
     types/containers/CollectionInfo.h
-    types/DataTypesTester.h
     types/DataTypesTest.h
+    types/DataTypesTester.h
 )
 
 target_link_libraries(
@@ -94,36 +96,36 @@ target_link_libraries(
     Final_Project_HPC_Parallel_Library
 )
 
-# target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE TIMERS PRINT_ITERATIONS) TODO:
-# target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY)
+# target_compile_definitions(Final_Project_HPC_Test_Array_Types PRIVATE TIMERS PRINT_ITERATIONS)
+# target_compile_definitions(Final_Project_HPC_Test_Array_Types PRIVATE ITERATORS_SUMMARY)
 target_compile_definitions(Final_Project_HPC_Test_Array_Types PRIVATE ITERATORS_SUMMARY_TEST)
 
-
+# Define the test executable for list-only types
 add_executable(
-        Final_Project_HPC_Test_Lists_Types
-        ../src/data/DataReader.cpp
-        ../src/data/DataReader.h
-        ../src/data/DataWriter.cpp
-        ../src/data/DataWriter.h
-        ../src/data/IoException.cpp
-        ../src/data/IoException.h
-        ../src/data/MalformedFileException.cpp
-        ../src/data/MalformedFileException.h
-        ../src/data/ResultsChecker.cpp
-        ../src/data/ResultsChecker.h
-        main-test-lists.cpp
-        types/collections/AlignedArray.h
-        types/collections/Alignments.h
-        types/collections/OnlyConstIterableVector.h
-        types/collections/OnlyIterableVector.h
-        types/DataTypesTester.h
-        types/DataTypesTest.h
+    Final_Project_HPC_Test_Lists_Types
+    ../src/data/DataReader.cpp
+    ../src/data/DataReader.h
+    ../src/data/DataWriter.cpp
+    ../src/data/DataWriter.h
+    ../src/data/IoException.cpp
+    ../src/data/IoException.h
+    ../src/data/MalformedFileException.cpp
+    ../src/data/MalformedFileException.h
+    ../src/data/ResultsChecker.cpp
+    ../src/data/ResultsChecker.h
+    main-test-lists.cpp
+    types/collections/AlignedArray.h
+    types/collections/Alignments.h
+    types/collections/OnlyConstIterableVector.h
+    types/collections/OnlyIterableVector.h
+    types/DataTypesTest.h
+    types/DataTypesTester.h
 )
 
 target_link_libraries(
-        Final_Project_HPC_Test_Lists_Types Final_Project_HPC_Sequential_Library
-        Final_Project_HPC_Parallel_Library
+    Final_Project_HPC_Test_Lists_Types Final_Project_HPC_Sequential_Library
+    Final_Project_HPC_Parallel_Library
 )
 
-# target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE TIMERS PRINT_ITERATIONS) TODO:
-# target_compile_definitions(Final_Project_HPC_Test_Types PRIVATE ITERATORS_SUMMARY)
+# target_compile_definitions(Final_Project_HPC_Test_Lists_Types PRIVATE TIMERS PRINT_ITERATIONS)
+# target_compile_definitions(Final_Project_HPC_Test_Lists_Types PRIVATE ITERATORS_SUMMARY)

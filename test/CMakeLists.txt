@@ -11,25 +11,27 @@ include_directories(${PARALLEL_IMPLEMENTATION_INCLUDE_DIR})
 
 # Define the main executable
 add_executable(
-        Final_Project_HPC_Main
-        src/cli/CliArgumentException.cpp
-        src/cli/CliArgumentException.h
-        src/cli/CliArguments.cpp
-        src/cli/CliArguments.h
-        src/cli/CliArgumentsParser.cpp
-        src/cli/CliArgumentsParser.h
-        src/data/DataReader.cpp
-        src/data/DataReader.h
-        src/data/DataWriter.cpp
-        src/data/DataWriter.h
-        src/data/IoException.cpp
-        src/data/IoException.h
-        src/data/MalformedFileException.cpp
-        src/data/MalformedFileException.h
-        src/main.cpp
-        src/data/ResultsChecker.cpp
-        src/data/ResultsChecker.h
-        src/ClusteringAlgorithmExecutor.h src/ClusteringAlgorithmExecutor.cpp)
+    Final_Project_HPC_Main
+    src/cli/CliArgumentException.cpp
+    src/cli/CliArgumentException.h
+    src/cli/CliArguments.cpp
+    src/cli/CliArguments.h
+    src/cli/CliArgumentsParser.cpp
+    src/cli/CliArgumentsParser.h
+    src/ClusteringAlgorithmExecutor.cpp
+    src/ClusteringAlgorithmExecutor.h
+    src/data/DataReader.cpp
+    src/data/DataReader.h
+    src/data/DataWriter.cpp
+    src/data/DataWriter.h
+    src/data/IoException.cpp
+    src/data/IoException.h
+    src/data/MalformedFileException.cpp
+    src/data/MalformedFileException.h
+    src/data/ResultsChecker.cpp
+    src/data/ResultsChecker.h
+    src/main.cpp
+)
 target_link_libraries(
     Final_Project_HPC_Main Final_Project_HPC_Sequential_Library Final_Project_HPC_Parallel_Library
 )
@@ -46,9 +48,9 @@ add_executable(
     src/data/IoException.h
     src/data/MalformedFileException.cpp
     src/data/MalformedFileException.h
-    src/main-measurements.cpp
     src/data/ResultsChecker.cpp
     src/data/ResultsChecker.h
+    src/main-measurements.cpp
 )
 
 target_link_libraries(
@@ -82,9 +84,8 @@ foreach (i RANGE 1 7)
     endforeach ()
 endforeach ()
 
-# add_test(TwoPoints Final_Project_HPC_Main -t -p 1 two-points)
-# add_test(Samples Final_Project_HPC_Main -t -p 1 samples)
-# add_test(SameDistance Final_Project_HPC_Main -t -p 1 same-distance)
-# add_test(Slide Final_Project_HPC_Main -t -p 1 slide)
+# add_test(TwoPoints Final_Project_HPC_Main -t -p 1 two-points) add_test(Samples
+# Final_Project_HPC_Main -t -p 1 samples) add_test(SameDistance Final_Project_HPC_Main -t -p 1
+# same-distance) add_test(Slide Final_Project_HPC_Main -t -p 1 slide)
 
-add_subdirectory(other)
+# add_subdirectory(other)

@@ -1,7 +1,8 @@
 /*
  * DataWriter implementation.
  *
- * @author DeB, Jonathan
+ * @author DeB
+ * @author Jonathan
  * @version 1.1 2022-08-06
  * @since 1.0
  */
@@ -32,7 +33,7 @@ void DataWriter::createOutputFile(const std::filesystem::path &outputFilePath,
 
     using namespace std::literals::string_literals;
 
-    // Open the file
+    // Open the output file
     std::ofstream fileOutputStream{outputFilePath};
     if (fileOutputStream) {
 
@@ -136,10 +137,10 @@ void DataWriter::createOutputFile(const std::filesystem::path &outputFilePath,
 
 /**
  * Outputs a file containing code to visualize a dendrogram in Mathematica, given pi and lambda.
- * @param outputFilePath Path of the file where the output will be written.
  *
- * @param piVector The Pi vector.
- * @param lambdaVector The Lambda vector.
+ * @param outputFilePath Path of the file where the output will be written.
+ * @param piVector Vector containing the values of <code>pi</code>.
+ * @param lambdaVector Vector containing the values of <code>lambda</code>.
  * @throws IOException If an I/O error occurs while writing to the file.
  */
 void DataWriter::createMathematicaOutputFile(const std::filesystem::path &outputFilePath,
@@ -148,36 +149,51 @@ void DataWriter::createMathematicaOutputFile(const std::filesystem::path &output
 
     using namespace std::literals::string_literals;
 
+    // Open the output file
     std::ofstream fileOutputStream{outputFilePath};
     if (fileOutputStream) {
 
+        // Vector containing the triple (i, pi[i], lambda[i])
         std::vector<std::tuple<std::size_t, std::size_t, double>> ordered{};
         for (std::size_t i = 0; i < lambdaVector.size(); i++) {
             ordered.emplace_back(std::make_tuple(i, piVector[i], lambdaVector[i]));
         }
-        std::sort(ordered.begin(), ordered.end(), [](const auto &a, const auto &b) -> bool {
-            return std::get<2>(a) < std::get<2>(b);
-        });
+        // Sort the vector of triples by lambda
+        std::sort(
+                ordered.begin(), ordered.end(), [](const auto &first, const auto &second) -> bool {
+                    return std::get<2>(first) < std::get<2>(second);
+                });
 
+        // Map associating the index of the point to the name of the variable identifying the
+        // cluster and the number of elements in the cluster
         std::unordered_map<std::size_t, std::pair<std::string, std::size_t>> map{};
         for (std::size_t i = 0; i < ordered.size(); i++) {
             map[i] = {std::to_string(i + 1), 1};
         }
 
+        // Print the heading
         fileOutputStream << "Needs[\"HierarchicalClustering`\"]\n";
+        DataWriter::requireFileGoodness(fileOutputStream);
+
         for (std::size_t i = 0; i < ordered.size() - 1; i++) {
+            // Extract a triple (i, pi[i], lambda[i])
             const auto &[index, piValue, lambdaValue] = ordered[i];
+            // Output the definition of the cluster
             fileOutputStream << "c" << i << " = Cluster[" << map[index].first << ", "
                              << map[piValue].first << ", " << lambdaValue << ", "
                              << map[index].second << ", " << map[index].second << "]\n";
             DataWriter::requireFileGoodness(fileOutputStream);
 
+            // Update the name of the cluster the two points belongs to, together with the number of
+            // points in the cluster
             map[piValue].first = "c"s + std::to_string(i);
             map[piValue].second += map[index].second;
             map[index].first = "c"s + std::to_string(i);
             map[index].second += map[piValue].second;
         }
+        // Print the command to generate the dendrogram
         fileOutputStream << "DendrogramPlot[c" << ordered.size() - 2 << ", LeafLabels ->(#&)]\n";
+        DataWriter::requireFileGoodness(fileOutputStream);
     } else {
         throw IOException("Unable to open output file.");
     }

@@ -117,11 +117,11 @@ add_compile_options(
     -Wstringop-overflow=4
     -Wsubobject-linkage
     -Wsuggest-attribute=cold
-    -Wsuggest-attribute=const
+    # -Wsuggest-attribute=const
     -Wsuggest-attribute=format
     -Wsuggest-attribute=malloc
     -Wsuggest-attribute=noreturn
-    -Wsuggest-attribute=pure
+    # -Wsuggest-attribute=pure
     -Wsuggest-final-methods
     -Wsuggest-final-types
     -Wsuggest-override
@@ -160,10 +160,8 @@ add_compile_options(
     -Wno-unused-parameter
     # Additional flags
     -Wl,–verbose
-    -D_FORTIFY_SOURCE=2
+    # -D_FORTIFY_SOURCE=2
     -D_GLIBCXX_ASSERTIONS
-    -fasynchronous-unwind-tables
-    -fexceptions
     -pipe
     -Werror=format-security
     -Werror=return-type
@@ -176,6 +174,7 @@ add_compile_options(
     -msse3
     -mavx
     -march=native
+    -fconcepts-diagnostics-depth=10
     # Build-type-related options
     $<$<CONFIG:Release>:-O3>
     $<$<CONFIG:Debug>:-O0>
