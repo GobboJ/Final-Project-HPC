@@ -300,7 +300,7 @@ int main() {
         auto *sseMMAlignedData = static_cast<double *>(
                 _mm_malloc(sseSize, ParallelClustering<>::SSE_PACK_SIZE * sizeof(double)));
         auto *avxMMAlignedData = static_cast<double *>(
-                _mm_malloc(sseSize, ParallelClustering<>::AVX_PACK_SIZE * sizeof(double)));
+                _mm_malloc(avxSize, ParallelClustering<>::AVX_PACK_SIZE * sizeof(double)));
         auto *uniqueVectorData = new double[data.size()];
 
         // Zero the aligned data
