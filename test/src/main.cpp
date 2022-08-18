@@ -220,8 +220,8 @@ int main(int argc, char *argv[]) {
     executor.executeClusteringAlgorithm(isParallel,
                                         version,
                                         indirectData,
-                                        indirectData,
-                                        indirectData,
+                                        alignedIndirectData,
+                                        alignedIndirectData,
                                         alignedData,
                                         alignedData,
                                         uniqueVectorData,
@@ -385,7 +385,7 @@ void initializeDataStructure(const bool isParallel,
                                (pointDimension - dimension) * sizeof(double));
 
                         // Add the point
-                        alignedIndirectData[i] = point;
+                        alignedIndirectData.push_back(point);
                     }
                     // Set the de-allocation function
                     freeFunction = [&alignedIndirectData,
@@ -433,13 +433,9 @@ void initializeDataStructure(const bool isParallel,
             }
         } else if (version == 2) {
             // Create the data structure
-            uniqueVectorData = new double[dataElementsCount];
+            uniqueVectorData = new double[dataElementsCount * dimension];
             // Fill data structure
-            for (std::size_t i = 0; i < dataElementsCount; i++) {
-                memcpy(&(uniqueVectorData[i]),
-                       &(dataBegin[i * dimension]),
-                       dimension * sizeof(double));
-            }
+            memcpy(uniqueVectorData, dataBegin, (dataElementsCount * dimension) * sizeof(double));
             // Set the de-allocation function
             freeFunction = [&uniqueVectorData, indirectDataFreeFunction]() noexcept -> void {
                 indirectDataFreeFunction();
