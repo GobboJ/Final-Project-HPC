@@ -3,7 +3,7 @@
  *
  * @author DeB
  * @author Jonathan
- * @version 1.2 2022-08-06
+ * @version 1.2.1 2022-08-22
  * @since 1.0
  */
 #include "DataReader.h"
@@ -16,8 +16,8 @@ namespace cluster::test::data {
  * Reads and parses the data from the specified file.
  *
  * @param inputFilePath Path of the file that contains the data to parse.
- * @param firstLineNumber Number of the first row to parse of the file.
- * @param lastLineNumber Number of the last row to parse of the file.
+ * @param firstLineNumber Number of the first line to parse of the file.
+ * @param lastLineNumber Number of the last line to parse of the file.
  * @param firstColumnNumber Number of the first column of each line to parse as a coordinate of
  * the point.
  * @param lastColumnNumber Number of the last column of each line to parse as a coordinate of
@@ -66,9 +66,20 @@ std::size_t DataReader::readAndParseData(const std::filesystem::path &inputFileP
                      (lineNumber >= firstLineNumber && lineNumber <= lastLineNumber))) {
 
                     // Parse the line
-                    std::size_t lineDimension = parseLine(
-                            line, lineNumber, parsedData, firstColumnNumber, lastColumnNumber);
-
+                    std::stringstream lineValuesStream{line};
+                    std::string columnString{};
+                    std::size_t columnNumber = 1;
+                    std::size_t lineDimension = 0;
+                    while (std::getline(lineValuesStream, columnString, ',') &&
+                           columnNumber <= lastColumnNumber) {
+                        if (columnNumber >= firstColumnNumber) {
+                            // Add the parsed coordinate
+                            parsedData.push_back(
+                                    parseDouble(columnString, lineNumber, columnNumber));
+                            lineDimension++;
+                        }
+                        columnNumber++;
+                    }
                     // Check if all the dimensions has been filled
                     if (!firstLine) {
                         if (lineDimension != dimension) {
@@ -88,11 +99,13 @@ std::size_t DataReader::readAndParseData(const std::filesystem::path &inputFileP
                     lineNumber++;
                 }
             } else {
-                throw IOException("Error while reading the file");
+                using namespace std::literals::string_literals;
+                throw IOException("Error while reading the file"s + ' ' + inputFilePath.string());
             }
         }
     } else {
-        throw IOException("Error while reading the file");
+        using namespace std::literals::string_literals;
+        throw IOException("Error while reading the file"s + ' ' + inputFilePath.string());
     }
 
     // Return the dimension
@@ -150,73 +163,17 @@ void DataReader::readPiLambda(const std::filesystem::path &inputFilePath,
                     columnNumber++;
                 }
             } else {
-                throw IOException("Error while reading the file");
+                using namespace std::literals::string_literals;
+                throw IOException("Error while reading the file"s + ' ' + inputFilePath.string());
             }
         } else {
-            throw IOException("Error while reading the file");
+            using namespace std::literals::string_literals;
+            throw IOException("Error while reading the file"s + ' ' + inputFilePath.string());
         }
     } else {
-        throw IOException("Error while reading the file");
+        using namespace std::literals::string_literals;
+        throw IOException("Error while reading the file"s + ' ' + inputFilePath.string());
     }
-}
-
-/**
- * Parses a line of the data file extracting all the coordinates.
- *
- * @param line Line to parse.
- * @param lineNumber Number of the line.
- * @param parsedData Vector where the parsed coordinates will be placed.
- * @param firstColumnNumber Number of the first column of the line to consider as a coordinate.
- * @param lastColumnNumber Number of the last column of the line to consider as a coordinate.
- * @return The dimension of the point parsed from the line.
- * @throws MalformedFileException If the file does not follow the correct format.
- */
-std::size_t DataReader::parseLine(const std::string &line,
-                                  const std::size_t lineNumber,
-                                  std::vector<double> &parsedData,
-                                  const std::size_t firstColumnNumber,
-                                  const std::size_t lastColumnNumber) {
-
-    // Index of the first characters of the line that contains the coordinate
-    std::size_t coordinateStartIndex = 0;
-    // Number of characters that compose the coordinate
-    std::size_t coordinateLength = 0;
-    // Number of the column being parsed
-    std::size_t currentColumnNumber = 1;
-    // Dimension of the point in the current line
-    std::size_t lineDimension = 0;
-    // Flag indicating the last column of the line has been reached
-    bool lastColumn = false;
-
-    // Loop over the characters of the line
-    std::string::const_iterator iterator = line.cbegin();
-    while ((iterator != line.end() || lastColumn) && currentColumnNumber <= lastColumnNumber) {
-        // Split the columns when a comma is found
-        if (lastColumn || *iterator == ',') {
-            // Include the column only if in the range
-            if (currentColumnNumber >= firstColumnNumber) {
-                // Extract the column substring
-                std::string columnString{line.substr(coordinateStartIndex, coordinateLength)};
-
-                // Add the parsed coordinate
-                parsedData.push_back(parseDouble(columnString, lineNumber, currentColumnNumber));
-                lineDimension++;
-            }
-            // Start a new column
-            coordinateStartIndex += coordinateLength + 1;
-            coordinateLength = 0;
-            currentColumnNumber++;
-        } else {
-            // Increment the number of characters that compose the coordinate
-            coordinateLength++;
-        }
-        // Move to the next character
-        ++iterator;
-        // The last column is reached when there are no more characters on the line
-        lastColumn = (iterator == line.end());
-    }
-
-    return lineDimension;
 }
 
 /**

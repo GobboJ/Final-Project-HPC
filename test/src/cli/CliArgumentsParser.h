@@ -14,7 +14,7 @@ namespace cluster::test::cli {
  *
  * @author DeB
  * @author Jonathan
- * @version 1.1.1 2022-08-06
+ * @version 1.2 2022-08-22
  * @since 1.0
  */
 class CliArgumentsParser {
@@ -27,6 +27,27 @@ private:
      */
     static const std::unordered_map<std::string, std::tuple<std::string, std::size_t, std::size_t>>
             WELL_KNOWN_TESTS;
+
+    /**
+     * Length of the option specifying the path of the output file that will be filled with the
+     * information about the points anc clusters, i.e., the length of the string
+     * <code>--visualizer-output-path=</code>.
+     */
+    static const constexpr std::size_t VISUALIZER_OUTPUT_OPTION_LENGTH = 25;
+
+    /**
+     * Length of the option specifying the path of the output file that will be filled with the
+     * Mathematica script that generates the dendrogram, i.e., the length of the string
+     * <code>--mathematica-output-path=</code>.
+     */
+    static const constexpr std::size_t MATHEMATICA_OUTPUT_OPTION_LENGTH = 26;
+
+    /**
+     * Length of the option specifying the path of the output file that will be filled with the
+     * computed values of <code>pi</code> and <code>lambda</code>, i.e., the length of the string
+     * <code>--test-results-path=</code>.
+     */
+    static const constexpr std::size_t TEST_RESULTS_PATH_OPTION_LENGTH = 20;
 
 public:
     /**
@@ -78,13 +99,24 @@ private:
     void parseNumberOfThreadsOption(CliArguments &result);
 
     /**
-     * Parses the -o option.
+     * Parses the --visualizer-output-path option.
      *
      * @param result Container where the parsed arguments will be placed.
-     * @throws CliArgumentException If there are not enough non-parsed arguments left, or if the
-     * specified file paths are not valid.
+     * @param option The string containing the full argument specified in the command line, i.e.,
+     * the string <code>--visualizer-output-path=...</code>.
+     * @throws CliArgumentException If the specified file path is not valid.
      */
-    void parseOutputOption(CliArguments &result);
+    static void parseVisualizerOutputOption(CliArguments &result, const std::string &option);
+
+    /**
+     * Parses the --mathematica-output-path option.
+     *
+     * @param result Container where the parsed arguments will be placed.
+     * @param option The string containing the full argument specified in the command line, i.e.,
+     * the string <code>--mathematica-output-path=...</code>.
+     * @throws CliArgumentException If the specified file path is not valid.
+     */
+    static void parseMathematicaOutputOption(CliArguments &result, const std::string &option);
 
     /**
      * Parses the version of the clustering algorithm to invoke. This method is called for both the
@@ -105,16 +137,18 @@ private:
      * @param result Container where the parsed arguments will be placed.
      * @throws CliArgumentException If there are not enough non-parsed arguments left
      */
-    void parseTestOption(CliArguments &result);
+    static void parseTestOption(CliArguments &result);
 
     /**
      * Parses the --test-results-path option.
      *
      * @param result Container where the parsed arguments will be placed.
-     * @throws CliArgumentException If there are not enough non-parsed arguments left, or if the
-     * specified file where the tests results will be read or stored is not a valid path.
+     * @param option The string containing the full argument specified in the command line, i.e.,
+     * the string <code>--test-results-path=...</code>.
+     * @throws CliArgumentException If the specified file where the tests results will be read or
+     * stored is not a valid path.
      */
-    void parseTestResultsPath(CliArguments &result);
+    static void parseTestResultsPath(CliArguments &result, const std::string &option);
 
     /**
      * Parses the input file path.

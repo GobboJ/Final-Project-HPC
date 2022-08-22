@@ -10,10 +10,10 @@
 \geometry{left=1cm,right=1cm,top=2cm,bottom=2cm}
 
 \hypersetup{
-  pdftitle={Clustering Parallelization Project},
-  pdfauthor={Alessio de Biasi (870288); Jonathan Gobbo (870506)},
-  hidelinks,
-  pdfcreator={LaTeX via pandoc}}
+    pdftitle={Clustering Parallelization Project},
+    pdfauthor={Alessio de Biasi (870288); Jonathan Gobbo (870506)},
+    hidelinks,
+    pdfcreator={LaTeX via pandoc}}
 
 \title{Clustering Parallelization Project}
 \author{Alessio de Biasi (870288) \and Jonathan Gobbo (870506)}
@@ -23,42 +23,75 @@
 \PassOptionsToPackage{unicode}{hyperref}
 \PassOptionsToPackage{hyphens}{url}
 
+\newenvironment{aaaa}{
+    \begin{table}[H]
+        \centering
+        \begin{tabular}[H]{ccccccc}
+            \hline \\
+            & s1 & s2 & s3 & s4 & s5 & tot \\
+            \hline \\
+            }{
+            \hline
+        \end{tabular}
+        \label{tab:my_label}
+    \end{table}
+}
+
 \newcommand{\loremTable}{
-\begin{table}[H]
-    \centering
-    \begin{tabular}[H]{ccccccc}
-\hline
-& s1 & s2 & s3 & s4 & s5 & tot \\
-\hline
-B 2 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-B 4 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-B 8 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-B 12 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-B 16 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-G 2 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-G 4 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-G 8 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-G 12 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-G 16 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-\hline
-\end{tabular}
-    \label{tab:my_label}
-\end{table}
+    \begin{table}[H]
+        \centering
+        \begin{tabular}[H]{ccccccc}
+            \hline
+            & s1     & s2     & s3     & s4     & s5     & tot    \\
+            \hline
+            B 2  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            B 4  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            B 8  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            B 12 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            B 16 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            G 2  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            G 4  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            G 8  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            G 12 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            G 16 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            \hline
+        \end{tabular}
+        \label{tab:my_label}
+    \end{table}
+}
+
+\newcommand{\loremTableShort}{
+    \begin{table}[H]
+        \centering
+        \begin{tabular}[H]{ccccccc}
+            \hline
+            & s1     & s2     & s3     & s4     & s5     & tot    \\
+            \hline
+            B 4  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            B 8  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            B 12 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            G 4  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            G 8  & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            G 12 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            \hline
+        \end{tabular}
+        \label{tab:my_label}
+    \end{table}
 }
 
 \newcommand{\loremTableSequential}{
-\begin{table}[H]
-    \centering
-    \begin{tabular}[H]{ccccccc}
-\hline
-& s1 & s2 & s3 & s4 & s5 & tot \\
-\hline
-B & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-G & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
-\hline
-\end{tabular}
-    \label{tab:my_label}
-\end{table}
+    \begin{table}[H]
+        \centering
+        \begin{tabular}[H]{ccccccc}
+            \hline
+            & s1     & s2     & s3     & s4     & s5     & tot    \\
+            \hline
+            B & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            G & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
+            \hline
+        \end{tabular}
+        \label{tab:my_label}
+    \end{table}
 }
 
 \setlength{\itemsep}{0pt}
@@ -68,12 +101,21 @@ G & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 & 888.88 \\
 \twocolumn
 \maketitle
 
+Operating system
+CPU
+Compiler used
 
-\hypertarget{versions}{%
-\section{Versions}\label{versions}}
+Dataset description (attributes and rows)
+How the times are computed (the mean of 3 executions)
+Description of S1 S2 S3 S4 S5 (their meaning)
 
-\hypertarget{sequential}{%
-\subsection{Sequential}\label{sequential}}
+\hypertarget{versions}{
+    \section{Versions}
+    \label{versions}}
+
+\hypertarget{sequential}{
+    \subsection{Sequential}
+    \label{sequential}}
 
 The first version of the algorithm we implemented is the sequential one.
 Data is supplied as a
@@ -86,9 +128,10 @@ structures used we decided to use iterators.
 
 \loremTableSequential
 
+
 \hypertarget{distanze-calcolate-in-parallelo}{%
-\subsection{Distanze calcolate in
-parallelo}\label{distanze-calcolate-in-parallelo}}
+    \subsection{Distanze calcolate in
+    parallelo}\label{distanze-calcolate-in-parallelo}}
 
 This is the first and simplest parallelized version of the algorithm.
 Data is supplied in the same way as the sequential one. The computation
@@ -99,26 +142,9 @@ also the lack of data dependencies.
 
 \loremTable
 
-\hypertarget{sse-avx}{%
-\subsection{SSE \& AVX}\label{sse-avx}}
-
-In the second parallel version we implemented the distance computation
-code using \emph{SSE} instructions. We deemed using SIMD instructions
-useful since the attributes of each point are contiguous in memory and
-we have to apply the same sequence of instructions on each attribute.
-
-In the third revision we replaced the SSE instructions with \emph{AVX}
-ones, to see if performance would improve. In both cases we had to deal
-with memory alignment by adding padding at the end of each sample with
-zeroes, but otherwise the data is supplied in the same way.
-
-\loremTable
-\loremTable
-
-
 \hypertarget{distanze-multithread-sse-avx}{%
-\subsection{Distanze multithread + SSE \&
-AVX}\label{distanze-multithread-sse-avx}}
+    \subsection{Distanze multithread + SSE \&
+    AVX}\label{distanze-multithread-sse-avx}}
 
 In the fourth and fifth solutions we combined respectively the
 multithreaded distance calculation with SSE first and AVX second, with
@@ -128,9 +154,11 @@ the purpose of seeing if these techniques would work together well.
 
 \loremTable
 
+TODO: Motivation of why we based 4/8/12 threads of the tests
+
 \hypertarget{linearizing-data-arrayone}{%
-\subsection{Linearizing data
-(arrayone)}\label{linearizing-data-arrayone}}
+    \subsection{Linearizing data
+        (arrayone)}\label{linearizing-data-arrayone}}
 
 In this sixth try we modified the previous multithreaded with AVX
 solution to work on data which has been linearized, i.e.~a single array
@@ -138,49 +166,186 @@ of double values aligned to work with AVX instructions. The purpose of
 this test is to see if there are any cache awareness improvements given
 by the linearized memory.
 
-\loremTable
-\loremTable
+\loremTableShort
+\loremTableShort
 
-\hypertarget{stage-4-parallel}{%
-\subsection{Stage 4 parallel}\label{stage-4-parallel}}
+// TODO: Motivation of why we use AVX and linearized data in the following sections
+
+
+
+\hypertarget{stage-3-parallel}{
+    \subsection{Stage 3 parallel}
+    \label{stage-3-parallel}}
+
+After having parallelized the computation of the distances, we focused on parallelizing the other
+step of the algorithm takes takes a lot of time to complete, i.e., the step \textit{3}.
+
+However, this cannot be done.
+Indeed, when the element $i$ is analyzed, the algorithm requires that all the elements before $i$
+have already been analyzed.
+
+Therefore, if we give each thread an element to analyze in a round-robin fashion, then there will
+be always a thread working while all the other threads will be blocked waiting for the active
+thread to complete its work.
+
+\hypertarget{stage-4-parallel}{
+    \subsection{Stage 4 parallel}
+    \label{stage-4-parallel}}
+
+Therefore, we decided to try to parallelize the third step of the algorithm that takes a
+significant amount of time to be executed.
 
 This seventh version is based on the fourth one, with the addition of
 the multithreaded parallelization of the stage 4 of the algorithm. Once
 again we noticed that at this stage there are no data dependencies,
 making it trivial to parallelize.
 
-\loremTable
+\loremTableShort
 
-\loremTable
+No any further useful parallelization can be done in the algorithm because, as shown by the
+results, without parallelizing the step \textit{1} it takes only few milliseconds to be executed,
+hence if parallelized won't improve the performance of the algorithm.
 
-\hypertarget{ottimizzazione-calcolo-distanze-mantenendo-somme-parziali-allinterno-dei-registri}{%
-\subsection{Ottimizzazione calcolo distanze mantenendo somme parziali
-all'interno dei
-registri}\label{ottimizzazione-calcolo-distanze-mantenendo-somme-parziali-allinterno-dei-registri}}
+
+\hypertarget{failed-attempt}{
+    \subsection{Failed attempt}
+    \label{failed-attempt}}
+
+To overcome the impossibility of parallelize the step \textit{3} of the algorithm, we decided to
+devise a new algorithm, which can be made parallel more easily.
+
+This new algorithm builds incrementally the dendrogram like the algorithm we used so far, but it
+is based on a different but simple idea.
+
+Suppose the algorithm needs to add to the dendrogram a new data sample $d$ and suppose that, among
+all the samples already added to the dendrogram, the data sample $c$ is the closest one with
+distance $l$ (i.e., $c$ is the data sample with the minimum distance from $d$).
+
+Then, any cluster containing $d$ for sure contains also $c$, otherwise there would be another
+data sample $e$ already added to the dendrogram which is closer to $d$ more than $c$, but we assumed
+$c$ is the closest one.
+
+If we look at the structure of the dendrogram, this consideration implies that the new data sample
+$d$ is connected to one of the edges in the path from $c$ to the root of the dendrogram.
+
+\textbf{missing image}
+
+In particular, the new edge will be added on that path right before the first edge $\varepsilon$
+with an
+height that is bigger than $l$.
+
+Therefore, adding a new edge to the dendrogram is trivial if we represent the dendrogram as a
+binary tree, where:
+\begin{itemize}
+    \item Each leaf stores the identifier of the data sample and a pointer to the parent node;
+    \item Each internal node stores the pointer to the parent node and the children nodes, as
+    well as the value of height of the edge.
+\end{itemize}
+Indeed, it is just a matter of changing the values of two pointers, namely the pointer to the
+left or right child of the node representing the edge $\varepsilon$, and the pointer to the
+parent node of the node that was previously connected to $\varepsilon$.
+
+However, this is only half of the work. Suppose, at some point, the cluster $X$ joins cluster $Y$
+at distance $k$. Suppose that $c$ belongs to $X$ and suppose that $k > l$.
+
+This implies that $X$ must also contain $d$ because, since $c$ belongs to $X$, then one of the
+sub-clusters of $X$ containing $c$ must join the data sample $d$, since the distance between $c$
+and $d$ is smaller than $k$.
+
+However, if $X$ joined $Y$ at distance $k$ before adding $d$, now that we have added $d$ the two
+clusters may have become closer.
+
+If we look at the dendrogram, this may require to change the heights of all the edges in the path
+from the newly added edge to the root of the dendrogram.
+Note that, in any case, the heights of any of such edges can't get smaller than the heights of
+their children.
+
+Therefore, if in the nodes representing the dendrogram we store also the information about which
+point of the left sub-tree is the closest to which point of the right sub-tree, then adjusting
+the heights stored in such nodes is trivial.
+
+Indeed, suppose that the node stores the information that the two closest data samples are $e$
+and $f$. Suppose also that $d$ belongs to a cluster that also contain $e$. Then, to update the
+height of the edge we need to to check if the distance between $d$ and $f$ is smaller than the
+distance between $e$ and $f$ (which is the current height of the edge). If so, we need to update
+the height of the edge as well as the two closest points (which will be $d$ and $f$). Otherwise,
+no change is made.
+
+All of these operations can be easily made parallel. We just need to assign to each thread an
+node of the path from $c$ to the root of the dendrogram in a round-robin fashion. The given node
+can represent:
+\begin{enumerate}
+    \item An edge with height smaller than $l$. In this case, the thread just does nothing and
+    selects another edge;
+    
+    \item The first edge in the path with an height larger than $l$. This can be easily tested
+    by looking at the heights of the two children, if at least one of them is not a leaf. If they
+    are both a leaves, then the edge receives by the thread IS the first in the path with an
+    height larger than $l$.
+    
+    In this case, the thread just changes the values some the pointers,
+    which can be done safely by using the \textit{Compare And Swap} primitives offered by the CPU.
+    
+    \item An edge that does not fall in one of the previous cases. Therefore, the thread needs
+    only to update the height stored in the node and the two closest points, if the newly added
+    data sample has made two two sub-clusters closer.
+\end{enumerate}
+
+This algorithm is extremely parallel because there almost no data dependency among the nodes the
+threads analyze.
+
+However, there are some cases in which this algorithm does not work. Let's take the following
+example:
+
+\textbf{missing image}
+
+When we add to the the dendrogram the point $F$, its structure completely changes:
+
+\textbf{missing image}
+
+This implies that any node of the tree representing the dendrogram can be moved, which implies
+that the pointers to the parent and children nodes can change on every node.
+
+Since the threads are traversing the path from a leaf to the root, if a thread moves a node, it
+must perform such an operation in mutual exclusion, otherwise the other threads may analyze nodes
+that do not belong to the path.
+
+This requires any thread to lock the node they are using, so to prevent any other thread to
+traverse the node and analyze the parent of such node, which indeed may change is the thread
+moves the node.
+
+All these locks will introduce a high complexity in the algorithm, which leads to poor performances.
+
+Therefore, we abandoned this algorithm, and we tried some micro-optimizations to the algorithm we
+have used so far.
+
+\hypertarget{micro-optimization-partial-sum}{%
+    \subsection{Ottimizzazione calcolo distanze mantenendo somme parziali
+    all'interno dei
+    registri}\label{micro-optimization-partial-sum}}
+
+
 
 The eighth and ninth solutions aim to optimize the SSE and AVX code of
 the distance calculations by avoiding to write partial sums in memory
 and keeping them in the registers. It also uses multithreading in both
 the distance calculator and the stage 4.
 
-\loremTable
+\loremTableShort
 
-\loremTable
+%\hypertarget{linearized-calcolo-distanze-ottimizzato}{%
+%\subsection{Linearized + calcolo distanze
+%ottimizzato}\label{linearized-calcolo-distanze-ottimizzato}}
 
-\hypertarget{linearized-calcolo-distanze-ottimizzato}{%
-\subsection{Linearized + calcolo distanze
-ottimizzato}\label{linearized-calcolo-distanze-ottimizzato}}
+%The tenth and eleventh algorithms modify the previous couple of
+%solutions by passing the linearized data instead.
 
-The tenth and eleventh algorithms modify the previous couple of
-solutions by passing the linearized data instead.
+%\loremTableShort
+%\loremTableShort
 
-\loremTable
-
-\loremTable
-
-\hypertarget{utilizzo-dei-quadrati-delle-distanze-linearized}{%
-\subsection{Utilizzo dei quadrati delle distanze +
-linearized}\label{utilizzo-dei-quadrati-delle-distanze-linearized}}
+\hypertarget{micro-optimization-no-square-root}{%
+    \subsection{Utilizzo dei quadrati delle distanze +
+    linearized}\label{micro-optimization-no-square-root}}
 
 This approach, based on the previous solutions, is an approximation
 algorithm in the sense that it computes the square root of the distances
@@ -192,122 +357,267 @@ should not cause any issue since if \(\sqrt{n^2} \geq \sqrt{m^2}\), then
 \loremTable
 \loremTable
 
-\hypertarget{sequential-linearized}{%
-\subsection{Sequential + linearized}\label{sequential-linearized}}
+
+\hypertarget{sequential-linearized}{
+    \subsection{Sequential + linearized}
+    \label{sequential-linearized}}
 
 \loremTableSequential
 
-\hypertarget{failed-attempt}{%
-\subsection{Failed attempt}\label{failed-attempt}}
+\hypertarget{Data layouts comparison}{
+    \subsection{Data layouts comparison}
+    \label{data-layout-comparison}}
 
-In this attempt we tried to devise a new parallel distance computation
+Execution of the fastest parallel implementation with a \\
+\texttt{std::vector<double *>}
+
+\loremTable
+\loremTable
+
+\hypertarget{Conclusions}{
+    \subsection{Conclusions}
+    \label{Conclusions}}
+
+Speed-up of $x$.
+
+\hypertarget{how-to-use-the-library}{
+    \section{How to use the library}
+    \label{how-to-use-the-library}}
+
+We organized the implementations of the clustering algorithms into a library composed of two
+main files:
+\begin{enumerate}
+    \item The \texttt{SequentialClustering} class, defined in the \texttt{SequentialClustering.h}
+    header file, which provides the sequential implementation of the clustering algorithm;
+    \item The \texttt{ParallelClustering} class, defined in the \texttt{ParallelClustering.h}
+    header file, which provides all the parallel implementations of the clustering algorithm.
+\end{enumerate}
+
+\hypertarget{parallel-clustering}{%
+    \subsection{\texttt{ParallelClustering} class}
+    \label{parallel-clustering}}
+
+This class offers several utility methods and constants allowing the programmer to easily deal
+with aligned memory. In particular, the \texttt{computeSseDimension} and
+\texttt{computeAvxDimension} static methods allows to compute the number of \texttt{double}
+elements each data sample must be compose of, taking into account also possible paddings.
+
+However, the \texttt{cluster} static method is most important one offered by this class. It clusters
+the given data samples using the specified distance computation algorithm (see
+\ref{distance-computation-algorithms} for the list of available algorithms).
+It is specified as a template argument so to compile only the code needed to execute the selected
 algorithm.
+The method allows also to specify the number of threads to use in each of the steps that can be
+parallelized, namely:
+\begin{enumerate}
+    \item The computation of the distance between the data samples;
+    \item The operations needed to fix the structure of the dendrogram after a new point is
+    added, i.e., fixing the representative of all the points whose representative joined a
+    cluster containing the new data sample (the step \textit{4} of the algorithm);
+    \item The computation of the square roots of the distances stored in \texttt{lambda}.
+\end{enumerate}
+Note that the parallelization of such steps can be enabled or disabled at compile time by using the
+template parameters of the \texttt{ParallelClustering} class.
 
-\hypertarget{how-to-use-the-library}{%
-\section{How to use the library}\label{how-to-use-the-library}}
+\hypertarget{par-data-samples-layout}{
+    \subsubsection{Data samples memory layout}
+    \label{par-data-samples-layout}}
 
-The Sequential and Parallel algorithms are provided respectively by the
-\texttt{SequentialClustering.h} and \texttt{ParallelClustering.h} header
-files.
+The \texttt{cluster} static method allows a certain flexibility in the memory layout of the data
+samples. In particular, the method accepts two main organizations:
+\begin{enumerate}
+    \item A contiguous region of memory, where the data samples are store one after the other.
+    The method accepts either an iterator iterating over that region, or directly the data
+    structure holding it. In this case, the \texttt{cluster} method takes care of extracting the
+    iterator by calling the \texttt{begin} method or, if present, the \texttt{cbegin} one;
+    
+    \item A data layout organized in two levels.
+    
+    Each element of the second level is a data structure holding a contiguous region of memory
+    (or an iterator iterating over it) where the attributes of one data sample are stored.
+    If the element is a data structure, then the \texttt{cluster} method takes care of calling the
+    \texttt{begin} method (or the \texttt{cbegin} one, if present) to obtain an iterator
+    iterating over the attributes of the data sample every time it is needed to.
+    
+    The first level, instead, is merely a container that holds the data samples to
+    cluster (or the iterators iterating over them).
+    Note that this container is required to be randomly accessible, but it is not required to be
+    contiguous in memory.
+    
+    Again, the \texttt{cluster} method accepts either the iterator over the data structure, or
+    the data structure itself. In this last case, the method takes care of calling the
+    \texttt{begin} method, or the \texttt{cbegin} one if present, to obtain an iterator iterating
+    over the data structure.
 
-\hypertarget{sequential-algorithm}{%
-\subsection{Sequential Algorithm}\label{sequential-algorithm}}
+\end{enumerate}
+
+\hypertarget{par-pi-lambda-layout}{
+    \subsubsection{\texttt{pi} and \texttt{lambda} memory layouts}
+    \label{par-pi-lambda-layout}}
+
+The \texttt{cluster} static method allows also a certain flexibility in the memory layout of
+\texttt{pi} and \texttt{lambda}.
+
+In particular, each of them can be any randomly accessible data structure, or an iterator
+iterating over it.
+In the former case, the method takes care of calling \texttt{begin} method, or the
+\texttt{cbegin} one if present, to retrieve the random access iterator iterating over the
+specified data structure.
+
+Note that the \texttt{cluster} method assumes the data structures holding \texttt{pi} and
+\texttt{lambda} to be as big as the number of data samples to cluster.
+
+\hypertarget{distance-computation-algorithms}{
+    \subsubsection{Distance computation algorithms}
+    \label{distance-computation-algorithms}}
+
+The \texttt{cluster} stating method allows the programmer to use different algorithms to compute
+the distance between two data samples. In particular:
+\begin{itemize}
+    \item \texttt{CLASSICAL}, which computes the Euclidean distances without using any SIMD
+    instruction;
+    \item \texttt{SSE} and \texttt{AVX}, which compute the distances using SSE and AVX
+    instructions respectively;
+    \item \texttt{SSE\textunderscore OPTIMIZED} and \texttt{AVX\textunderscore OPTIMIZED}, which
+    compute the distances using
+    SSE and AVX instructions respectively, and they keep the partial sums in the registers
+    instead of storing them into a variable (see
+    \ref{micro-optimization-partial-sum});
+    \item \texttt{SSE\textunderscore
+    OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT} and
+    \texttt{AVX\textunderscore OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore
+    ROOT}, which compute the distances like \texttt{SSE\textunderscore OPTIMIZED} and
+    \texttt{AVX\textunderscore OPTIMIZED}
+    respectively, but instead of computing the real distances they compute only their squares,
+    without then applying the square root operation (see \ref{micro-optimization-no-square-root}).
+\end{itemize}
+
+\hypertarget{sequential-clustering}{
+    \subsection{\texttt{SequentialClustering} class}
+    \label{sequential-clustering}}
+
+This class provide only one method, the \texttt{cluster} static method, which executes the
+sequential implementation of the clustering algorithm on the specified data samples.
+
+\hypertarget{seq-data-samples-layout}{
+    \subsubsection{Data samples memory layout}
+    \label{seq-data-samples-layout}}
+
+The \texttt{cluster} static method supports the same data layouts as the \texttt{cluster} method
+of the parallel implementation (see \ref{par-data-samples-layout}).
+
+In addition, if the specified data structure (or iterator) is organized in two levels, then this
+method does require the first level to be randomly accessible, but it requires only the first
+level to be input iterable (or to be an input iterator).
+
+\hypertarget{seq-pi-lambda-layout}{
+    \subsubsection{\texttt{pi} and \texttt{lambda} memory layouts}
+    \label{seq-pi-lambda-layout}}
+
+The \texttt{cluster} static method supports exactly the same data layouts for both \texttt{pi}
+and \texttt{lambda} as the \texttt{cluster} method
+of the parallel implementation (see \ref{par-pi-lambda-layout}).
+
+\hypertarget{timers}{
+    \subsection{\texttt{Timer} class}
+    \label{timer}}
+
+Both the sequential and parallel implementations of the clustering algorithm allows to measure
+the time taken to execute each step.
+
+The static method \texttt{print} of the \texttt{Timer} class allows to print to console the
+duration of one of such timers, based on its identifier specified to the method as a template
+argument.
+
+The \texttt{Timer} class offers also the \texttt{printTotal} method that allows to print the
+duration of several timers, together with an description of their use.
+
+In particular, both algorithms use the following timer identifiers:
+\begin{itemize}
+    \item \texttt{0}, which contains the time taken to execute all the service operations, like
+    moving the iterators, or initializing the internal data structures;
+    \item \texttt{1}, which contains the time taken to initialize \texttt{pi} and \texttt{lambda};
+    \item \texttt{2}, which contains the time taken to compute the distance between the data
+    samples;
+    \item \texttt{3}, which contains the time taken to add to the dendrogram the new data sample;
+    \item \texttt{4}, which contains the time taken to fix the structure of the dendrogram after
+    a new point is added. This implies updating the representative of a data sample whenever its
+    current representative gets connected to a cluster containing the new point.
+\end{itemize}
+
+In addition, the parallel implementation of the clustering algorithm uses the timer with identifier
+\texttt{5} to measure the time taken to compute the squre roots of the values in \texttt{lambda},
+if the distance computation algorithm is one of \texttt{SSE\textunderscore
+OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT} or
+\texttt{AVX\textunderscore OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT}.
+
+By default the timers are disabled, but they can be enable defining the \texttt{TIMERS} macro.
+%
+%
+%
+%
+%
+%
+%
+%
+\clearpage
 
 The sequential \texttt{cluster} function has the following signature:
-
-\begin{verbatim}
-template <DistanceComputers C,
-      ParallelDataIterator D,
-      PiIterator P,
-      LambdaIterator L,
-      bool S2 = true,
-      bool S4 = false,
-      bool S5 = false>
-static void cluster(const D dataIterator,
-                const std::size_t dataSamplesCount,
-                const std::size_t dimension,
-                const P piIterator,
-                const L lambdaIterator,
-                const std::size_t distanceComputationThreadsCount = 0,
-                const std::size_t stage4ThreadsCount = 0,
-                const std::size_t squareRootThreadsCount = 0)
-\end{verbatim}
-
 
 To invoke the sequential clustering algorithm, the following parameters
 must be passed to the \texttt{cluster} function:
 
 \begin{itemize}
-
-\item
-  \texttt{dataIterator}: a dataset iterator of generic type \texttt{D}
-  that must satisfy the concept \texttt{DataIterator}, defined in the
-  header file \texttt{Types.h};
-\item
-  \texttt{dataSamplesCount}: the number of rows in the dataset;
-\item
-  \texttt{dimension}: the number of columns in the dataset;
-\item
-  \texttt{piIterator}: an iterator on the \emph{pi} data structure, of
-  generic type \texttt{P} satisfying the \texttt{PiIterator} concept;
-\item
-  \texttt{lambdaIterator}: an iterator on the \emph{lambda} data
-  structure, of generic type \texttt{L} satisfying the
-  \texttt{LambdaIterator} concept;
+    
+    \item
+    \texttt{dataIterator}: a dataset iterator of generic type \texttt{D}
+    that must satisfy the concept \texttt{DataIterator}, defined in the
+    header file \texttt{Types.h};
+    \item
+    \texttt{dataSamplesCount}: the number of rows in the dataset;
+    \item
+    \texttt{dimension}: the number of columns in the dataset;
+    \item
+    \texttt{piIterator}: an iterator on the \emph{pi} data structure, of
+    generic type \texttt{P} satisfying the \texttt{PiIterator} concept;
+    \item
+    \texttt{lambdaIterator}: an iterator on the \emph{lambda} data
+    structure, of generic type \texttt{L} satisfying the
+    \texttt{LambdaIterator} concept;
 \end{itemize}
 
 The \texttt{cluster} function assumes that the data structures
 underlying the \texttt{piIterator} and \texttt{lambdaIterator} iterators
 are big enough to hold all the values.
 
-\hypertarget{parallel-algorithm}{%
-\subsection{Parallel Algorithm}\label{parallel-algorithm}}
 
 The parallel \texttt{cluster} function has the following signature:
-
-\begin{verbatim}
-template <DistanceComputers C,
-      ParallelDataIterator D,
-      PiIterator P,
-      LambdaIterator L,
-      bool S2 = true,
-      bool S4 = false,
-      bool S5 = false>
-static void cluster(const D dataIterator,
-                const std::size_t dataSamplesCount,
-                const std::size_t dimension,
-                const P piIterator,
-                const L lambdaIterator,
-                const std::size_t distanceComputationThreadsCount = 0,
-                const std::size_t stage4ThreadsCount = 0,
-                const std::size_t squareRootThreadsCount = 0)
-\end{verbatim}
 
 To invoke the parallel clustering algorithm, the following parameters
 must be passed to the \texttt{cluster} function:
 
 \begin{itemize}
-\item
-  \texttt{dataIterator}: a dataset iterator of generic type \texttt{D}
-  that must satisfy the concept \texttt{ParallelDataIterator}, defined
-  in the header file \texttt{Types.h}. In contrary to the sequential
-  version, this concept requires data to be addressable through the
-  \texttt{{[}{]}} operator to allow concurrent data access;
-\item
-  \texttt{distanceComputationThreadsCount}: defines the number of
-  threads used to compute the distances between the points. By default
-  it is \(0\), meaning that OpenMP will use all the available CPU
-  threads to perform the computation. If \texttt{S2} is false, this
-  value is ignored;
-\item
-  \texttt{stage4ThreadsCount}: defines the number of threads used to
-  perform the stage 4 of the clustering algorithm. If \texttt{S4} is
-  false, this value is ignored;
-\item
-  \texttt{squareRootThreadsCount}: defines the number of threads used to
-  compute the square roots of the distances. If \texttt{S5} is false, or
-  \texttt{C} is not \texttt{SSE\_OPTIMIZED\_NO\_SQUARE\_ROOT} nor
-  \texttt{AVX\_OPTIMIZED\_NO\_SQUARE\_ROOT}, then this value is ignored;
+    \item
+    \texttt{dataIterator}: a dataset iterator of generic type \texttt{D}
+    that must satisfy the concept \texttt{ParallelDataIterator}, defined
+    in the header file \texttt{Types.h}. In contrary to the sequential
+    version, this concept requires data to be addressable through the
+    \texttt{{[}{]}} operator to allow concurrent data access;
+    \item
+    \texttt{distanceComputationThreadsCount}: defines the number of
+    threads used to compute the distances between the points. By default
+    it is \(0\), meaning that OpenMP will use all the available CPU
+    threads to perform the computation. If \texttt{S2} is false, this
+    value is ignored;
+    \item
+    \texttt{stage4ThreadsCount}: defines the number of threads used to
+    perform the stage 4 of the clustering algorithm. If \texttt{S4} is
+    false, this value is ignored;
+    \item
+    \texttt{squareRootThreadsCount}: defines the number of threads used to
+    compute the square roots of the distances. If \texttt{S5} is false, or
+    \texttt{C} is not \texttt{SSE\_OPTIMIZED\_NO\_SQUARE\_ROOT} nor
+    \texttt{AVX\_OPTIMIZED\_NO\_SQUARE\_ROOT}, then this value is ignored;
 \end{itemize}
 
 The parameters \texttt{dataSamplesCount}, \texttt{dimension},
@@ -317,28 +627,28 @@ sequential version.
 Moreover, the following template parameters must be specified:
 
 \begin{itemize}
-\item
-  \texttt{DistanceComputers}: enumeration that defines which variant of
-  the parallel cluster algorithm to be used to compute the distance
-  between the points. Its possible values are \texttt{CLASSICAL},
-  \texttt{SSE}, \texttt{AVX}, \texttt{SSE\_OPTIMIZED},
-  \texttt{AVX\_OPTIMIZED}, \texttt{SSE\_OPTIMIZED\_NO\_SQUARE\_ROOT},
-  \texttt{AVX\_OPTIMIZED\_NO\_SQUARE\_ROOT}. Their meaning are described
-  in the previous chapter;
-\item
-  \texttt{S2}: boolean value defaulted to \texttt{true}, indicates
-  whether the distance computation stage of the algorithm should be
-  parallelized using threads;
-\item
-  \texttt{S4}: boolean value defaulted to \texttt{false}, indicates
-  whether the stage 4 of the algorithm should be parallelized using
-  threads;
-\item
-  \texttt{S5}: boolean value defaulted to \texttt{false}, indicates
-  whether the computation of the square roots of the distances should be
-  parallelized using threads. Effective only if \texttt{C} is either
-  \texttt{SSE\_OPTIMIZED\_NO\_SQUARE\_ROOT} or
-  \texttt{AVX\_OPTIMIZED\_NO\_SQUARE\_ROOT}.
+    \item
+    \texttt{DistanceComputers}: enumeration that defines which variant of
+    the parallel cluster algorithm to be used to compute the distance
+    between the points. Its possible values are \texttt{CLASSICAL},
+    \texttt{SSE}, \texttt{AVX}, \texttt{SSE\_OPTIMIZED},
+    \texttt{AVX\_OPTIMIZED}, \texttt{SSE\_OPTIMIZED\_NO\_SQUARE\_ROOT},
+    \texttt{AVX\_OPTIMIZED\_NO\_SQUARE\_ROOT}. Their meaning are described
+    in the previous chapter;
+    \item
+    \texttt{S2}: boolean value defaulted to \texttt{true}, indicates
+    whether the distance computation stage of the algorithm should be
+    parallelized using threads;
+    \item
+    \texttt{S4}: boolean value defaulted to \texttt{false}, indicates
+    whether the stage 4 of the algorithm should be parallelized using
+    threads;
+    \item
+    \texttt{S5}: boolean value defaulted to \texttt{false}, indicates
+    whether the computation of the square roots of the distances should be
+    parallelized using threads. Effective only if \texttt{C} is either
+    \texttt{SSE\_OPTIMIZED\_NO\_SQUARE\_ROOT} or
+    \texttt{AVX\_OPTIMIZED\_NO\_SQUARE\_ROOT}.
 \end{itemize}
 
 \end{document}

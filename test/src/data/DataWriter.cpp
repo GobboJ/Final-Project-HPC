@@ -3,7 +3,7 @@
  *
  * @author DeB
  * @author Jonathan
- * @version 1.1 2022-08-06
+ * @version 1.2 2022-08-22
  * @since 1.0
  */
 #include "DataWriter.h"
@@ -24,14 +24,23 @@ namespace cluster::test::data {
  * @param piVector Vector containing the values of pi.
  * @param lambdaVector Vector containing the values of lambda.
  * @throws IOException If an I/O error occurs while writing to the file.
+ * @throws std::invalid_argument If the specified <code>pointCoordinates</code> vector contains too
+ * few coordinates.
  */
-void DataWriter::createOutputFile(const std::filesystem::path &outputFilePath,
-                                  const std::vector<double> &pointCoordinates,
-                                  const std::size_t &dimension,
-                                  const std::vector<size_t> &piVector,
-                                  const std::vector<double> &lambdaVector) {
+void DataWriter::createVisualizerOutputFile(const std::filesystem::path &outputFilePath,
+                                            const std::vector<double> &pointCoordinates,
+                                            const std::size_t &dimension,
+                                            const std::vector<size_t> &piVector,
+                                            const std::vector<double> &lambdaVector) {
 
     using namespace std::literals::string_literals;
+
+    // Count the number of points
+    const std::size_t pointsCount = pointCoordinates.size() / dimension;
+
+    if (pointsCount * dimension != pointCoordinates.size()) {
+        throw std::invalid_argument("The specified point coordinates have an incorrect dimension");
+    }
 
     // Open the output file
     std::ofstream fileOutputStream{outputFilePath};
@@ -46,7 +55,7 @@ void DataWriter::createOutputFile(const std::filesystem::path &outputFilePath,
         std::size_t pointIdentifier = 0;
 
         // Print the points
-        for (std::size_t i = 0; i < pointCoordinates.size(); i += dimension) {
+        for (std::size_t i = 0; i < pointsCount; i++) {
             // Print the name
             const std::string pointName{"P"s + std::to_string(pointIdentifier)};
             fileOutputStream << pointName << ": \"" << std::to_string(pointIdentifier + 1) << "\" ";
@@ -54,14 +63,14 @@ void DataWriter::createOutputFile(const std::filesystem::path &outputFilePath,
             for (std::size_t j = 0; j < dimension; j++) {
                 // Write the coordinate
                 fileOutputStream << pointCoordinates[i * dimension + j];
-                DataWriter::requireFileGoodness(fileOutputStream);
+                DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
                 // Write a comma to separate the coordinates, if it is not the last one
                 if (j == (dimension - 1)) {
                     fileOutputStream << std::endl;
                 } else {
                     fileOutputStream << ' ';
                 }
-                DataWriter::requireFileGoodness(fileOutputStream);
+                DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
             }
             // Map the point with itself
             names[pointName] = std::to_string(pointIdentifier + 1);
@@ -118,7 +127,7 @@ void DataWriter::createOutputFile(const std::filesystem::path &outputFilePath,
                 fileOutputStream << clusterName << ": \"" << fullClusterName << "\" "
                                  << firstClusterIndex << ' ' << secondClusterIndex << ' '
                                  << lambdaVector[index] << '\n';
-                DataWriter::requireFileGoodness(fileOutputStream);
+                DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
 
                 // Update the last printed cluster the points belong to
                 clusters[index] = {clusterName, fullClusterName};
@@ -129,9 +138,10 @@ void DataWriter::createOutputFile(const std::filesystem::path &outputFilePath,
             }
         }
     } else {
-        throw IOException(
-                "Unable to open output file where to store the information about the points and "
-                "the clusters.");
+        using namespace std::literals::string_literals;
+        throw IOException("Unable to open output file"s + ' ' + outputFilePath.string() +
+                          " where the information about the points and "
+                          "the clusters will be stored.");
     }
 }
 
@@ -173,7 +183,7 @@ void DataWriter::createMathematicaOutputFile(const std::filesystem::path &output
 
         // Print the heading
         fileOutputStream << "Needs[\"HierarchicalClustering`\"]\n";
-        DataWriter::requireFileGoodness(fileOutputStream);
+        DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
 
         for (std::size_t i = 0; i < ordered.size() - 1; i++) {
             // Extract a triple (i, pi[i], lambda[i])
@@ -182,7 +192,7 @@ void DataWriter::createMathematicaOutputFile(const std::filesystem::path &output
             fileOutputStream << "c" << i << " = Cluster[" << map[index].first << ", "
                              << map[piValue].first << ", " << lambdaValue << ", "
                              << map[index].second << ", " << map[index].second << "]\n";
-            DataWriter::requireFileGoodness(fileOutputStream);
+            DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
 
             // Update the name of the cluster the two points belongs to, together with the number of
             // points in the cluster
@@ -193,9 +203,11 @@ void DataWriter::createMathematicaOutputFile(const std::filesystem::path &output
         }
         // Print the command to generate the dendrogram
         fileOutputStream << "DendrogramPlot[c" << ordered.size() - 2 << ", LeafLabels ->(#&)]\n";
-        DataWriter::requireFileGoodness(fileOutputStream);
+        DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
     } else {
-        throw IOException("Unable to open output file.");
+        using namespace std::literals::string_literals;
+        throw IOException("Unable to open output file"s + ' ' + outputFilePath.string() +
+                          " where the Mathematica script will be written to.");
     }
 }
 
@@ -219,31 +231,33 @@ void DataWriter::writePiLambda(const std::filesystem::path &outputFilePath,
         for (std::size_t i = 0; i < piVector.size(); i++) {
             // Print the value
             fileOutputStream << piVector[i];
-            DataWriter::requireFileGoodness(fileOutputStream);
+            DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
             // Print a comma to separate the value from the following one, if it is not the last one
             if (i != lastPiValue) {
                 fileOutputStream << ",";
-                DataWriter::requireFileGoodness(fileOutputStream);
+                DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
             }
         }
         // Move to the next line
         fileOutputStream << std::endl;
-        DataWriter::requireFileGoodness(fileOutputStream);
+        DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
 
         // Print all the lambda values
         const std::size_t lastLambdaValue = lambdaVector.size() - 1;
         for (std::size_t i = 0; i < piVector.size(); i++) {
             // Print the value
             fileOutputStream << lambdaVector[i];
-            DataWriter::requireFileGoodness(fileOutputStream);
+            DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
             // Print a comma to separate the value from the following one, if it is not the last one
             if (i != lastLambdaValue) {
                 fileOutputStream << ",";
-                DataWriter::requireFileGoodness(fileOutputStream);
+                DataWriter::requireFileGoodness(fileOutputStream, outputFilePath);
             }
         }
     } else {
-        throw IOException("Unable to open output file where the test results will be stored.");
+        using namespace std::literals::string_literals;
+        throw IOException("Unable to open output file"s + ' ' + outputFilePath.string() +
+                          " where the test results will be stored.");
     }
 }
 
@@ -251,12 +265,15 @@ void DataWriter::writePiLambda(const std::filesystem::path &outputFilePath,
  * Requires the specified file stream to be in a good state.
  *
  * @param fileStream File stream to check the state of.
+ * @param outputFilePath Path of the output file the specified <code>fileStream</code> writes to.
  * @throws IOException If the file stream is not in a good state.
  */
-void DataWriter::requireFileGoodness(const std::ofstream &fileStream) {
+void DataWriter::requireFileGoodness(const std::ofstream &fileStream,
+                                     const std::filesystem::path &outputFilePath) {
 
     if (!fileStream.good()) {
-        throw IOException("Error while writing into the file");
+        using namespace std::literals::string_literals;
+        throw IOException("Error while writing into the file"s + ' ' + outputFilePath.string());
     }
 }
 }  // namespace cluster::test::data

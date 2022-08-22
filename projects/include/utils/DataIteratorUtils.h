@@ -142,7 +142,7 @@ public:
      * @param stride Number of <code>double</code> values between the first attribute of a data
      * sample and the first attribute of the following one. This is, therefore, the dimension of the
      * data samples, taking also into account possible paddings.
-     * @return a pointer to the first attribute of the <code>index</code>-th data sample of the data
+     * @return A pointer to the first attribute of the <code>index</code>-th data sample of the data
      * structure the specified efficient iterator is iterating over.
      */
     template <typename D,

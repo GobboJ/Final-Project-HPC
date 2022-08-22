@@ -13,5 +13,15 @@ cmake-build-*
 ### Output directories ###
 /out
 
-### Binary files ###
+### LaTeX-related files ###
+report/auxil
+report/out
 *.pdf
+*.synctex*
+*.aux
+*.log
+*.out
+
+### Image-relates files ###
+Thumbs.db
+*.ai

@@ -11,7 +11,7 @@ namespace cluster::test::data {
  *
  * @author DeB
  * @author Jonathan
- * @version 1.1 2022-08-06
+ * @version 1.2 2022-08-22
  * @since 1.0
  */
 class DataWriter {
@@ -31,12 +31,14 @@ public:
      * @param piVector Vector containing the values of <code>pi</code>.
      * @param lambdaVector Vector containing the values of <code>lambda</code>.
      * @throws IOException If an I/O error occurs while writing to the file.
+     * @throws std::invalid_argument If the specified <code>pointCoordinates</code> vector contains
+     * too few coordinates.
      */
-    static void createOutputFile(const std::filesystem::path &outputFilePath,
-                                 const std::vector<double> &pointCoordinates,
-                                 const std::size_t &dimension,
-                                 const std::vector<std::size_t> &piVector,
-                                 const std::vector<double> &lambdaVector);
+    static void createVisualizerOutputFile(const std::filesystem::path &outputFilePath,
+                                           const std::vector<double> &pointCoordinates,
+                                           const std::size_t &dimension,
+                                           const std::vector<std::size_t> &piVector,
+                                           const std::vector<double> &lambdaVector);
 
     /**
      * Outputs a file containing code to visualize a dendrogram in Mathematica, given pi and lambda.
@@ -68,9 +70,12 @@ private:
      * Requires the specified file stream to be in a good state.
      *
      * @param fileStream File stream to check the state of.
+     * @param outputFilePath Path of the output file the specified <code>fileStream</code> writes
+     * to.
      * @throws IOException If the file stream is not in a good state.
      */
-    static void requireFileGoodness(const std::ofstream &fileStream);
+    static void requireFileGoodness(const std::ofstream &fileStream,
+                                    const std::filesystem::path &outputFilePath);
 };
 }  // namespace cluster::test::data
 #endif  // FINAL_PROJECT_HPC_DATAWRITER_H

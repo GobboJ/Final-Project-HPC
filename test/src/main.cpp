@@ -3,7 +3,7 @@
  *
  * @author DeB
  * @author Jonathan
- * @version 1.8 2022-06-16
+ * @version 1.9 2022-06-22
  * @since 1.0
  */
 #include "ClusteringAlgorithmExecutor.h"
@@ -36,15 +36,6 @@ using cluster::test::cli::CliArgumentsParser;
 using cluster::test::data::DataReader;
 using cluster::test::data::DataWriter;
 using cluster::test::main::ClusteringAlgorithmExecutor;
-
-/**
- * Parses the arguments specified in the command line.
- *
- * @param argc Number of arguments specified in the command line.
- * @param argv Array containing the arguments specified in the command line.
- * @return The parsed arguments.
- */
-CliArguments parseArguments(int argc, const char *const *argv);
 
 /**
  * Utility function that prints the specified number of threads.
@@ -142,16 +133,38 @@ void addAll(std::vector<T> &vector, std::initializer_list<T> elements);
 int main(int argc, char *argv[]) {
 
     // Parse the arguments
-    CliArguments arguments = parseArguments(argc, argv);
-
+    CliArguments arguments{};
+    try {
+        // Parse the arguments
+        CliArgumentsParser parser{argc, argv};
+        arguments = parser.parseArguments();
+    } catch (std::exception &exception) {
+        // Inform the user about the wrong arguments
+        std::cerr << "Invalid argument:" << ' ' << exception.what() << std::endl;
+        return 1;
+    }
     // Read the data
     std::vector<double> data{};
-    std::size_t dimension = DataReader::readAndParseData(arguments.getInputFilePath(),
-                                                         data,
-                                                         arguments.getFirstLineNumber(),
-                                                         arguments.getLastLineNumber(),
-                                                         arguments.getFirstColumnNumber(),
-                                                         arguments.getLastColumnNumber());
+    // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+    std::size_t dimension;
+    try {
+        dimension = DataReader::readAndParseData(arguments.getInputFilePath(),
+                                                 data,
+                                                 arguments.getFirstLineNumber(),
+                                                 arguments.getLastLineNumber(),
+                                                 arguments.getFirstColumnNumber(),
+                                                 arguments.getLastColumnNumber());
+    } catch (std::exception &exception) {
+        // Inform the user about the wrong arguments
+        std::cerr << "Malformed input file:" << ' ' << exception.what() << std::endl;
+        return 3;
+    }
+    // Check the data validity
+    if (data.empty() || dimension == 0) {
+        std::cerr << "The input file" << ' ' << arguments.getInputFilePath() << " is empty";
+        return 3;
+    }
+
     std::size_t dataElementsCount = data.size() / dimension;
 
     // Extract the information about the clustering algorithm to execute
@@ -185,9 +198,12 @@ int main(int argc, char *argv[]) {
     } else {
         std::cout << "Sequential clustering";
     }
+    const std::size_t firstColumnNumber =
+            (arguments.getFirstColumnNumber() == 0) ? 1 : arguments.getFirstColumnNumber();
+    const std::size_t lastColumnNumber =
+            (arguments.getLastColumnNumber() == 0) ? dimension : arguments.getLastColumnNumber();
     std::cout << " of '" << arguments.getInputFilePath().string() << "' (columns from "
-              << arguments.getFirstColumnNumber() << " to " << arguments.getLastColumnNumber()
-              << ')';
+              << firstColumnNumber << " to " << lastColumnNumber << ')';
 
     if (isParallel) {
         std::cout << " with:" << std::endl << "    ";
@@ -253,17 +269,24 @@ int main(int argc, char *argv[]) {
         std::cout << std::endl << "Test completed successfully" << std::endl << std::endl;
     }
 
-    // Output the files, if requested
-    std::cout << "Outputting result: ";
-    if (arguments.isOutputEnabled()) {
+    // Generate the output file for the visualizer, if requested
+    std::cout << "Generating visualizer information file:" << ' ';
+    if (arguments.isVisualizerOutputEnabled()) {
         std::cout << "yes" << std::endl;
-        std::filesystem::path outputDirectory{".."};
-        outputDirectory = outputDirectory / ".." / "out";
 
-        auto a = std::filesystem::absolute(outputDirectory);
+        DataWriter::createVisualizerOutputFile(
+                arguments.getVisualizerOutputFilePath(), data, dimension, pi, lambda);
+    } else {
+        std::cout << "no" << std::endl;
+    }
 
-        DataWriter::createOutputFile(outputDirectory / "out.txt", data, dimension, pi, lambda);
-        DataWriter::createMathematicaOutputFile(outputDirectory / "mat.txt", pi, lambda);
+    // Generate the output file for the Mathematica script, if requested
+    std::cout << "Generating Mathematica script file:" << ' ';
+    if (arguments.isMathematicaOutputEnabled()) {
+        std::cout << "yes" << std::endl;
+
+        DataWriter::createMathematicaOutputFile(
+                arguments.getMathematicaOutputFilePath(), pi, lambda);
     } else {
         std::cout << "no" << std::endl;
     }
@@ -272,28 +295,6 @@ int main(int argc, char *argv[]) {
     freeFunction();
 
     return 0;
-}
-
-/**
- * Parses the arguments specified in the command line.
- *
- * @param argc Number of arguments specified in the command line.
- * @param argv Array containing the arguments specified in the command line.
- * @return The parsed arguments.
- */
-CliArguments parseArguments(const int argc, const char *const *const argv) {
-
-    try {
-        // Parse the arguments
-        CliArgumentsParser parser{argc, argv};
-        CliArguments arguments = parser.parseArguments();
-
-        return arguments;
-    } catch (std::exception &exception) {
-        // Inform the user about the wrong arguments
-        std::cerr << exception.what() << std::endl;
-        exit(1);
-    }
 }
 
 /**

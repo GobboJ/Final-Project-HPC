@@ -11,7 +11,7 @@ namespace cluster::test::cli {
  *
  * @author DeB
  * @author Jonathan
- * @version 1.2 2022-08-06
+ * @version 1.3 2022-08-22
  * @since 1.0
  */
 class CliArguments {
@@ -154,36 +154,59 @@ public:
     void setSqrtComputationThreadsCount(std::size_t sqrtComputationThreadsCount);
 
     /**
-     * Returns <code>true</code> if the user has requested to create the output files,
-     * <code>false</code> otherwise.
+     * Returns <code>true</code> if the user has requested to create the output file where the
+     * information about the points and clusters are stored, <code>false</code> otherwise.
      *
-     * @return <code>true</code> if the user has requested to create the output files,
-     * <code>false</code> otherwise.
+     * @return <code>true</code> if the user has requested to create the output file where the
+     * information about the points and clusters are stored, <code>false</code> otherwise.
      */
-    bool isOutputEnabled() const;
+    bool isVisualizerOutputEnabled() const;
 
     /**
-     * Sets whether the user has requested to create the output files.
+     * Sets whether the user has requested to create the output file where the information about the
+     * points and clusters are stored.
      *
-     * @param outputEnabled <code>true</code> if the user has requested to create the output files,
+     * @param visualizerOutputEnabled <code>true</code> if the user has requested to create the
+     * output file where the information about the points and clusters are stored,
      * <code>false</code> otherwise.
      */
-    void setOutputEnabled(bool outputEnabled);
+    void setVisualizerOutputEnabled(bool visualizerOutputEnabled);
+
+    /**
+     * Returns <code>true</code> if the user has requested to create the output file where the
+     * Mathematica script that generates the dendrogram will be stored, <code>false</code>
+     * otherwise.
+     *
+     * @return <code>true</code> if the user has requested to create the output file where the
+     * Mathematica script that generates the dendrogram will be stored, <code>false</code>
+     * otherwise.
+     */
+    bool isMathematicaOutputEnabled() const;
+
+    /**
+     * Sets whether the user has requested to create the output file where the Mathematica script
+     * that generates the dendrogram will be stored.
+     *
+     * @param mathematicaOutputEnabled <code>true</code> if the user has requested to create the
+     * output file where the Mathematica script that generates the dendrogram will be stored,
+     * <code>false</code> otherwise.
+     */
+    void setMathematicaOutputEnabled(bool mathematicaOutputEnabled);
 
     /**
      * Returns the path of the file where the information about the points and clusters are stored.
      *
      * @return The path of the file where the information about the points and clusters are stored.
      */
-    const std::filesystem::path& getOutputFilePath() const;
+    const std::filesystem::path& getVisualizerOutputFilePath() const;
 
     /**
      * Sets the path of the file where the information about the points and clusters are stored.
      *
-     * @param outputFilePath Path of the file where the information about the points and clusters
-     * are stored.
+     * @param visualizerOutputFilePath Path of the file where the information about the points and
+     * clusters are stored.
      */
-    void setOutputFilePath(const std::filesystem::path& outputFilePath);
+    void setVisualizerOutputFilePath(const std::filesystem::path& visualizerOutputFilePath);
 
     /**
      * Returns the path of the file where the Mathematica script that generates the dendrogram will
@@ -341,14 +364,21 @@ private:
     std::size_t sqrtComputationThreadsCount;
 
     /**
-     * Flag indicating whether the generation of the output files is enabled.
+     * Flag indicating whether the user has enabled the generation of the output file where the
+     * information about the points and clusters are stored.
      */
-    bool outputEnabled;
+    bool visualizerOutputEnabled;
+
+    /**
+     * Flag indicating whether the user has enabled the generation of the output file the
+     * Mathematica script that generates the dendrogram tree will be stored.
+     */
+    bool mathematicaOutputEnabled;
 
     /**
      * Path of the file where the information about the points and the clusters will be stored.
      */
-    std::filesystem::path outputFilePath;
+    std::filesystem::path visualizerOutputFilePath;
 
     /**
      * Path of the file where the Mathematica script that generates the dendrogram tree will be

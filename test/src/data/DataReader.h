@@ -11,7 +11,7 @@ namespace cluster::test::data {
  *
  * @author DeB
  * @author Jonathan
- * @version 1.2 2022-08-06
+ * @version 1.2.1 2022-08-22
  * @since 1.0
  */
 class DataReader {
@@ -28,14 +28,18 @@ public:
      * <pre>
      * [x1, y1, z1, x2, y2, z2, x3, y3, z3]
      * </pre>
-     * @param firstLineNumber Number of the first row to parse of the file.
-     * @param lastLineNumber Number of the last row to parse of the file.
+     * @param firstLineNumber Number of the first line to parse of the file. If not specified, or if
+     * <code>0</code> is specified, then this method parses the lines starting from the first one in
+     * the file.
+     * @param lastLineNumber Number of the last line to parse of the file. If not specified, or if
+     * <code>0</code> is specified, then this method parses all the lines from the specified
+     * <code>firstLineNumber</code> to the last line of the file.
      * @param firstColumnNumber Number of the first column of each line to parse as a coordinate of
-     * the point. If not specified, then the first column of the line is parsed as the first
-     * coordinate of the point.
+     * the point. If not specified, or if <code>0</code> is specified, then the first column of the
+     * line is parsed as the first coordinate of the point.
      * @param lastColumnNumber Number of the last column of each line to parse as a coordinate of
-     * the point. If not specified, then the last column of the line is parsed as the last
-     * coordinate of the point.
+     * the point. If not specified, or if <code>0</code> is specified, then the last column of the
+     * line is parsed as the last coordinate of the point.
      * @return The dimension of each point.
      * @throws MalformedFileException If the file does not follow the correct format.
      * @throws IOException If an I/O error occurs while reading the file.
@@ -45,8 +49,8 @@ public:
      */
     static std::size_t readAndParseData(const std::filesystem::path &inputFilePath,
                                         std::vector<double> &parsedData,
-                                        std::size_t firstLineNumber,
-                                        std::size_t lastLineNumber,
+                                        std::size_t firstLineNumber = 0,
+                                        std::size_t lastLineNumber = 0,
                                         std::size_t firstColumnNumber = 0,
                                         std::size_t lastColumnNumber = 0);
 
@@ -65,23 +69,6 @@ public:
                              std::vector<double> &lambdaVector);
 
 private:
-    /**
-     * Parses a line of the data file extracting all the coordinates.
-     *
-     * @param line Line to parse.
-     * @param lineNumber Number of the line.
-     * @param parsedData Vector where the parsed coordinates will be placed.
-     * @param firstColumnNumber Number of the first column of the line to consider as a coordinate.
-     * @param lastColumnNumber Number of the last column of the line to consider as a coordinate.
-     * @return The dimension of the point parsed from the line.
-     * @throws MalformedFileException If the file does not follow the correct format.
-     */
-    static std::size_t parseLine(const std::string &line,
-                                 std::size_t lineNumber,
-                                 std::vector<double> &parsedData,
-                                 std::size_t firstColumnNumber,
-                                 std::size_t lastColumnNumber);
-
     /**
      * Extracts a <code>double</code> value from the specified string.
      *

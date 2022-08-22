@@ -3,7 +3,7 @@
  *
  * @author DeB
  * @author Jonathan
- * @version 1.1.1 2022-08-06
+ * @version 1.2 2022-08-22
  * @since 1.0
  */
 #include "CliArgumentException.h"
@@ -68,55 +68,45 @@ CliArguments CliArgumentsParser::parseArguments() {
 
     // Flag indicating whether the version of the clustering algorithm to use have been specified
     bool versionSpecified = false;
-    // Flag indicating whether the file containing the samples to cluster have been specified
-    bool filePathSpecified = false;
 
     // Parse all the arguments
-    while (this->nextArgumentIndex < this->argumentsCount) {
+    while (this->nextArgumentIndex < this->argumentsCount - 1) {
         // Extract the argument
         const std::string argument{this->argumentsVector[this->nextArgumentIndex]};
+        this->nextArgumentIndex++;
 
         // Parse the argument
         if (argument == "-c") {
-            this->nextArgumentIndex++;
             this->parseColumnsOption(result);
         } else if (argument == "-l") {
-            this->nextArgumentIndex++;
             this->parseLinesOption(result);
+        } else if (argument.starts_with("--mathematica-output-path=")) {
+            CliArgumentsParser::parseMathematicaOutputOption(result, argument);
         } else if (argument == "-n") {
-            this->nextArgumentIndex++;
             this->parseNumberOfThreadsOption(result);
-        } else if (argument == "-o") {
-            this->nextArgumentIndex++;
-            this->parseOutputOption(result);
         } else if (argument == "-p") {
             versionSpecified = true;
-            this->nextArgumentIndex++;
             this->parseAlgorithmVersion(result, true);
         } else if (argument == "-s") {
             versionSpecified = true;
-            this->nextArgumentIndex++;
             this->parseAlgorithmVersion(result, false);
         } else if (argument == "-t") {
-            this->nextArgumentIndex++;
-            this->parseTestOption(result);
-        } else if (argument == "--test-results-path") {
-            this->nextArgumentIndex++;
-            this->parseTestResultsPath(result);
+            CliArgumentsParser::parseTestOption(result);
+        } else if (argument.starts_with("--test-results-path=")) {
+            CliArgumentsParser::parseTestResultsPath(result, argument);
+        } else if (argument.starts_with("--visualizer-output-path=")) {
+            CliArgumentsParser::parseVisualizerOutputOption(result, argument);
         } else {
-            filePathSpecified = true;
-            this->parseInputFilePath(result);
+            using namespace std::literals::string_literals;
+            throw CliArgumentException("Unknown option"s + ' ' + argument);
         }
     }
+    // Extract the input file path
+    this->parseInputFilePath(result);
 
     // Require the mandatory parameters to be specified
     if (!versionSpecified) {
         throw CliArgumentException("None of the mandatory options -p and -s has been specified.");
-    }
-    if (!filePathSpecified) {
-        throw CliArgumentException(
-                "The path of the file containing the data samples to cluster has not been "
-                "specified.");
     }
 
     return result;
@@ -244,32 +234,54 @@ void CliArgumentsParser::parseNumberOfThreadsOption(CliArguments &result) {
 }
 
 /**
- * Parses the -o option.
+ * Parses the --visualizer-output-path option.
  *
- * @param result Container that will contain the parsed arguments.
+ * @param result Container where the parsed arguments will be placed.
+ * @param option The string containing the full argument specified in the command line.
  * @throws CliArgumentException If the specified command line arguments are not correct.
  */
-void CliArgumentsParser::parseOutputOption(CliArguments &result) {
+void CliArgumentsParser::parseVisualizerOutputOption(CliArguments &result,
+                                                     const std::string &option) {
 
-    // Extract the paths
-    const std::string outputPathString =
-            this->getCurrentArgumentAndMoveNext("The output path is missing in the -o option");
-    const std::string mathematicaOutputPathString = this->getCurrentArgumentAndMoveNext(
-            "The output path of the Mathematica script file is missing in the -o option");
+    // Extract the path
+    const std::string outputPathString = option.substr(VISUALIZER_OUTPUT_OPTION_LENGTH);
 
-    // Resolve the paths
+    // Resolve the path
     std::filesystem::path outputPath{outputPathString};
     outputPath = absolute(outputPath).lexically_normal();
-    std::filesystem::path mathematicaOutputPath{mathematicaOutputPathString};
-    mathematicaOutputPath = absolute(mathematicaOutputPath).lexically_normal();
 
-    // Check their validity
+    // Check its validity
     using namespace std::literals::string_literals;
     requireFilePathValidity(
             outputPath,
             "The directory"s + ' ' + outputPath.parent_path().string() +
                     " where the output file will be generated does not exist",
             "The output file path"s + ' ' + outputPath.string() + " refers to a non-regular file");
+
+    // Set the values in the result
+    result.setVisualizerOutputEnabled(true);
+    result.setVisualizerOutputFilePath(outputPath);
+}
+
+/**
+ * Parses the --mathematica-output-path option.
+ *
+ * @param result Container where the parsed arguments will be placed.
+ * @param option The string containing the full argument specified in the command line.
+ * @throws CliArgumentException If the specified command line arguments are not correct.
+ */
+void CliArgumentsParser::parseMathematicaOutputOption(CliArguments &result,
+                                                      const std::string &option) {
+
+    // Extract the path
+    const std::string mathematicaOutputPathString = option.substr(MATHEMATICA_OUTPUT_OPTION_LENGTH);
+
+    // Resolve the path
+    std::filesystem::path mathematicaOutputPath{mathematicaOutputPathString};
+    mathematicaOutputPath = absolute(mathematicaOutputPath).lexically_normal();
+
+    // Check its validity
+    using namespace std::literals::string_literals;
 
     requireFilePathValidity(
             mathematicaOutputPath,
@@ -279,8 +291,7 @@ void CliArgumentsParser::parseOutputOption(CliArguments &result) {
                     " refers to a non-regular file");
 
     // Set the values in the result
-    result.setOutputEnabled(true);
-    result.setOutputFilePath(outputPath);
+    result.setMathematicaOutputEnabled(true);
     result.setMathematicaOutputFilePath(mathematicaOutputPath);
 }
 
@@ -322,17 +333,16 @@ void CliArgumentsParser::parseTestOption(CliArguments &result) {
 }
 
 /**
- * Parses the -t option.
+ * Parses the --test-results-path option.
  *
- * @param result Container that will contain the parsed arguments.
- * @throws CliArgumentException If the specified command line arguments are not correct.
+ * @param result Container where the parsed arguments will be placed.
+ * @param option The string containing the full argument specified in the command line.
+ * @throws CliArgumentException If the specified command line argument is incorrect.
  */
-void CliArgumentsParser::parseTestResultsPath(CliArguments &result) {
+void CliArgumentsParser::parseTestResultsPath(CliArguments &result, const std::string &option) {
 
     // Extract the path
-    const std::string textResultsPathString = this->getCurrentArgumentAndMoveNext(
-            "The path of the file containing the test results is missing in the "
-            "--test-results-path option.");
+    const std::string textResultsPathString = option.substr(TEST_RESULTS_PATH_OPTION_LENGTH);
 
     // Normalize the path
     std::filesystem::path textResultsPath{textResultsPathString};
@@ -346,6 +356,7 @@ void CliArgumentsParser::parseTestResultsPath(CliArguments &result) {
                             "The path of the file containing the test results"s + ' ' +
                                     textResultsPath.string() + " refers to a non-regular file");
     // Set the path
+    result.setTestModeEnabled(true);
     result.setPreviousTestResultsToBeUsed(true);
     result.setTestResultsFilePath(textResultsPath);
 }
@@ -479,7 +490,7 @@ std::size_t CliArgumentsParser::parseSizeT(const std::string &string,
         convertedValue = std::stoull(string, &firstNonParsedCharacterIndex);
     } catch (std::exception &exception) {
         // Compose the message of the exception
-        std::string message{message};
+        std::string message{exceptionMessage};
         message += ": ";
         message += exception.what();
 
@@ -589,6 +600,12 @@ OPTIONS
 
         If this option is not specified, then all the lines of the
         INPUT_FILE_PATH are considered as points to cluster.
+    
+    --mathematica-output-path=MATHEMATICA_OUTPUT_PATH
+        Specifies the path of the output file that will be filled with the
+        Mathematica code that generates the dendrogram tree of the clusters.
+   
+        If this option is omitted, then no output file is created.
 
     -n DISTANCE_THREADS STRUCTURAL_FIX_THREADS SQRT_THREADS
         Specifies the number of threads to use when parallelizing the stages of
@@ -613,19 +630,6 @@ OPTIONS
         If this option is omitted, then all the values are assumed to be 0,
         hence OpenMP will use the default number of threads for all the three
         stages.
-    
-    -o OUTPUT_PATH MATHEMATICA_OUTPUT_PATH
-        Specifies the path of the output files to generate.
-        
-        In particular, two files will be generated:
-            - The file OUTPUT_PATH will be filled with the information about the
-              points and the clusters. This file can be given to one of the
-              DeB Cluster Visualizer applications;
-            - The file MATHEMATICA_OUTPUT_PATH will be filled with the
-              Mathematica code that generates the dendrogram tree of the
-              clusters.
-        
-        If this option is omitted, then no output file is created.
 
     -p VERSION
         Specifies the VERSION of the parallel clustering algorithm to use. See
@@ -653,7 +657,7 @@ OPTIONS
         
         If this option is omitted, then the test mode is disabled.
     
-    --test-results-path TEST_RESULTS_PATH
+    --test-results-path=TEST_RESULTS_PATH
         Avoids the execution of the sequential implementation every time the
         program is executed, by reading results of the sequential implementation
         from the TEST_RESULTS_PATH file.
@@ -665,8 +669,15 @@ OPTIONS
         If this option is omitted, then the sequential implementation of the
         clustering algorithm is always executed to retrieve the correct results.
         
-        This option takes effect only if the -t option is specified as well.
-       
+        This option implies -t.
+    
+    --visualizer-output-path=OUTPUT_PATH
+        Specifies the path of the output file that will be filled with the
+        information about the points and the clusters. This file can be given to
+        one of the DeB Cluster Visualizer applications.
+    
+        If this option is omitted, then no output file is created.
+
 SEQUENTIAL VERSIONS
         1   Sequential implementation that uses a data structure with two levels
             of indirection to hold the samples to cluster.
@@ -758,6 +769,8 @@ EXIT CODE
         of the sequential implementation.
 
     2   If at least one of the specified arguments is wrong.
+
+    3   If the specified input file path contains invalid information.
 
 )"";
 }

@@ -3,7 +3,7 @@
  *
  * @author DeB
  * @author Jonathan
- * @version 1.2 2022-08-06
+ * @version 1.3 2022-08-22
  * @since 1.0
  */
 #include "CliArguments.h"
@@ -176,23 +176,51 @@ void CliArguments::setSqrtComputationThreadsCount(const std::size_t sqrtComputat
 }
 
 /**
- * Returns whether the user has requested to create the output files.
+ * Returns whether the user has requested to create the output file where the information about the
+ * points and clusters are stored.
  *
- * @return Whether the user has requested to create the output files.
+ * @return Whether the user has requested to create the output files where the information about the
+ * points and clusters are stored.
  */
-bool CliArguments::isOutputEnabled() const {
+bool CliArguments::isVisualizerOutputEnabled() const {
 
-    return this->outputEnabled;
+    return this->visualizerOutputEnabled;
 }
 
 /**
- * Sets whether the user has requested to create the output files.
+ * Sets whether the user has requested to create the output file where the information about the
+ * points and clusters are stored.
  *
- * @param outputEnabled Whether the user has requested to create the output files.
+ * @param visualizerOutputEnabled Whether the user has requested to create the output file where the
+ * information about the points and clusters are stored.
  */
-void CliArguments::setOutputEnabled(const bool outputEnabled) {
+void CliArguments::setVisualizerOutputEnabled(const bool visualizerOutputEnabled) {
 
-    CliArguments::outputEnabled = outputEnabled;
+    CliArguments::visualizerOutputEnabled = visualizerOutputEnabled;
+}
+
+/**
+ * Returns whether the user has requested to create the output file where the Mathematica script
+ * that generates the dendrogram tree will be stored.
+ *
+ * @return Whether the user has requested to create the output files where the Mathematica script
+ * that generates the dendrogram tree will be stored.
+ */
+bool CliArguments::isMathematicaOutputEnabled() const {
+
+    return this->mathematicaOutputEnabled;
+}
+
+/**
+ * Sets whether the user has requested to create the output file where the Mathematica script that
+ * generates the dendrogram tree will be stored.
+ *
+ * @param mathematicaOutputEnabled Whether the user has requested to create the output file where
+ * the Mathematica script that generates the dendrogram tree will be stored.
+ */
+void CliArguments::setMathematicaOutputEnabled(const bool mathematicaOutputEnabled) {
+
+    CliArguments::mathematicaOutputEnabled = mathematicaOutputEnabled;
 }
 
 /**
@@ -200,20 +228,21 @@ void CliArguments::setOutputEnabled(const bool outputEnabled) {
  *
  * @return The path of the file where the information about the points and clusters are stored.
  */
-const std::filesystem::path& CliArguments::getOutputFilePath() const {
+const std::filesystem::path& CliArguments::getVisualizerOutputFilePath() const {
 
-    return this->outputFilePath;
+    return this->visualizerOutputFilePath;
 }
 
 /**
  * Sets the path of the file where the information about the points and clusters are stored.
  *
- * @param outputFilePath Path of the file where the information about the points and clusters
- * are stored.
+ * @param visualizerOutputFilePath Path of the file where the information about the points and
+ * clusters are stored.
  */
-void CliArguments::setOutputFilePath(const std::filesystem::path& outputFilePath) {
+void CliArguments::setVisualizerOutputFilePath(
+        const std::filesystem::path& visualizerOutputFilePath) {
 
-    CliArguments::outputFilePath = outputFilePath;
+    CliArguments::visualizerOutputFilePath = visualizerOutputFilePath;
 }
 
 /**
