@@ -71,8 +71,8 @@ std::size_t DataReader::readAndParseData(const std::filesystem::path &inputFileP
                     std::size_t columnNumber = 1;
                     std::size_t lineDimension = 0;
                     while (std::getline(lineValuesStream, columnString, ',') &&
-                           columnNumber <= lastColumnNumber) {
-                        if (columnNumber >= firstColumnNumber) {
+                           (lastColumnNumber == 0 || columnNumber <= lastColumnNumber)) {
+                        if (firstColumnNumber == 0 || columnNumber >= firstColumnNumber) {
                             // Add the parsed coordinate
                             parsedData.push_back(
                                     parseDouble(columnString, lineNumber, columnNumber));

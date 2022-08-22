@@ -161,7 +161,8 @@ int main(int argc, char *argv[]) {
     }
     // Check the data validity
     if (data.empty() || dimension == 0) {
-        std::cerr << "The input file" << ' ' << arguments.getInputFilePath() << " is empty";
+        std::cerr << "The input file" << ' ' << arguments.getInputFilePath() << " is empty"
+                  << std::endl;
         return 3;
     }
 
@@ -245,7 +246,7 @@ int main(int argc, char *argv[]) {
                                         lambda.begin());
 
     // Print the values
-    // printValues(data, dimension, pi, lambda);
+    // printValues(indirectData, dimension, pi, lambda);
 
     // Check the computed pi and lambda, if requested
     if (arguments.isTestModeEnabled()) {
