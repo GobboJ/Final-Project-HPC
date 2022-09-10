@@ -38,32 +38,59 @@ target_link_libraries(
 target_compile_definitions(Final_Project_HPC_Main PRIVATE TIMERS PRINT_ITERATIONS)
 
 # Define the measurements main executable
-add_executable(
-    Final_Project_HPC_Measurement
-    src/data/DataReader.cpp
-    src/data/DataReader.h
-    src/data/DataWriter.cpp
-    src/data/DataWriter.h
-    src/data/IoException.cpp
-    src/data/IoException.h
-    src/data/MalformedFileException.cpp
-    src/data/MalformedFileException.h
-    src/data/ResultsChecker.cpp
-    src/data/ResultsChecker.h
-    src/main-measurements.cpp
-)
+#
+# for (int j = 0; j < 2; j++) for (i = 0; i < 13; i++) {
+foreach (isParallel RANGE 0 1)
+    foreach (version RANGE 1 13)
+        if (isParallel EQUAL 0)
+            set(name Sequential)
+        else ()
+            set(name Parallel)
+        endif ()
 
-target_link_libraries(
-    Final_Project_HPC_Measurement Final_Project_HPC_Sequential_Library
-    Final_Project_HPC_Parallel_Library
-)
+        # if (isParallel || (!isParallel && version < 3)
+        if (isParallel EQUAL 1 OR (isParallel EQUAL 0 AND version LESS 3))
+            # Final_Project_HPC_Measurement-${i}
+            add_executable(
+                Final_Project_HPC_Measurement_${name}_${version}
+                src/data/DataReader.cpp
+                src/data/DataReader.h
+                src/data/DataWriter.cpp
+                src/data/DataWriter.h
+                src/data/IoException.cpp
+                src/data/IoException.h
+                src/data/MalformedFileException.cpp
+                src/data/MalformedFileException.h
+                src/data/ResultsChecker.cpp
+                src/data/ResultsChecker.h
+                src/main-measurements.cpp
+            )
 
-target_compile_definitions(Final_Project_HPC_Measurement PRIVATE TIMERS PRINT_ITERATIONS)
+            target_link_libraries(
+                Final_Project_HPC_Measurement_${name}_${version}
+                Final_Project_HPC_Sequential_Library Final_Project_HPC_Parallel_Library
+            )
+
+            target_compile_definitions(
+                Final_Project_HPC_Measurement_${name}_${version}
+                PRIVATE TIMERS
+                PRINT_ITERATIONS
+                IS_PARALLEL=${isParallel}
+                VERSION=${version}
+            )
+        endif ()
+    endforeach ()
+endforeach ()
 
 # Define the data generator main executable
 add_executable(
     Data_Generator
     src/main-data-generator.cpp
+    )
+
+add_executable(
+        Mean_Times_Printer
+        src/main-main-times-printer.cpp
 )
 
 # Define the automated tests

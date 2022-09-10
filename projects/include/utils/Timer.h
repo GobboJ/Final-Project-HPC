@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 
 namespace cluster::utils {
 
@@ -103,14 +104,14 @@ public:
      * is executed. This value is used to divide the total timer duration so to compute the mean
      * execution time of the block(s) of code.
      */
-    template <std::size_t N>
-    static void print(std::size_t times = 1) {
+    template <std::size_t N, bool S = false>
+    static void print(std::ostream &outputStream = std::cout) {
 
         // Check the validity of the identifier of the timer
         static_assert(N < TIMERS_COUNT, "Invalid timer index");
 
         // Print the duration of the timer
-        printDuration(durations[N] / times);
+        printDuration<S>(outputStream, durations[N]);
     }
 
     /**
@@ -126,11 +127,11 @@ public:
      * timers are executed. This value is used to divide the total timer durations so to compute the
      * mean execution time of the blocks of code.
      */
-    template <std::size_t... Ns>
-    static void printTotal(std::size_t times = 1) {
+    template <bool S, std::size_t... Ns>
+    static void printTotal(std::ostream &outputStream = std::cout) {
 
         // Sum the durations and print the result
-        printDuration(sum<Ns...>() / times);
+        printDuration<S>(outputStream, sum<Ns...>());
     }
 
 private:
@@ -139,43 +140,49 @@ private:
      *
      * @param duration Duration to print.
      */
-    static void printDuration(TimerDuration duration) {
+    template <bool S>
+    static void printDuration(std::ostream &outputStream, TimerDuration duration) {
 
         // Use the literals for the durations, so to make the code cleaner
         using namespace std::literals::chrono_literals;
-
-        // Extract each part of the duration
-        auto nanoseconds = duration % 1us;
-        auto microseconds = (duration % 1ms) / 1us;
-        auto milliseconds = (duration % 1s) / 1ms;
-        auto seconds = (duration % 1min) / 1s;
-        auto minute = duration / 1min;
-
-        // Print minutes, seconds and milliseconds
-        std::cout << minute << " minutes " << std::setw(2) << std::setfill(' ') << seconds
-                  << " seconds " << std::setw(3) << std::setfill(' ') << milliseconds << " ms (";
-
-        // Print the milliseconds, properly padded
-        if (milliseconds > 0) {
-            std::cout << std::setw(3) << std::setfill(' ') << milliseconds;
-            std::cout << ".";
+        
+        if constexpr (S) {
+            outputStream << (duration / 1ns) << std::endl;
         } else {
-            std::cout << "    ";
-        }
-        // Print the microseconds, properly padded
-        if (milliseconds > 0 || microseconds > 0) {
-            char fill = (milliseconds > 0) ? '0' : ' ';
-            std::cout << std::setw(3) << std::setfill(fill) << microseconds;
-            std::cout << ".";
-        } else {
-            std::cout << "    ";
-        }
-        // Print the nanoseconds, properly padded
-        char fill = (microseconds > 0) ? '0' : ' ';
-        std::cout << std::setw(3) << std::setfill(fill) << nanoseconds.count();
+            // Extract each part of the duration
+            auto nanoseconds = duration % 1us;
+            auto microseconds = (duration % 1ms) / 1us;
+            auto milliseconds = (duration % 1s) / 1ms;
+            auto seconds = (duration % 1min) / 1s;
+            auto minute = duration / 1min;
 
-        // Clear the remaining part of the line
-        std::cout << " ns)\033[K" << std::endl;
+            // Print minutes, seconds and milliseconds
+            outputStream << minute << " minutes " << std::setw(2) << std::setfill(' ') << seconds
+                         << " seconds " << std::setw(3) << std::setfill(' ') << milliseconds
+                         << " ms (";
+
+            // Print the milliseconds, properly padded
+            if (milliseconds > 0) {
+                outputStream << std::setw(3) << std::setfill(' ') << milliseconds;
+                outputStream << ".";
+            } else {
+                outputStream << "    ";
+            }
+            // Print the microseconds, properly padded
+            if (milliseconds > 0 || microseconds > 0) {
+                char fill = (milliseconds > 0) ? '0' : ' ';
+                outputStream << std::setw(3) << std::setfill(fill) << microseconds;
+                outputStream << ".";
+            } else {
+                outputStream << "    ";
+            }
+            // Print the nanoseconds, properly padded
+            char fill = (microseconds > 0) ? '0' : ' ';
+            outputStream << std::setw(3) << std::setfill(fill) << nanoseconds.count();
+
+            // Clear the remaining part of the line
+            outputStream << " ns)\033[K" << std::endl;
+        }
     }
 
     /**
