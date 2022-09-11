@@ -1,26 +1,28 @@
 /*
- * Application that measures the time taken to execute the implementations of the clustering
- * algorithm with several data structures.
+ * Application that measures the time taken to execute one implementation of the clustering
+ * algorithm.
  *
  * @author DeB
  * @author Jonathan
- * @version 1.2.1 2022-08-17
+ * @version 1.3 2022-09-11
  * @since 1.0
  */
 #include "DistanceComputers.h"
 #include "ParallelClustering.h"
 #include "SequentialClustering.h"
 #include "data/DataReader.h"
-#include "data/ResultsChecker.h"
 #include "data/DataWriter.h"
+#include "data/ResultsChecker.h"
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <mm_malloc.h>
 #include <vector>
-#include <fstream>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
 using cluster::parallel::ParallelClustering;
 using cluster::sequential::SequentialClustering;
 using cluster::utils::ParallelDataIterator;
@@ -33,8 +35,8 @@ using cluster::test::data::DataWriter;
 const constexpr bool CHECK_ALIGNMENT = false;
 
 /**
- * Utility class allowing to measure the time taken to execute the parallel implementation
- * clustering algorithm.
+ * Utility class allowing to measure the time taken to execute an implementation of clustering
+ * algorithm, either sequential or parallel.
  *
  * @tparam PD <code>true</code> if the parallel implementation of the clustering algorithm should
  * parallelize the computation of the distance using threads, <code>false</code> otherwise.
@@ -43,59 +45,69 @@ const constexpr bool CHECK_ALIGNMENT = false;
  * dendrogram, <code>false</code> otherwise.
  * @tparam PS <code>true</code> if the parallel implementation of the clustering algorithm should
  * parallelize the computation of the square roots using threads, <code>false</code> otherwise.
+ *
+ * @author DeB
+ * @author Jonathan
+ * @version 1.2 2022-09-11
+ * @since 1.0
  */
 template <bool PD = true, bool PF = false, bool PS = false>
-class ParallelClusteringAlgorithmExecutor {
+class ClusteringAlgorithmExecutor {
 
 public:
     /**
-     * Measures the mean time of 3 executions of the parallel implementation of the clustering
-     * algorithm.
+     * Measures the time taken to execute a sequential implementation of the clustering algorithm.
      *
-     * @tparam C Distance computer to use to compute the distance between two data samples.
      * @tparam D Type of the data structure/iterator holding the data samples to cluster.
-     * @param title Title to print to the console.
      * @param data Data to cluster.
      * @param dataElementsCount Number of samples to cluster.
      * @param dimension Dimension of the samples.
-     * @param threadCounts Initializer list containing the number of threads to use to parallelize
-     * the various steps of the implementation.
-     * @param expectedPi Vector containing the expected values for <code>pi</code>.
-     * @param expectedLambda Vector containing the expected values for <code>lambda</code>.
+     * @param piVector Vector where the computed values of <code>pi</code> will be placed.
+     * @param lambdaVector Vector where the computed values of <code>lambda</code> will be placed.
      */
-    template <DistanceComputers C, ParallelDataIterator D>
-    static inline void iterateParallelClustering(const std::string &title,
-                                                 const D &data,
-                                                 const std::size_t dataElementsCount,
-                                                 const std::size_t dimension,
-                                                 const std::size_t threadCount,
-                                                 const std::vector<std::size_t> &expectedPi,
-                                                 const std::vector<double> &expectedLambda) {
+    template <typename D>
+    static inline void executeSequentialClustering(const D &data,
+                                                   const std::size_t dataElementsCount,
+                                                   const std::size_t dimension,
+                                                   std::vector<std::size_t> &piVector,
+                                                   std::vector<double> &lambdaVector) {
 
-        // Initialize pi and lambda
-        std::vector<std::size_t> pi{};
-        pi.resize(dataElementsCount);
-        std::vector<double> lambda{};
-        lambda.resize(dataElementsCount);
-
-        // Print the title
-        std::cout << "--------------" << std::endl
-                  << title << std::endl
-                  << "--------------" << std::endl
-                  << std::endl;
-
-        // Execute the algorithm for any of the specified number of threads
-        // Print the number of threads used
-        std::cout << "*********" << std::endl
-                  << title << std::endl
-                  << "Testing with" << ' ' << threadCount << " threads." << std::endl
-                  << "*********" << std::endl;
         // Zero the timers
         Timer::zeroTimers();
 
         // Execute the algorithm
-        auto piBegin = pi.begin();
-        auto lambdaBegin = lambda.begin();
+        auto piBegin = piVector.begin();
+        auto lambdaBegin = lambdaVector.begin();
+        SequentialClustering::cluster(data, dataElementsCount, dimension, piBegin, lambdaBegin);
+    }
+
+    /**
+     * Measures the time taken to execute a parallel implementation of the clustering algorithm.
+     *
+     * @tparam C Distance computer to use to compute the distance between two data samples.
+     * @tparam D Type of the data structure/iterator holding the data samples to cluster.
+     * @param data Data to cluster.
+     * @param dataElementsCount Number of samples to cluster.
+     * @param dimension Dimension of the samples.
+     * @param threadCount Number of threads to use to parallelize the various steps of the
+     * implementation.
+     * @param piVector Vector where the computed values of <code>pi</code> will be placed.
+     * @param lambdaVector Vector where the computed values of <code>lambda</code> will be placed.
+     */
+    template <DistanceComputers C, ParallelDataIterator D>
+    static inline void executeParallelClustering(const D &data,
+                                                 const std::size_t dataElementsCount,
+                                                 const std::size_t dimension,
+                                                 const std::size_t threadCount,
+                                                 std::vector<std::size_t> &piVector,
+                                                 std::vector<double> &lambdaVector) {
+
+        // Zero the timers
+        Timer::zeroTimers();
+
+        // Execute the algorithm
+        auto piBegin = piVector.begin();
+        auto lambdaBegin = lambdaVector.begin();
         ParallelClustering<PD, PF, PS, CHECK_ALIGNMENT>::template cluster<C>(data,
                                                                              dataElementsCount,
                                                                              dimension,
@@ -104,132 +116,133 @@ public:
                                                                              threadCount,
                                                                              threadCount,
                                                                              threadCount);
-
-        // Check if the computed pi and lambda are correct
-        if (!ResultsChecker::checkResults(pi.cbegin(),
-                                          pi.cend(),
-                                          lambda.cbegin(),
-                                          lambda.cend(),
-                                          expectedPi.cbegin(),
-                                          expectedPi.cend(),
-                                          expectedLambda.cbegin(),
-                                          expectedLambda.cend())) {
-            std::cerr << "Error!" << std::endl;
-        } else {
-            std::cout << "Ok!" << std::endl;
-        }
     }
 };
 
 /**
- * Measures the mean time of 3 executions of the sequential implementation of the clustering
- * algorithm.
- *
- * @tparam D Type of the data structure/iterator holding the data samples to cluster.
- * @param title Title to print to the console.
- * @param data Data to cluster.
- * @param dataElementsCount Number of samples to cluster.
- * @param dimension Dimension of the samples.
- * @param expectedPi Vector containing the expected values for <code>pi</code>.
- * @param expectedLambda Vector containing the expected values for <code>lambda</code>.
- */
-template <typename D>
-inline void iterateSequentialClustering(const std::string &title,
-                                        const D &data,
-                                        const std::size_t dataElementsCount,
-                                        const std::size_t dimension,
-                                        const std::vector<std::size_t> &expectedPi,
-                                        const std::vector<double> &expectedLambda) {
-
-    // Resize pi and lambda
-    std::vector<std::size_t> pi{};
-    pi.resize(dataElementsCount);
-    std::vector<double> lambda{};
-    lambda.resize(dataElementsCount);
-
-    // Print the title
-    std::cout << "--------------" << std::endl
-              << title << std::endl
-              << "--------------" << std::endl
-              << std::endl;
-
-    // Zero the timers
-    Timer::zeroTimers();
-
-    // Execute the algorithm
-    auto piBegin = pi.begin();
-    auto lambdaBegin = lambda.begin();
-    SequentialClustering::cluster(data, dataElementsCount, dimension, piBegin, lambdaBegin);
-
-    // Check if the computed pi and lambda are correct
-    if (!ResultsChecker::checkResults(pi.cbegin(),
-                                      pi.cend(),
-                                      lambda.cbegin(),
-                                      lambda.cend(),
-                                      expectedPi.cbegin(),
-                                      expectedPi.cend(),
-                                      expectedLambda.cbegin(),
-                                      expectedLambda.cend())) {
-        std::cerr << "Error!" << std::endl;
-    } else {
-        std::cout << "Ok!" << std::endl;
-    }
-}
-
-/**
  * Convenient declaration that allows to produce a compile-time assertion error.
  *
- * @tparam Ts This must be one or more type parameters of the function that uses this
- * declaration.
+ * @tparam T A numeric value.
  */
 template <int T>
 static constexpr std::false_type always_false{};
 
-/*
- * Main entrypoint of the application.
+/**
+ * Initializes the specified data structures.
  *
- * IS_PARALLEL
- * VERSION
- * DATASET_INDEX
+ * @param dataIterator Iterator over the data samples to cluster. The data samples as well as the
+ * attributes of each data sample must be contiguous in memory.
+ * @param dataElementsCount Number of samples to cluster.
+ * @param dimension Number of attributes of each sample.
+ * @param indirectData Vector that will contain the samples to cluster organized in two levels.
+ * @param sseIndirectData Vector that will contain the samples to cluster organized in two levels,
+ * where the second level is properly aligned so to be used in SSE instructions.
+ * @param avxIndirectData Vector that will contain the samples to cluster organized in two levels,
+ * where the second level is properly aligned so to be used in AVX instructions.
+ * @param uniqueVectorData Array where all the samples to cluster will be stored one after the
+ * other.
+ * @param sseMMAlignedData Array where all the samples to cluster will be stored one after the
+ * other, and aligned so that each data samples can be used in SSE instructions.
+ * @param avxMMAlignedData Array where all the samples to cluster will be stored one after the
+ * other, and aligned so that each data samples can be used in AVX instructions.
+ */
+void initializeDataStructures(const double *dataIterator,
+                              std::size_t dataElementsCount,
+                              std::size_t dimension,
+                              std::vector<double *> &indirectData,
+                              std::vector<double *> &sseIndirectData,
+                              std::vector<double *> &avxIndirectData,
+                              double *&uniqueVectorData,
+                              double *&sseMMAlignedData,
+                              double *&avxMMAlignedData);
+
+/**
+ * Prints the usage to the console.
+ */
+void usage();
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "Simplify"
+#pragma ide diagnostic ignored "UnreachableCode"
+
+/**
+ * Main entrypoint of the application.<br>
+ * The behaviour of this method can be customized using the following macros:
+ * <ul>
+ *      <li><code>IS_PARALLEL</code>: if <code>0</code> executes a sequential implementation of the
+ * clustering algorithm, if <code>1</code> executes a parallel implementation of the clustering
+ * algorithm.</li>
+ *      <li><code>VERSION</code>: Version of the clustering algorithm to execute.</li>
+ * </ul>
+ *
+ * @param argc Number of arguments specified via the command line.
+ * @param argv Array containing the arguments specified via the command line.
+ * @return The status code.
  */
 int main(int argc, char *argv[]) {
 
-    // Dataset to measure
-    std::tuple<std::string, std::size_t, std::size_t> dataset;
-
-    if (argc != 4) {
-        std::cerr << "Too few arguments." << std::endl << std::endl;
-        std::cerr << "Usage: main-measurements <0 | 1> OUT_FILE TH_COUNT" << std::endl;
-        std::cerr << "  0 = Accelerometer, 1 = Generated" << std::endl;
-        return 1;
+    // Check if the help has been requested
+    if (argc == 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
+        usage();
+        return 0;
     }
 
-    std::size_t last = 0;
-    int dataSetIndex = std::stoi(argv[1], &last);
-    if (last == 0) {
+    // Check the number of arguments
+    if (argc != 4) {
+        std::cerr << "Wrong number of arguments specified." << std::endl << std::endl;
+        usage();
+        return 1;
+    }
+    // Parse the index of the dataset
+    // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+    std::size_t dataSetIndex;
+    try {
+        std::size_t lastParsedCharacterIndex = 0;
+        dataSetIndex = std::stoull(argv[1], &lastParsedCharacterIndex);
+        // Check if it has been parsed
+        if (lastParsedCharacterIndex == 0) {
+            std::cerr << "Wrong dataset index " << argv[1] << '.' << std::endl << std::endl;
+            return 2;
+        }
+    } catch (std::exception &) {
         std::cerr << "Wrong dataset index " << argv[1] << '.' << std::endl << std::endl;
         return 2;
     }
 
-    last = 0;
-    std::size_t threadsCount = std::stoull(argv[3], &last);
-    if (last == 0) {
-        std::cerr << "Wrong threads count " << argv[3] << '.' << std::endl << std::endl;
+    // Parse the number of threads to use
+    // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+    std::size_t threadsCount;
+    try {
+        std::size_t lastParsedCharacterIndex = 0;
+        threadsCount = std::stoull(argv[3], &lastParsedCharacterIndex);
+        // Check if it has been parsed
+        if (lastParsedCharacterIndex == 0) {
+            std::cerr << "Wrong threads count" << ' ' << argv[3] << '.' << std::endl << std::endl;
+            return 2;
+        }
+    } catch (std::exception &) {
+        std::cerr << "Wrong threads count" << ' ' << argv[3] << '.' << std::endl << std::endl;
         return 2;
     }
 
+    // Compute the dataset to test
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+    std::tuple<std::string, std::size_t, std::size_t> dataset;
     if (dataSetIndex == 0) {
         dataset = {"accelerometer.csv", 3, 5};
     } else {
-        dataset = {"Parking Birmingham.data", 2, 3};
+        dataset = {"generated.data", 1, 45};
     }
+    // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 
-    // Print the name of the dataset
-    std::cout << std::endl
-              << "===================" << std::endl
-              << "Dataset: " << std::get<0>(dataset) << std::endl
-              << "===================" << std::endl
-              << std::endl;
+    // Print a summary
+    std::cout << " * "
+              << "Running" << ' ' << ((IS_PARALLEL == 0) ? "sequential" : "parallel") << " version"
+              << ' ' << VERSION;
+    if (IS_PARALLEL) {
+        std::cout << " with" << ' ' << threadsCount << "threads";
+    }
+    std::cout << " on" << ' ' << std::get<0>(dataset) << std::endl;
 
     // Read the data
     std::vector<double> data{};
@@ -242,16 +255,250 @@ int main(int argc, char *argv[]) {
             std::get<2>(dataset));
     std::size_t dataElementsCount = data.size() / dimension;
 
-    // Compute the strides
-    const std::size_t sseStride = ParallelClustering<>::computeSseDimension(dimension);
-    const std::size_t avxStride = ParallelClustering<>::computeAvxDimension(dimension);
-    // Extract the data to cluster
-    const auto *const dataIterator = data.data();
-
-    // Fill the indirect data
+    // Allocate the indirect data
     std::vector<double *> indirectData{};
     std::vector<double *> sseIndirectData{};
     std::vector<double *> avxIndirectData{};
+    // Allocate the containers
+    double *sseMMAlignedData = nullptr;
+    double *avxMMAlignedData = nullptr;
+    double *uniqueVectorData = nullptr;
+
+    // Fill the data structures
+    initializeDataStructures(data.data(),
+                             dataElementsCount,
+                             dimension,
+                             indirectData,
+                             sseIndirectData,
+                             avxIndirectData,
+                             uniqueVectorData,
+                             sseMMAlignedData,
+                             avxMMAlignedData);
+
+    // Resize pi and lambda
+    std::vector<std::size_t> expectedPi{};
+    expectedPi.resize(dataElementsCount);
+    std::vector<double> expectedLambda{};
+    expectedLambda.resize(dataElementsCount);
+
+    // Compute the path of the file that contains the correct values of pi and lambda
+    std::string resultsFileName{"./results-"};
+    resultsFileName += std::to_string(dataSetIndex);
+    std::filesystem::path resultsPath{resultsFileName};
+    resultsPath = absolute(resultsPath).lexically_normal();
+    // Check for its existence
+    if (std::filesystem::exists(resultsPath)) {
+        // Retrieve the values
+        std::cout << "Reading the results from the file \'" << resultsPath.string() << '\''
+                  << std::endl;
+        DataReader::readPiLambda(resultsPath, expectedPi, expectedLambda);
+    } else {
+        // Execute the sequential implementation to compute the correct values for pi and lambda
+        std::cout << "Executing the sequential implementation to check the results" << std::endl;
+        auto dataBegin = indirectData.begin();
+        auto piBegin = expectedPi.begin();
+        auto lambdaBegin = expectedLambda.begin();
+
+        SequentialClustering::cluster(
+                dataBegin, dataElementsCount, dimension, piBegin, lambdaBegin);
+
+        DataWriter::writePiLambda(resultsPath, expectedPi, expectedLambda);
+    }
+
+    // Initialize pi and lambda
+    std::vector<std::size_t> piVector{};
+    piVector.resize(dataElementsCount);
+    std::vector<double> lambdaVector{};
+    lambdaVector.resize(dataElementsCount);
+
+    // Execute the requested implementation
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+    if constexpr (IS_PARALLEL == 0) {
+        // Measure the time taken to execute the sequential implementation with the specified
+        // version
+        if constexpr (VERSION == 1) {
+            ClusteringAlgorithmExecutor<>::executeSequentialClustering(
+                    indirectData.begin(), dataElementsCount, dimension, piVector, lambdaVector);
+        } else if constexpr (VERSION == 2) {
+            ClusteringAlgorithmExecutor<>::executeSequentialClustering(
+                    uniqueVectorData, dataElementsCount, dimension, piVector, lambdaVector);
+        } else {
+            always_false<VERSION>();
+        }
+    } else if constexpr (IS_PARALLEL == 1) {
+        // Measure the time taken to execute the parallel implementation with the specified version
+        if constexpr (VERSION == 1) {
+            ClusteringAlgorithmExecutor<>::executeParallelClustering<DistanceComputers::CLASSICAL>(
+                    indirectData.begin(),
+                    dataElementsCount,
+                    dimension,
+                    threadsCount,
+                    piVector,
+                    lambdaVector);
+        } else if constexpr (VERSION == 2) {
+            ClusteringAlgorithmExecutor<>::executeParallelClustering<DistanceComputers::SSE>(
+                    sseIndirectData.begin(),
+                    dataElementsCount,
+                    dimension,
+                    threadsCount,
+                    piVector,
+                    lambdaVector);
+        } else if constexpr (VERSION == 3) {
+            ClusteringAlgorithmExecutor<>::executeParallelClustering<DistanceComputers::AVX>(
+                    avxIndirectData.begin(),
+                    dataElementsCount,
+                    dimension,
+                    threadsCount,
+                    piVector,
+                    lambdaVector);
+        } else if constexpr (VERSION == 4) {
+            ClusteringAlgorithmExecutor<>::executeParallelClustering<DistanceComputers::SSE>(
+                    sseMMAlignedData,
+                    dataElementsCount,
+                    dimension,
+                    threadsCount,
+                    piVector,
+                    lambdaVector);
+        } else if constexpr (VERSION == 5) {
+            ClusteringAlgorithmExecutor<>::executeParallelClustering<DistanceComputers::AVX>(
+                    avxMMAlignedData,
+                    dataElementsCount,
+                    dimension,
+                    threadsCount,
+                    piVector,
+                    lambdaVector);
+        } else if constexpr (VERSION == 6) {
+            ClusteringAlgorithmExecutor<true, true>::executeParallelClustering<
+                    DistanceComputers::AVX>(avxMMAlignedData,
+                                            dataElementsCount,
+                                            dimension,
+                                            threadsCount,
+                                            piVector,
+                                            lambdaVector);
+        } else if constexpr (VERSION == 7) {
+            ClusteringAlgorithmExecutor<true, true>::executeParallelClustering<
+                    DistanceComputers::AVX_OPTIMIZED>(avxMMAlignedData,
+                                                      dataElementsCount,
+                                                      dimension,
+                                                      threadsCount,
+                                                      piVector,
+                                                      lambdaVector);
+        } else if constexpr (VERSION == 8) {
+            ClusteringAlgorithmExecutor<true, true, true>::executeParallelClustering<
+                    DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT>(sseMMAlignedData,
+                                                                     dataElementsCount,
+                                                                     dimension,
+                                                                     threadsCount,
+                                                                     piVector,
+                                                                     lambdaVector);
+        } else if constexpr (VERSION == 9) {
+            ClusteringAlgorithmExecutor<true, true, true>::executeParallelClustering<
+                    DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(avxMMAlignedData,
+                                                                     dataElementsCount,
+                                                                     dimension,
+                                                                     threadsCount,
+                                                                     piVector,
+                                                                     lambdaVector);
+        } else if constexpr (VERSION == 10) {
+            ClusteringAlgorithmExecutor<true, true, true>::executeParallelClustering<
+                    DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(avxIndirectData,
+                                                                     dataElementsCount,
+                                                                     dimension,
+                                                                     threadsCount,
+                                                                     piVector,
+                                                                     lambdaVector);
+        } else {
+            always_false<VERSION>();
+        }
+    } else {
+        always_false<IS_PARALLEL>();
+    }
+    // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+
+    // Check if the computed pi and lambda are correct
+    if (!ResultsChecker::checkResults(piVector.cbegin(),
+                                      piVector.cend(),
+                                      lambdaVector.cbegin(),
+                                      lambdaVector.cend(),
+                                      expectedPi.cbegin(),
+                                      expectedPi.cend(),
+                                      expectedLambda.cbegin(),
+                                      expectedLambda.cend())) {
+        std::cerr << "Test result: Error!" << std::endl;
+    } else {
+        std::cout << "Test result: OK" << std::endl;
+    }
+
+    // Deallocate the data
+    for (double *point : indirectData) {
+        delete[] point;
+    }
+    for (double *ssePoint : sseIndirectData) {
+        _mm_free(ssePoint);
+    }
+    for (double *avxPoint : avxIndirectData) {
+        _mm_free(avxPoint);
+    }
+
+    _mm_free(sseMMAlignedData);
+    _mm_free(avxMMAlignedData);
+    delete[] uniqueVectorData;
+
+    // Print the mean execution times to file
+    std::ofstream meanTimesFile{argv[2], std::ios_base::app};
+
+    // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+    if (meanTimesFile) {
+        Timer::print<0, true>(meanTimesFile);
+        Timer::print<1, true>(meanTimesFile);
+        Timer::print<2, true>(meanTimesFile);
+        Timer::print<3, true>(meanTimesFile);
+        Timer::print<4, true>(meanTimesFile);
+        Timer::print<5, true>(meanTimesFile);
+        Timer::printTotal<true, 0, 1, 2, 3, 4, 5>(meanTimesFile);
+    }
+    // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+    meanTimesFile << std::endl;
+
+    return 0;
+}
+
+#pragma clang diagnostic pop
+
+/**
+ * Initializes the specified data structures.
+ *
+ * @param dataIterator Iterator over the data samples to cluster. The data samples as well as the
+ * attributes of each data sample must be contiguous in memory.
+ * @param dataElementsCount Number of samples to cluster.
+ * @param dimension Number of attributes of each sample.
+ * @param indirectData Vector that will contain the samples to cluster organized in two levels.
+ * @param sseIndirectData Vector that will contain the samples to cluster organized in two levels,
+ * where the second level is properly aligned so to be used in SSE instructions.
+ * @param avxIndirectData Vector that will contain the samples to cluster organized in two levels,
+ * where the second level is properly aligned so to be used in AVX instructions.
+ * @param uniqueVectorData Array where all the samples to cluster will be stored one after the
+ * other.
+ * @param sseMMAlignedData Array where all the samples to cluster will be stored one after the
+ * other, and aligned so that each data samples can be used in SSE instructions.
+ * @param avxMMAlignedData Array where all the samples to cluster will be stored one after the
+ * other, and aligned so that each data samples can be used in AVX instructions.
+ */
+void initializeDataStructures(const double *const dataIterator,
+                              const std::size_t dataElementsCount,
+                              const std::size_t dimension,
+                              std::vector<double *> &indirectData,
+                              std::vector<double *> &sseIndirectData,
+                              std::vector<double *> &avxIndirectData,
+                              double *&uniqueVectorData,
+                              double *&sseMMAlignedData,
+                              double *&avxMMAlignedData) {
+
+    // Compute the strides
+    const std::size_t sseStride = ParallelClustering<>::computeSseDimension(dimension);
+    const std::size_t avxStride = ParallelClustering<>::computeAvxDimension(dimension);
+
+    // Initialize the indirect data structures
     for (std::size_t i = 0; i < dataElementsCount; i++) {
         // Initialize the non-aligned indirect point
         auto *point = new double[dimension];
@@ -287,17 +534,17 @@ int main(int argc, char *argv[]) {
     std::size_t avxSize = sizeof(double) * (dataElementsCount * avxStride);
 
     // Allocate the containers
-    auto *sseMMAlignedData = static_cast<double *>(
+    sseMMAlignedData = static_cast<double *>(
             _mm_malloc(sseSize, ParallelClustering<>::SSE_PACK_SIZE * sizeof(double)));
-    auto *avxMMAlignedData = static_cast<double *>(
+    avxMMAlignedData = static_cast<double *>(
             _mm_malloc(avxSize, ParallelClustering<>::AVX_PACK_SIZE * sizeof(double)));
-    auto *uniqueVectorData = new double[data.size()];
+    uniqueVectorData = new double[dataElementsCount * dimension];
 
     // Zero the aligned data
     memset(sseMMAlignedData, 0, sseSize);
     memset(avxMMAlignedData, 0, avxSize);
 
-    // Fill the contiguous data
+    // Fill the containers
     for (std::size_t i = 0; i < dataElementsCount; i++) {
         const double *currentDataBegin = &(dataIterator[i * dimension]);
         // Copy the values
@@ -305,186 +552,44 @@ int main(int argc, char *argv[]) {
         memcpy(&(avxMMAlignedData[i * avxStride]), currentDataBegin, dimension * sizeof(double));
         memcpy(&(uniqueVectorData[i * dimension]), currentDataBegin, dimension * sizeof(double));
     }
+}
 
-    // Resize pi and lambda
-    std::vector<std::size_t> pi{};
-    pi.resize(dataElementsCount);
-    std::vector<double> lambda{};
-    lambda.resize(dataElementsCount);
+#pragma clang diagnostic pop
 
-    std::string resultsPath = "./results-";
-    resultsPath += std::to_string(dataSetIndex);
-    if (std::filesystem::exists(resultsPath)) {
-        std::cout << "Reading the results" << std::endl;
-        DataReader::readPiLambda(resultsPath, pi, lambda);
-    } else {
-        // Execute the sequential implementation to compute the correct values for pi and lambda
-        std::cout << "Executing the sequential implementation to check the results" << std::endl;
-        auto dataBegin = indirectData.begin();
-        auto piBegin = pi.begin();
-        auto lambdaBegin = lambda.begin();
+/**
+ * Prints the usage to the console.
+ */
+void usage() {
 
-        SequentialClustering::cluster(
-                dataBegin, dataElementsCount, dimension, piBegin, lambdaBegin);
+    std::cout <<
+            R""(SYNOPSYS
+    main-measurements -h | --help
+    main-measurements DATASET_INDEX OUTPUT_FILE THREADS_COUNT
 
-        DataWriter::writePiLambda(resultsPath, pi, lambda);
-    }
+DESCRIPTION
+    Measures the time taken to execute the compiled clustering algorithm
+    implementation against the specified dataset.
+    In particular, DATASET_INDEX expresses the index of the dataset to test
+    where:
+        - 0 tests the "accelerometer.csv" dataset, columns from 3 to 5;
+        - 1 tests the "generated.data" dataset, columns from 1 to 45.
+    
+    The measured execution times are appended to the file OUTPUT_FILE, which
+    must be a valid path.
+    
+    If the compiled implementation is a parallel one, then THREADS_COUNT
+    specifies the number of threads to use when parallelizing the steps of the
+    algorithm.
 
-    if constexpr (IS_PARALLEL == 0) {
-        // Measure the time taken to execute the sequential implementations
-        if constexpr (VERSION == 1) {
-            iterateSequentialClustering(
-                    "Sequential 1", indirectData.begin(), dataElementsCount, dimension, pi, lambda);
-        } else if constexpr (VERSION == 2) {
-            iterateSequentialClustering("Sequential 2: Linearized",
-                                        uniqueVectorData,
-                                        dataElementsCount,
-                                        dimension,
-                                        pi,
-                                        lambda);
-        } else {
-            always_false<VERSION>();
-        }
-    } else {
-        if constexpr (VERSION == 1) {
-            // Measure the time taken to execute the parallel implementations
-            ParallelClusteringAlgorithmExecutor<>::iterateParallelClustering<
-                    DistanceComputers::CLASSICAL>("Parallel 1: Multi-threaded Distance Computation",
-                                                  indirectData.begin(),
-                                                  dataElementsCount,
-                                                  dimension,
-                                                  threadsCount,
-                                                  pi,
-                                                  lambda);
-        } else if constexpr (VERSION == 2) {
-            ParallelClusteringAlgorithmExecutor<>::iterateParallelClustering<
-                    DistanceComputers::SSE>("Parallel 2: Multi-threaded Distance Computation + SSE",
-                                            sseIndirectData.begin(),
-                                            dataElementsCount,
-                                            dimension,
-                                            threadsCount,
-                                            pi,
-                                            lambda);
-        } else if constexpr (VERSION == 3) {
-            ParallelClusteringAlgorithmExecutor<>::iterateParallelClustering<
-                    DistanceComputers::AVX>("Parallel 3: Multi-threaded Distance Computation + AVX",
-                                            avxIndirectData.begin(),
-                                            dataElementsCount,
-                                            dimension,
-                                            threadsCount,
-                                            pi,
-                                            lambda);
-        } else if constexpr (VERSION == 4) {
-            ParallelClusteringAlgorithmExecutor<>::iterateParallelClustering<
-                    DistanceComputers::SSE>(
-                    "Parallel 4: Multi-threaded Distance Computation + SSE + Linearized",
-                    sseMMAlignedData,
-                    dataElementsCount,
-                    dimension,
-                    threadsCount,
-                    pi,
-                    lambda);
-        } else if constexpr (VERSION == 5) {
-            ParallelClusteringAlgorithmExecutor<>::iterateParallelClustering<
-                    DistanceComputers::AVX>(
-                    "Parallel 5: Multi-threaded Distance Computation + AVX + Linearized",
-                    avxMMAlignedData,
-                    dataElementsCount,
-                    dimension,
-                    threadsCount,
-                    pi,
-                    lambda);
-        } else if constexpr (VERSION == 6) {
-            ParallelClusteringAlgorithmExecutor<true, true>::iterateParallelClustering<
-                    DistanceComputers::AVX>(
-                    "Parallel 6: Multi-threaded Distance Computation and Stage 4 + AVX + "
-                    "Linearized",
-                    avxMMAlignedData,
-                    dataElementsCount,
-                    dimension,
-                    threadsCount,
-                    pi,
-                    lambda);
-        } else if constexpr (VERSION == 7) {
-            ParallelClusteringAlgorithmExecutor<true, true>::iterateParallelClustering<
-                    DistanceComputers::AVX_OPTIMIZED>(
-                    "Parallel 7: Multi-threaded Distance Computation and Stage 4 + AVX Optimized + "
-                    "Linearized",
-                    avxMMAlignedData,
-                    dataElementsCount,
-                    dimension,
-                    threadsCount,
-                    pi,
-                    lambda);
-        } else if constexpr (VERSION == 8) {
-            ParallelClusteringAlgorithmExecutor<true, true, true>::iterateParallelClustering<
-                    DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT>(
-                    "Parallel 8: Multi-threaded Distance Computation and Stage 4 + SSE Optimized "
-                    "+ "
-                    "Linearized + No Square Root",
-                    sseMMAlignedData,
-                    dataElementsCount,
-                    dimension,
-                    threadsCount,
-                    pi,
-                    lambda);
-        } else if constexpr (VERSION == 9) {
-            ParallelClusteringAlgorithmExecutor<true, true, true>::iterateParallelClustering<
-                    DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
-                    "Parallel 9: Multi-threaded Distance Computation and Stage 4 + AVX Optimized "
-                    "+ "
-                    "Linearized + No Square Root",
-                    avxMMAlignedData,
-                    dataElementsCount,
-                    dimension,
-                    threadsCount,
-                    pi,
-                    lambda);
-        } else if constexpr (VERSION == 10) {
-            ParallelClusteringAlgorithmExecutor<true, true, true>::iterateParallelClustering<
-                    DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(
-                    "Parallel 10: Multi-threaded Distance Computation and Stage 4 + AVX Optimized "
-                    "+ "
-                    "Linearized + No Square Root + std::vector<double*>",
-                    avxIndirectData,
-                    dataElementsCount,
-                    dimension,
-                    threadsCount,
-                    pi,
-                    lambda);
-        } else {
-            always_false<VERSION>();
-        }
-    }
+OPTIONS
+    -h, --help
+        Prints this help.
 
-    // Deallocate the data
-    for (double *point : indirectData) {
-        delete[] point;
-    }
-    for (double *ssePoint : sseIndirectData) {
-        _mm_free(ssePoint);
-    }
-    for (double *avxPoint : avxIndirectData) {
-        _mm_free(avxPoint);
-    }
+EXIT CODE
+    0   If the test has been executed successfully, or the help has been
+            requested.
+    1   If a wrong number of arguments has been specified in the command line.
+    2   If a wrong argument has been specified.
 
-    _mm_free(sseMMAlignedData);
-    _mm_free(avxMMAlignedData);
-    delete[] uniqueVectorData;
-
-    // Print the mean execution times to file
-    std::ofstream meanTimesFile{argv[2], std::ios_base::app};
-
-    if (meanTimesFile) {
-        Timer::print<0, true>(meanTimesFile);
-        Timer::print<1, true>(meanTimesFile);
-        Timer::print<2, true>(meanTimesFile);
-        Timer::print<3, true>(meanTimesFile);
-        Timer::print<4, true>(meanTimesFile);
-        Timer::print<5, true>(meanTimesFile);
-        Timer::printTotal<true, 0, 1, 2, 3, 4, 5>(meanTimesFile);
-    }
-    meanTimesFile << std::endl;
-
-    return 0;
+)"";
 }

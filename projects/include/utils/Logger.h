@@ -15,7 +15,7 @@ namespace cluster::utils {
  *
  * @author DeB
  * @author Jonathan
- * @version 1.0.2 2022-08-16
+ * @version 1.0.3 2022-09-11
  * @since 1.0
  */
 class Logger {
@@ -39,7 +39,7 @@ public:
             printStages<0, Ns...>();
             // Print the total time
             std::cout << "Total  : ";
-            Timer::printTotal<Ns...>();
+            Timer::printTotal<false, Ns...>();
         }
     }
 
@@ -77,7 +77,7 @@ public:
                 printStages<0, Ns...>();
                 // Print the total time
                 std::cout << "Total  : ";
-                Timer::printTotal<Ns...>();
+                Timer::printTotal<false, Ns...>();
             }
         }
     }

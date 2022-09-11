@@ -37,20 +37,18 @@ target_link_libraries(
 )
 target_compile_definitions(Final_Project_HPC_Main PRIVATE TIMERS PRINT_ITERATIONS)
 
-# Define the measurements main executable
-#
-# for (int j = 0; j < 2; j++) for (i = 0; i < 13; i++) {
+# Define the measurements main executables
 foreach (isParallel RANGE 0 1)
     foreach (version RANGE 1 13)
+        # Set the name
         if (isParallel EQUAL 0)
             set(name Sequential)
         else ()
             set(name Parallel)
         endif ()
 
-        # if (isParallel || (!isParallel && version < 3)
+        # Create the target
         if (isParallel EQUAL 1 OR (isParallel EQUAL 0 AND version LESS 3))
-            # Final_Project_HPC_Measurement-${i}
             add_executable(
                 Final_Project_HPC_Measurement_${name}_${version}
                 src/data/DataReader.cpp
@@ -74,7 +72,7 @@ foreach (isParallel RANGE 0 1)
             target_compile_definitions(
                 Final_Project_HPC_Measurement_${name}_${version}
                 PRIVATE TIMERS
-                PRINT_ITERATIONS
+                # PRINT_ITERATIONS
                 IS_PARALLEL=${isParallel}
                 VERSION=${version}
             )
@@ -88,6 +86,7 @@ add_executable(
     src/main-data-generator.cpp
     )
 
+# Define the mean execution times printer
 add_executable(
         Mean_Times_Printer
         src/main-main-times-printer.cpp

@@ -2,9 +2,9 @@
 #define FINAL_PROJECT_HPC_TIMER_H
 #include <array>
 #include <chrono>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <fstream>
 
 namespace cluster::utils {
 
@@ -29,7 +29,7 @@ namespace cluster::utils {
  *
  * @author DeB
  * @author Jonathan
- * @version 1.1 2022-08-16
+ * @version 1.2 2022-09-11
  * @since 1.0
  */
 class Timer {
@@ -93,16 +93,19 @@ public:
     }
 
     /**
-     * Prints to the console, in a human-readable format, the duration held by the timer with the
-     * specified identifier.<br>
-     * This method allows also to compute the mean execution time of the block(s) of code enclosed
-     * between the <code>Timer::start</code> and <code>Timer::stop</code> invocations of the timer
-     * with the specified identifier.
+     * Prints to the specified output stream the duration held by the timer with the specified
+     * identifier.<br>
+     * If the template parameter <code>S</code> is <code>true</code>, then this method will print to
+     * the specified output stream a simplified output. In particular, this method will only print
+     * the duration, in nanoseconds, held by the timer with the specified identifier.<br>
+     * If, instead, the template parameter <code>S</code> is <code>false</code>, then this method
+     * will print to the specified output stream the duration held by the timer with the specified
+     * identifier in a human-readable format.
      *
      * @tparam N Identifier of the timer to print.
-     * @param times The number of times the block(s) of code enclosed between the timer invocations
-     * is executed. This value is used to divide the total timer duration so to compute the mean
-     * execution time of the block(s) of code.
+     * @tparam S <code>true</code> if this method should print a simplified output to the specified
+     * output stream, <code>false</code> otherwise.
+     * @param outputStream Stream where the duration of the timer will be printed to.
      */
     template <std::size_t N, bool S = false>
     static void print(std::ostream &outputStream = std::cout) {
@@ -115,17 +118,20 @@ public:
     }
 
     /**
-     * Prints to the console, in a human-readable format, the sum of the durations held by all the
-     * specified timers. If no identifier is specified, then the <code>0</code> duration is
+     * Prints to the specified output stream the sum of the durations held by all the timers with
+     * the specified identifiers. If no identifier is specified, then the <code>0</code> duration is
      * printed.<br>
-     * This method allows also to compute the mean execution time of all the blocks of code enclosed
-     * between the <code>Timer::start</code> and <code>Timer::stop</code> invocations of all the
-     * timers with the specified identifiers.
+     * If the template parameter <code>S</code> is <code>true</code>, then this method will print to
+     * the specified output stream a simplified output. In particular, this method will only print
+     * the sum of the duration of the timers in nanoseconds.<br>
+     * If, instead, the template parameter <code>S</code> is <code>false</code>, then this method
+     * will print to the specified output stream the sum of the duration of the timers in a
+     * human-readable format.
      *
      * @tparam Ns Identifiers of the timers whose sum of the durations is printed.
-     * @param times The number of times the blocks of code enclosed between the invocations of
-     * timers are executed. This value is used to divide the total timer durations so to compute the
-     * mean execution time of the blocks of code.
+     * @tparam S <code>true</code> if this method should print a simplified output to the specified
+     * output stream, <code>false</code> otherwise.
+     * @param outputStream Stream where the sum of the duration of the timers will be printed to.
      */
     template <bool S, std::size_t... Ns>
     static void printTotal(std::ostream &outputStream = std::cout) {
@@ -136,25 +142,30 @@ public:
 
 private:
     /**
-     * Prints to the console the duration of a timer in a human-readable form.
+     * Prints to the specified output stream the duration of a timer in a simplified or
+     * human-readable format.
      *
+     * @tparam S Whether this method should print a simplified output.
+     * @param outputStream Stream where the duration of the timer will be printed to.
      * @param duration Duration to print.
      */
     template <bool S>
-    static void printDuration(std::ostream &outputStream, TimerDuration duration) {
+    static void printDuration(std::ostream &outputStream, const TimerDuration duration) {
 
         // Use the literals for the durations, so to make the code cleaner
         using namespace std::literals::chrono_literals;
-        
+
+        // CHeck if the simplified output has been requested
         if constexpr (S) {
+            // Print just the nanoseconds
             outputStream << (duration / 1ns) << std::endl;
         } else {
             // Extract each part of the duration
-            auto nanoseconds = duration % 1us;
-            auto microseconds = (duration % 1ms) / 1us;
-            auto milliseconds = (duration % 1s) / 1ms;
-            auto seconds = (duration % 1min) / 1s;
-            auto minute = duration / 1min;
+            const auto nanoseconds = duration % 1us;
+            const auto microseconds = (duration % 1ms) / 1us;
+            const auto milliseconds = (duration % 1s) / 1ms;
+            const auto seconds = (duration % 1min) / 1s;
+            const auto minute = duration / 1min;
 
             // Print minutes, seconds and milliseconds
             outputStream << minute << " minutes " << std::setw(2) << std::setfill(' ') << seconds
@@ -170,14 +181,14 @@ private:
             }
             // Print the microseconds, properly padded
             if (milliseconds > 0 || microseconds > 0) {
-                char fill = (milliseconds > 0) ? '0' : ' ';
+                const char fill = (milliseconds > 0) ? '0' : ' ';
                 outputStream << std::setw(3) << std::setfill(fill) << microseconds;
                 outputStream << ".";
             } else {
                 outputStream << "    ";
             }
             // Print the nanoseconds, properly padded
-            char fill = (microseconds > 0) ? '0' : ' ';
+            const char fill = (microseconds > 0) ? '0' : ' ';
             outputStream << std::setw(3) << std::setfill(fill) << nanoseconds.count();
 
             // Clear the remaining part of the line
@@ -243,20 +254,20 @@ public:
     /**
      * Does nothing because the <code>TIMERS</code> macro is not defined.
      *
-     * @param times Ignored.
+     * @param outputStream Ignored.
      */
-    template <std::size_t>
-    static inline void print([[maybe_unused]] std::size_t times = 1) {
+    template <std::size_t, bool = false>
+    static inline void print([[maybe_unused]] std::ostream &outputStream = std::cout) {
     }
 
     /**
      * Does nothing because the <code>TIMERS</code> macro is not defined.
      *
      * @tparam ... Ignored.
-     * @param times Ignored.
+     * @param outputStream Ignored.
      */
-    template <std::size_t...>
-    static inline void printTotal([[maybe_unused]] std::size_t times = 1) {
+    template <bool, std::size_t...>
+    static inline void printTotal([[maybe_unused]] std::ostream &outputStream = std::cout) {
     }
 #endif
 };

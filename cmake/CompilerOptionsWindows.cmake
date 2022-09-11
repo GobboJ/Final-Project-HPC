@@ -135,7 +135,6 @@ add_compile_options(
     -Wtrivial-auto-var-init
     -Wundef
     -Wuninitialized
-    -Wunknown-pragmas
     -Wunused-const-variable=2
     -Wunused-macros
     -Wuse-after-free=3
@@ -157,6 +156,7 @@ add_compile_options(
     -Wno-padded
     -Wno-system-headers
     -Wno-templates
+    -Wno-unknown-pragmas
     -Wno-unused-parameter
     # Additional flags
     -Wl,–verbose

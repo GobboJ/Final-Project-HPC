@@ -123,7 +123,6 @@ add_compile_options(
     -Wtrampolines
     -Wundef
     -Wuninitialized
-    -Wunknown-pragmas
     -Wunused-const-variable=2
     -Wunused-macros
     -Wuseless-cast
@@ -144,6 +143,7 @@ add_compile_options(
     -Wno-padded
     -Wno-system-headers
     -Wno-templates
+    -Wno-unknown-pragmas
     -Wno-unused-parameter
     # Additional flags
     -Wl,–verbose
