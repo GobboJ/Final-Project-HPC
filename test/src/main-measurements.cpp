@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
               << "Running" << ' ' << ((IS_PARALLEL == 0) ? "sequential" : "parallel") << " version"
               << ' ' << VERSION;
     if (IS_PARALLEL) {
-        std::cout << " with" << ' ' << threadsCount << "threads";
+        std::cout << " with" << ' ' << threadsCount << " threads";
     }
     std::cout << " on" << ' ' << std::get<0>(dataset) << std::endl;
 
@@ -400,6 +400,14 @@ int main(int argc, char *argv[]) {
                                                                      piVector,
                                                                      lambdaVector);
         } else if constexpr (VERSION == 10) {
+            ClusteringAlgorithmExecutor<true, true, true>::executeParallelClustering<
+                    DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT>(sseIndirectData,
+                                                                     dataElementsCount,
+                                                                     dimension,
+                                                                     threadsCount,
+                                                                     piVector,
+                                                                     lambdaVector);
+        } else if constexpr (VERSION == 11) {
             ClusteringAlgorithmExecutor<true, true, true>::executeParallelClustering<
                     DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT>(avxIndirectData,
                                                                      dataElementsCount,
