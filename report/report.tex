@@ -22,16 +22,18 @@
 \usepackage{bm}
 \usepackage{mathtools}
 \usepackage{titlesec}
+\usepackage{tikz}
+\usepackage{color}
 
-% https://answerbun.com/
 % https://tex.stackexchange.com/questions/88929/vertical-table-lines-are-discontinuous-with-booktabs
 
-\setlength{\droptitle}{-5em} %-5em
-\geometry{left=1cm,right=1cm,top=2cm,bottom=2cm}
+\setlength{\droptitle}{-2.75em} %-5em
+\geometry{left=1cm,right=1cm,top=1.8cm,bottom=2cm}
 \graphicspath{{images/}}
 \captionsetup[table]{skip=5pt}
 \titlespacing*{\section}{0pt}{5pt}{5pt}
-\titlespacing*{\subsection}{0pt}{7pt}{5pt}
+\titlespacing*{\subsection}{0pt}{5pt}{5pt}
+\titlespacing*{\subsubsection}{0pt}{5pt}{5pt}
 
 \hypersetup{
     pdftitle={Parallelization of the SLINK clustering algorithm},
@@ -119,9 +121,9 @@
 \setlength\intextsep{2mm}
 \renewcommand{\divisor}{\midrule}
 \seq_set_split:Nnn \l_rows_seq { \\ } {#2}
-\begin{table}[H]
+\begin{table}[h]
 \centering
-\begin{tabularx}{0.98\linewidth}[H]{
+\begin{tabularx}{0.98\linewidth}[h]{
 >{\raggedright}p{1.8em}|
 %!{\color{Gainsboro!50!Lavender}\vline width 0.75em}
 >{\raggedleft}p{1.8em}
@@ -145,7 +147,7 @@
 \end{tabularx}
 \caption{#1}
 \end{table}
-}{}
+}{\vspace{-4pt}}
 \ExplSyntaxOff
 
 \newcommand{\divisor}{& \\[-2.25ex]\hline& \\[-2.25ex]}
@@ -383,9 +385,12 @@ it is almost trivial by using the \emph{OpenMP} library.
 
 Like the last implementation, data is supplied as a unique heap-allocated array.
 
+For space reasons, we omitted the results of the implementation when using SSE, since its
+execution times that are slightly bigger than the ones of AVX.
+
 \begin{tableLayout}{Execution times of the implementation executing in parallel the computation
 of the distance (using threads and AVX instructions) as well as the rearrangement of the
-structure of the dendrogram}
+structure of the dendrogram (2 and 16 threads tests omitted)}
 A4 & 4\ms & \formatNumber{10.599}{s} & \formatNumber{42.538}{s} & \formatNumber{8.939}{s} & 1\m
 02\s \\
 A8 & 4\ms & \formatNumber{5.836}{s} & \formatNumber{43.255}{s} & \formatNumber{5.659}{s} &
@@ -400,63 +405,59 @@ G8 & 8\ms & \formatNumber{38.337}{s} & \formatNumber{16.110}{s} & \formatNumber{
 G12 & 8\ms & \formatNumber{39.039}{s} & \formatNumber{17.603}{s} & \formatNumber{3.408}{s} & 1\m
 00\s
 \end{tableLayout}
-For space reasons, we ommitted the results of the implementation when using SSE, since its
-execution times that are slightly bigger than the ones of AVX.
+
+\vspace{-10pt}
 
 \hypertarget{failed-attempt}{
-\subsection{A faulty attempt to devise a new algorithm}
+\subsection{Devising a new algorithm}
 \label{failed-attempt}}
 
-The last step of the algorithm we can make parallel is the initialization one (i.e., the step
-\textit{1} of the psudo-code). However, as shown by the results, leaving it as-it-is impacts on
-the total execution time just for few milliseconds, so trying to making it parallel will likely
-not improve the performance of the algorithm any further.
+As shown by the results, even if we make the initialization of $\pi$ and $\lambda$ parallel (i.e
+., the step \textit{1} of the pseudo-code), we can gain only few milliseconds.
 
-Therefore, we tried to devise a new algorithm. This new algorithm builds incrementally the
-dendrogram like the pseudo-code, but in a different way.
+Therefore, to improve the performance, we tried to devise a new algorithm. This new algorithm
+builds incrementally the dendrogram like the pseudo-code, but in a different way.
 
-In particular, when the algorithm adds to the dendrogram a new the data sample $d$, it first
-computes the closest data samples $c$ that has already added.
+In particular, when this new algorithm adds to the dendrogram a new the data sample $d$, it first
+computes the closest data sample $c$ that has already added.
 
-Then, to add the data sample $d$, the algorithm adds a new edge to the dendrogram.
 Since any cluster containing $d$ must also contain $c$ (otherwise $c$ is not the closest data
-sample to $d$), this new edge will connect $d$ to an existent cluster containing $c$.
+sample to $d$), the algorithm adds a new edge connecting $d$ to an existent cluster containing $c$.
 
-Therefore, the algorithm just needs to traverse the path from the leaf of the dendrogram
-representing the data sample $c$ to the root until it finds the last edge $\varepsilon$ with height
-smaller than the distance between $d$ and $c$.
+To do so, the algorithm traverses the path from the leaf
+representing the data sample $c$ to the root of the dendrogram until it finds the last edge
+$\varepsilon$ with height smaller than the distance between $d$ and $c$.
 The algorithm, then, connects the edge $\varepsilon$ with the new edge, and the new edge with the
 parent of $\varepsilon$.
 
-Once added the new edge to the dendrogram, the algorithm continue traversing the path so to possibly
-update the height of all the remaining edges.
+Then, the algorithm continues traversing the path so to possibly update the height of all the
+remaining edges.
+
 Indeed, since we have added the data sample $d$ to the dendrogram, the distances between the
 any super-cluster containing both $c$ and $d$ and the cluster it joins may have changed.
-
-Note that, in any case, the heights of any of such edges can't get smaller than the heights of
-their children, hence the structure of the dendrogram will not change.
-
+However, since the heights of any of such edges can't get smaller than the heights of
+their children, the structure of the dendrogram will not change.
 
 The algorithm can be easily made parallel if we represent the dendrogram as a binary tree with a
 linked structure where each node stores a pointer to the parent node together with some other
 information.
 
-
-Indeed, we just need to assign to each thread a node of the path from $c$ to the root of the
-dendrogram. One of these threads will take care of adding the new edge, while all the others will
+If we assign to each thread a node of the path from $c$ to the root of the
+dendrogram, one of these threads will take care of adding the new edge, while all the others will
 take care of updating the heights of the edges.
 Since the operations performed by the threads are almost independent, we require very little
 synchronization.
 
 However, there are some cases in which this algorithm does not work.
-For instance, suppose that the cluster $\{a, b\}$ joins the cluster $\{c, d\}$ at distance $l_c$
-and suppose that the new data sample $e$ is closer to $b$.
-Suppose also that $a$ is closer to $b$ than $c$.
+For instance, suppose that a cluster $\{a, b\}$ joins another cluster $\{c, d\}$.
+Suppose also that the new data sample $e$ is closer to $b$, and suppose that $a$ is closer to $b$
+more than to $c$.
 
-Therefore, the algorithm, will create an edge joining the cluster $\{a, b\}$ and the data sample
-$e$. However, $c$ may become closer to the resulting cluster $\{a, b, e\}$ than to $d$.
+In this case, the algorithm, will create an edge joining the cluster $\{a, b\}$ and the data sample
+$e$. However, $c$ may become closer to the resulting cluster $\{a, b, e\}$ than to $d$. This
+implies that $c$ will not be connected directly to $d$, hence the dendrogram must be rearranged.
 
-This implies that the structure of the dendrogram may completely change, hence the threads do not
+In general, the entire structure of the dendrogram may change, hence the threads do not
 work on independent data anymore.
 This, therefore, will require much more synchronization, which may force the threads to be
 executed sequentially, hence reducing the performances.
@@ -464,10 +465,11 @@ Moreover, we also require each node of the dendrogram to store much more informa
 
 Therefore, we abandoned this algorithm, and we tried some micro-optimizations to the algorithm we
 have used so far.
+
 %
 %
 %
-%
+
 \begin{comment}
 To overcome the impossibility of parallelize the step \textit{3} of the algorithm, we decided to
 devise a new algorithm, which can be made parallel more easily.
@@ -625,7 +627,7 @@ extended register (which acts as the accumulator stack-allocated variable) and p
 horizontal sum only once, at the end of the computation.
 
 The new implementation combines all the parallelization strategies we have implemented so far
-with this micro - optimization.
+with this micro-\\optimization.
 This implies that the data is still supplied as a unique heap-allocated array.
 
 \begin{tableLayout}{Execution times of the first micro-optimized implementation using AVX (2 and
@@ -740,9 +742,33 @@ of the clustering algorithm, but supplying the data in the format we have used i
 implementation, i.e., as a \texttt{std::vector<double *>} -- a vector of heap allocated arrays
 each of which holding the attributes of one data sample.
 
-In the following tables, S5 reports the time taken to compute the square roots.
+The tables 12 and 13 report the results, where S5 reports the time taken to compute the square
+roots.
 
 %\loremTable
+
+\begin{tableLayout2}{Execution times of the second micro-optimized implementation using SSE and
+\texttt{std::vector<double*>}}
+A2 & 9\ms & \formatNumber{42.708}{s} & \formatNumber{41.007}{s} & \formatNumber{17.475}{s} &
+170$\,\mu$s & 1\m 41\s \\
+A4 & 6\ms & \formatNumber{34.021}{s} & \formatNumber{42.132}{s} & \formatNumber{9.814}{s} & 97$\,
+\mu$s & 1\m 26\s \\
+A8 & 6\ms & \formatNumber{29.379}{s} & \formatNumber{42.149}{s} & \formatNumber{6.243}{s} & 51$\,
+\mu$s & 1\m 18\s \\
+A12 & 6\ms & \formatNumber{29.705}{s} & \formatNumber{43.549}{s} & \formatNumber{5.491}{s} &
+72$\,\mu$s & 1\m 18\s \\
+A16 & 7\ms & \formatNumber{30.903}{s} & \formatNumber{48.340}{s} & \formatNumber{5.206}{s} &
+54$\,\mu$s & 1\m 24\s \\
+\divisor
+G2 & 9\ms & 2\m 52\s & \formatNumber{17.576}{s} & \formatNumber{10.547}{s} & 118$\,\mu$s & 3\m
+20\s \\
+G4 & 9\ms & 1\m 47\s & \formatNumber{19.144}{s} & \formatNumber{6.986}{s} & 66$\,\mu$s & 2\m 13\s \\
+G8 & 9\ms & 1\m 24\s & \formatNumber{18.963}{s} & \formatNumber{4.404}{s} & 35$\,\mu$s & 1\m 48\s \\
+G12 & 10\ms & 1\m 31\s & \formatNumber{20.374}{s} & \formatNumber{4.026}{s} & 49$\,\mu$s & 1\m
+56\s \\
+G16 & 10\ms & 1\m 31\s & \formatNumber{22.532}{s} & \formatNumber{3.765}{s} & 39$\,\mu$s & 1\m 57\s
+\end{tableLayout2}
+
 \begin{tableLayout2}{Execution times of the second micro-optimized implementation using AVX and
 \texttt{std::vector<double*>}}
 A2 & 7\ms & \formatNumber{33.418}{s} & \formatNumber{39.571}{s} & \formatNumber{15.797}{s} &
@@ -767,28 +793,6 @@ G12 & 13\ms & 1\m 30\s & \formatNumber{20.023}{s} & \formatNumber{4.109}{s} & 53
 G16 & 14\ms & 1\m 29\s & \formatNumber{21.576}{s} & \formatNumber{3.801}{s} & 42$\,\mu$s & 1\m 55\s
 \end{tableLayout2}
 
-\begin{tableLayout2}{Execution times of the second micro-optimized implementation using SSE and
-\texttt{std::vector<double*>}}
-A2 & 9\ms & \formatNumber{42.708}{s} & \formatNumber{41.007}{s} & \formatNumber{17.475}{s} &
-170$\,\mu$s & 1\m 41\s \\
-A4 & 6\ms & \formatNumber{34.021}{s} & \formatNumber{42.132}{s} & \formatNumber{9.814}{s} & 97$\,
-\mu$s & 1\m 26\s \\
-A8 & 6\ms & \formatNumber{29.379}{s} & \formatNumber{42.149}{s} & \formatNumber{6.243}{s} & 51$\,
-\mu$s & 1\m 18\s \\
-A12 & 6\ms & \formatNumber{29.705}{s} & \formatNumber{43.549}{s} & \formatNumber{5.491}{s} &
-72$\,\mu$s & 1\m 18\s \\
-A16 & 7\ms & \formatNumber{30.903}{s} & \formatNumber{48.340}{s} & \formatNumber{5.206}{s} &
-54$\,\mu$s & 1\m 24\s \\
-\divisor
-G2 & 9\ms & 2\m 52\s & \formatNumber{17.576}{s} & \formatNumber{10.547}{s} & 118$\,\mu$s & 3\m
-20\s \\
-G4 & 9\ms & 1\m 47\s & \formatNumber{19.144}{s} & \formatNumber{6.986}{s} & 66$\,\mu$s & 2\m 13\s \\
-G8 & 9\ms & 1\m 24\s & \formatNumber{18.963}{s} & \formatNumber{4.404}{s} & 35$\,\mu$s & 1\m 48\s \\
-G12 & 10\ms & 1\m 31\s & \formatNumber{20.374}{s} & \formatNumber{4.026}{s} & 49$\,\mu$s & 1\m
-56\s \\
-G16 & 10\ms & 1\m 31\s & \formatNumber{22.532}{s} & \formatNumber{3.765}{s} & 39$\,\mu$s & 1\m 57\s
-\end{tableLayout2}
-
 \hypertarget{speed-up}{
 \subsection{Speed-up}
 \label{speed-up}}
@@ -808,25 +812,357 @@ Instead, when we consider the contiguous memory layout, we obtained a speed-up o
 \ref{micro-optimization-no-square-root} and 8 threads, while we obtained a speed-up of 3.0772 for
 the \textit{Generated} dataset with the SSE solution described in \ref{data-layout-comparison}
 and 8 threads.
+% Higher speed-up because of the number of attributes
 
 % Maybe: Are the various implementations effective in improving the performance
 
 %\lipsum[1-2]
 
+\newlength{\graphShift}
+\newlength{\axesLineWidth}
+\newlength{\gridLineWidth}
+\newlength{\graphLineWidth}
+\setlength{\graphShift}{30mm}
+\setlength{\axesLineWidth}{2pt}
+\setlength{\gridLineWidth}{1pt}
+\setlength{\graphLineWidth}{2pt}
+
+
+\definecolor{gridColor}{HTML}{123456}
+\definecolor{labelColor}{HTML}{000000}
+\definecolor{parallel1Color}{HTML}{587DE5}
+\definecolor{parallel2Color}{HTML}{F79B15}
+\definecolor{parallel3Color}{HTML}{E8513E}
+\definecolor{parallel4Color}{HTML}{72B127}
+\definecolor{parallel5Color}{HTML}{D36B06}
+\definecolor{parallel6Color}{HTML}{9F47B0}
+\definecolor{parallel7Color}{HTML}{7566D0}
+\definecolor{parallel8Color}{HTML}{F07629}
+\definecolor{parallel9Color}{HTML}{00B3B3}
+\definecolor{parallel10Color}{HTML}{17A1DA}
+\definecolor{parallel11Color}{HTML}{B9B800}
+
+% 1 = 87
+% 5 = 15
+% 4 units = 72 mm
+
+% 1 = 87
+% 5 = 15
+% 2 units = 72 mm
+
+
 \begin{figure}[H]
 \centering
-\begin{subfigure}{.47\linewidth}
-\includegraphics[width=\linewidth]{speed-up-1}
-\caption*{Speed-up of the parallel implementations on the \textit{Accelerometer} dataset}
+\begin{subfigure}{.47\linewidth}%
+\begin{tikzpicture}[scale=0.47]
+%\draw (0mm, 0mm) rectangle (100mm, 130mm);
+% Horizontal grid
+% Total 72 for 1.5 --> 48 for 1 ---> 24 for 0.5
+%\draw[gridColor,line width=\gridLineWidth] (10mm, 96mm) -- (95mm, 96mm);
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 87mm) -- (10mm, 87mm)
+node[labelColor, anchor=east] {2.5};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 63mm) -- (10mm, 63mm)
+node[labelColor, anchor=east] {2};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 39mm) -- (10mm, 39mm)
+node[labelColor, anchor=east] {1.5};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 15mm) -- (10mm, 15mm)
+node[labelColor, anchor=east] {1};
+% Vertical grid
+% (85-68)/2 = 8.5 mm of margin left and right
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (18.5mm, 95mm) -- (18.5mm, 10mm)
+node[labelColor,
+anchor=north] {2};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (35.5mm, 95mm) -- (35.5mm, 10mm)
+node[labelColor,
+anchor=north] {4};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (52.5mm, 95mm) -- (52.5mm, 10mm)
+node[labelColor,
+anchor=north] {8};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (69.5mm, 95mm) -- (69.5mm, 10mm)
+node[labelColor,
+anchor=north] {12};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (86.5mm, 95mm) -- (86.5mm, 10mm)
+node[labelColor,
+anchor=north] {16};
+% Lines
+\draw[parallel1Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 34.02mm) --
+(35.5mm, 46.82mm) --
+(52.5mm, 55.80mm) --
+(69.5mm, 50.58mm) --
+(86.5mm, 37.34mm);
+
+\draw[parallel2Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 38.04mm) --
+(35.5mm, 43.39mm) --
+(52.5mm, 49.60mm) --
+(69.5mm, 46.82mm) --
+(86.5mm, 36.65mm);
+
+\draw[parallel3Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 37.34mm) --
+(35.5mm, 49.60mm) --
+(52.5mm, 56.92mm) --
+(69.5mm, 52.59mm) --
+(86.5mm, 38.76mm);
+
+\draw[parallel4Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 14.38mm) --
+(35.5mm, 19.80mm) --
+(52.5mm, 22.16mm) --
+(69.5mm, 19.80mm) --
+(86.5mm, 13.78mm);
+
+\draw[parallel5Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 11.53mm) --
+(35.5mm, 14.38mm) --
+(52.5mm, 16.95mm) --
+(69.5mm, 16.28mm) --
+(86.5mm, 13.20mm);
+
+\draw[parallel6Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 16.95mm) --
+(35.5mm, 26.61mm) --
+(52.5mm, 35.44mm) --
+(69.5mm, 33mm) --
+(86.5mm, 26.61mm);
+
+\draw[parallel7Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 19.06mm) --
+(35.5mm, 27.59mm) --
+(52.5mm, 35.44mm) --
+(69.5mm, 31.84mm) --
+(86.5mm, 25.67mm);
+
+\draw[parallel8Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 26.61mm) --
+(35.5mm, 31.84mm) --
+(52.5mm, 38.08mm) --
+(69.5mm, 35.44mm) --
+(86.5mm, 29.64mm);
+
+\draw[parallel9Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 26.61mm) --
+(35.5mm, 30.72mm) --
+(52.5mm, 38.08mm) --
+(69.5mm, 35.44mm) --
+(86.5mm, 29.64mm);
+
+\draw[parallel10Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 37.34mm) --
+(35.5mm, 49.06mm) --
+(52.5mm, 58.08mm) --
+(69.5mm, 58.08mm) --
+(86.5mm, 51.57mm);
+
+\draw[parallel11Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 46.82mm) --
+(35.5mm, 67.06mm) --
+(52.5mm, 83.46mm) --
+(69.5mm, 76.29mm) --
+(86.5mm, 61.72mm);
+% Axes
+\draw[line width=\axesLineWidth, yshift=\graphShift] (95mm, 10mm) -- (10mm, 10mm) -- (10mm, 95mm);
+\fill[line width=\axesLineWidth, yshift=\graphShift] (7.5mm, 92mm) -- (10mm, 97mm) -- (12.5mm,
+92mm) --
+cycle;
+% Labels
+\draw[yshift=\graphShift] (6mm, 100mm) node[labelColor, anchor=north] {$S$};
+\draw[yshift=\graphShift] (96mm, 9mm) node[labelColor, anchor=north] {$p$};
+% Legend
+\fill[parallel1Color] (4mm, 28mm) rectangle (10mm, 22mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.2};
+\fill[parallel2Color] (28mm, 28mm) rectangle (34mm, 22mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.3\footnotesize S};
+\fill[parallel3Color] (52mm, 28mm) rectangle (58mm, 22mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.3\footnotesize A};
+\fill[parallel4Color] (76mm, 28mm) rectangle (82mm, 22mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.4\footnotesize S};
+
+\fill[parallel5Color] (4mm, 18mm) rectangle (10mm, 12mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.4\footnotesize A};
+\fill[parallel6Color] (28mm, 18mm) rectangle (34mm, 12mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.6};
+\fill[parallel7Color] (52mm, 18mm) rectangle (58mm, 12mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.8};
+\fill[parallel8Color] (76mm, 18mm) rectangle (82mm, 12mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.9\footnotesize S};
+
+\fill[parallel9Color] (4mm, 8mm) rectangle (10mm, 2mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.9\footnotesize A};
+\fill[parallel10Color] (28mm, 8mm) rectangle (34mm, 2mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.11\footnotesize S};
+\fill[parallel11Color] (54mm, 8mm) rectangle (60mm, 2mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.11\footnotesize A};
+\end{tikzpicture}
+\caption*{Speed-up of the parallel implementations on the \textit{Accelerometer} dataset}%
 \end{subfigure}%
-\hspace{3mm}%
-\begin{subfigure}{.47\linewidth}
-\includegraphics[width=\linewidth]{speed-up-1}
-\caption*{Speed-up of the parallel implementations on the \textit{Generated} dataset}
-\end{subfigure}
+%
+%
+%
+%
+%
+\hspace{5mm}%
+%
+%
+%
+%
+\begin{subfigure}{.47\linewidth}%
+\begin{tikzpicture}[scale=0.47]
+%\draw (0mm, 0mm) rectangle (100mm, 130mm);
+% Horizontal grid
+% Total 81 for 4.5 --> 18 for 1
+%\draw[gridColor,line width=\gridLineWidth] (10mm, 96mm) -- (95mm, 96mm);
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 87mm) -- (10mm, 87mm)
+node[labelColor,
+anchor=east] {5};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 69mm) -- (10mm, 69mm)
+node[labelColor,
+anchor=east] {4};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 51mm) -- (10mm, 51mm)
+node[labelColor,
+anchor=east] {3};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 33mm) -- (10mm, 33mm)
+node[labelColor,
+anchor=east] {2};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 15mm) -- (10mm, 15mm)
+node[labelColor,
+anchor=east] {1};
+% Vertical grid
+% (85-68)/2 = 8.5 mm of margin left and right
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (18.5mm, 95mm) -- (18.5mm, 10mm)
+node[labelColor,
+anchor=north] {2};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (35.5mm, 95mm) -- (35.5mm, 10mm)
+node[labelColor,
+anchor=north] {4};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (52.5mm, 95mm) -- (52.5mm, 10mm)
+node[labelColor,
+anchor=north] {8};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (69.5mm, 95mm) -- (69.5mm, 10mm)
+node[labelColor,
+anchor=north] {12};
+\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (86.5mm, 95mm) -- (86.5mm, 10mm)
+node[labelColor,
+anchor=north] {16};
+% Lines
+\draw[parallel1Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 33.38mm) --
+(35.5mm, 56.10mm) --
+(52.5mm, 79.45mm) --
+(69.5mm, 72.18mm) --
+(86.5mm, 71.09mm);
+
+\draw[parallel2Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 31.08mm) --
+(35.5mm, 51.38mm) --
+(52.5mm, 72.73mm) --
+(69.5mm, 71.09mm) --
+(86.5mm, 71.63mm);
+
+\draw[parallel3Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 30.74mm) --
+(35.5mm, 51.67mm) --
+(52.5mm, 73.87mm) --
+(69.5mm, 69mm) --
+(86.5mm, 70.03mm);
+
+\draw[parallel4Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 28.32mm) --
+(35.5mm, 38.76mm) --
+(52.5mm, 43.75mm) --
+(69.5mm, 43.06mm) --
+(86.5mm, 42.39mm);
+
+\draw[parallel5Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 28.64mm) --
+(35.5mm, 37.68mm) --
+(52.5mm, 41.74mm) --
+(69.5mm, 41.11mm) --
+(86.5mm, 38.76mm);
+
+\draw[parallel6Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 29.29mm) --
+(35.5mm, 42.39mm) --
+(52.5mm, 51mm) --
+(69.5mm, 49.20mm) --
+(86.5mm, 46.71mm);
+
+\draw[parallel7Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 34.29mm) --
+(35.5mm, 45.18mm) --
+(52.5mm, 51.95mm) --
+(69.5mm, 51mm) --
+(86.5mm, 48.34mm);
+
+\draw[parallel8Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 31.80mm) --
+(35.5mm, 43.75mm) --
+(52.5mm, 52.93mm) --
+(69.5mm, 51.95mm) --
+(86.5mm, 48.34mm);
+
+\draw[parallel9Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 35.67mm) --
+(35.5mm, 45.18mm) --
+(52.5mm, 51.95mm) --
+(69.5mm, 51mm) --
+(86.5mm, 48.34mm);
+
+\draw[parallel10Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 48.12mm) --
+(35.5mm, 73.87mm) --
+(52.5mm, 91.67mm) --
+(69.5mm, 85.14mm) --
+(86.5mm, 84.38mm);
+
+\draw[parallel11Color, line width=\graphLineWidth, yshift=\graphShift]
+(18.5mm, 55.76mm) --
+(35.5mm, 82.92mm) --
+(52.5mm, 95.31mm) --
+(69.5mm, 86.68mm) --
+(86.5mm, 85.9mm);
+% Axes
+\draw[line width=\axesLineWidth, yshift=\graphShift] (95mm, 10mm) -- (10mm, 10mm) -- (10mm, 95mm);
+\fill[line width=\axesLineWidth, yshift=\graphShift] (7.5mm, 92mm) -- (10mm, 97mm) -- (12.5mm,
+92mm) --
+cycle;
+% Labels
+\draw[yshift=\graphShift] (6mm, 100mm) node[labelColor, anchor=north] {$S$};
+\draw[yshift=\graphShift] (96mm, 9mm) node[labelColor, anchor=north] {$p$};
+% Legend
+\fill[parallel1Color] (4mm, 28mm) rectangle (10mm, 22mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.2};
+\fill[parallel2Color] (28mm, 28mm) rectangle (34mm, 22mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.3\footnotesize S};
+\fill[parallel3Color] (52mm, 28mm) rectangle (58mm, 22mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.3\footnotesize A};
+\fill[parallel4Color] (76mm, 28mm) rectangle (82mm, 22mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.4\footnotesize S};
+
+\fill[parallel5Color] (4mm, 18mm) rectangle (10mm, 12mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.4\footnotesize A};
+\fill[parallel6Color] (28mm, 18mm) rectangle (34mm, 12mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.6};
+\fill[parallel7Color] (52mm, 18mm) rectangle (58mm, 12mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.8};
+\fill[parallel8Color] (76mm, 18mm) rectangle (82mm, 12mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.9\footnotesize S};
+
+\fill[parallel9Color] (4mm, 8mm) rectangle (10mm, 2mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.9\footnotesize A};
+\fill[parallel10Color] (28mm, 8mm) rectangle (34mm, 2mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.11\footnotesize S};
+\fill[parallel11Color] (54mm, 8mm) rectangle (60mm, 2mm) node[labelColor, anchor=mid west,
+yshift=0.25\baselineskip, xshift=-2pt] {2.11\footnotesize A};
+\end{tikzpicture}%
+\caption*{Speed-up of the parallel implementations on the \textit{Generated} dataset}%
+\end{subfigure}%
 \end{figure}
 
 
+
+\vspace{-15pt}
 \hypertarget{how-to-use-the-library}{
 \section{How to use the library}
 \label{how-to-use-the-library}}
@@ -849,6 +1185,9 @@ clustering algorithm.
 
 All the implementations (sequential and parallel) are able to process data samples with any
 number of attributes, provided that all the samples have the same number of attributes.
+
+The \texttt{main-sample.cpp} file in the \texttt{test/src} directory contains an example
+illustrating how to use the library.
 
 \hypertarget{parallel-clustering}{%
 \subsection{\texttt{ParallelClustering} class}
@@ -916,7 +1255,7 @@ In the former case, the method takes care of calling \texttt{begin} method, or t
 \texttt{cbegin} one if present, to retrieve the random access iterator iterating over the
 specified data structure.
 
-Note that the \texttt{cluster} method assumes the data structures holding $\pi$ and
+The \texttt{cluster} method assumes the data structures holding $\pi$ and
 $\lambda$ to be as big as the number of data samples to cluster.
 
 \hypertarget{distance-computation-algorithms}{
@@ -980,26 +1319,20 @@ If you define the \texttt{TIMERS} macro, both the sequential and parallel implem
 clustering algorithm will measure the time taken to execute each step of the algorithm using a
 timer.
 
-In particular, each step is measured by a different timer identified with the following identifiers:
-\begin{itemize}
-\item \texttt{0} measures the time taken to execute all the service operations,
-like moving the iterators, or initializing the internal data structures;
-\item \texttt{1} measures the time taken to initialize $\pi$ and $\lambda$;
-\item \texttt{2} measures the time taken to compute the distance between the data
-samples;
-\item \texttt{3} measures the time taken to add to the dendrogram the new data sample;
-\item \texttt{4} measures the time taken to fix the structure of the dendrogram after
-a new point is added. This implies updating the representative of a data sample whenever its
-current representative gets connected to a cluster containing the new point;
-\item \texttt{5} measures the time taken to compute the square roots of the values in
+In particular, each step is measured by a different timer with a specific identifier, where
+\texttt{0} measures the time taken to execute all the service operations, \texttt{1} to
+\texttt{4} measure the time taken to execute the corresponding steps of the pseudo-code,
+and \texttt{5} measures the time taken to compute the square roots of the values in
 $\lambda$. This time is measured only for the parallel implementation if the distance
 computation algorithm is one of \texttt{SSE\textunderscore
 OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT} or\\
 \texttt{AVX\textunderscore OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT}.
-\end{itemize}
 
-Using the \texttt{print} or \texttt{printTotal} static methods of the \texttt{Timer} class,
-defined in the \texttt{Timer.h} header file, you can print to the console the times measured by
-each timer.
+The \texttt{Timer}, defined in the \texttt{Timer.h} header file, offers the \texttt{print} and
+\texttt{printTotal} static methods to print to the console the times measured by each timer.
+
+
+
+
 
 \end{document}
