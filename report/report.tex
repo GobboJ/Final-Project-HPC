@@ -1,11 +1,10 @@
 \documentclass{article}
-\usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{multicol}
 \usepackage{geometry}
 \usepackage{float}
-\usepackage{hyperref}
+\usepackage[unicode=true, psdextra]{hyperref}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{graphicx}
@@ -22,6 +21,7 @@
 \usepackage{lipsum}
 \usepackage{bm}
 \usepackage{mathtools}
+\usepackage{titlesec}
 
 % https://answerbun.com/
 % https://tex.stackexchange.com/questions/88929/vertical-table-lines-are-discontinuous-with-booktabs
@@ -30,6 +30,8 @@
 \geometry{left=1cm,right=1cm,top=2cm,bottom=2cm}
 \graphicspath{{images/}}
 \captionsetup[table]{skip=5pt}
+\titlespacing*{\section}{0pt}{5pt}{5pt}
+\titlespacing*{\subsection}{0pt}{7pt}{5pt}
 
 \hypersetup{
     pdftitle={Parallelization of the SLINK clustering algorithm},
@@ -57,7 +59,6 @@
             \\
             \hline
         \end{tabular}
-        \label{tab:my_label}
     \end{table}
 }
 
@@ -72,7 +73,6 @@
             \\
             \hline
         \end{tabular}
-        \label{tab:my_label}
     \end{table}
 }
 
@@ -351,9 +351,9 @@ G12 & 8\ms & \formatNumber{39.331}{s} & \formatNumber{15.580}{s} & \formatNumber
 As we can see form these results, making the data samples contiguous in memory improves
 significantly the performance of the algorithm.
 
-Indeed, when a thread loads 2 or 4 data samples into the extended registers, it is very likely
-that another thread has brought them in the L2 cache when requesting the attributes of one of the
-data samples stored immediately before in memory.
+Indeed, when a thread loads one data sample, it is very likely that with the same memory
+transaction more data samples are brought to the cache, hence, when the thread analyzes the
+following data sample, it is already in cache.
 
 \hypertarget{stage-3-parallel}{
 \subsection{Make the insertion of a new point parallel}
@@ -407,14 +407,68 @@ execution times that are slightly bigger than the ones of AVX.
 \subsection{A faulty attempt to devise a new algorithm}
 \label{failed-attempt}}
 
-The last step of the algorithm we can parallelize is the initialization one (i.e., the step
+The last step of the algorithm we can make parallel is the initialization one (i.e., the step
 \textit{1} of the psudo-code). However, as shown by the results, leaving it as-it-is impacts on
 the total execution time just for few milliseconds, so trying to making it parallel will likely
 not improve the performance of the algorithm any further.
 
+Therefore, we tried to devise a new algorithm. This new algorithm builds incrementally the
+dendrogram like the pseudo-code, but in a different way.
+
+In particular, when the algorithm adds to the dendrogram a new the data sample $d$, it first
+computes the closest data samples $c$ that has already added.
+
+Then, to add the data sample $d$, the algorithm adds a new edge to the dendrogram.
+Since any cluster containing $d$ must also contain $c$ (otherwise $c$ is not the closest data
+sample to $d$), this new edge will connect $d$ to an existent cluster containing $c$.
+
+Therefore, the algorithm just needs to traverse the path from the leaf of the dendrogram
+representing the data sample $c$ to the root until it finds the last edge $\varepsilon$ with height
+smaller than the distance between $d$ and $c$.
+The algorithm, then, connects the edge $\varepsilon$ with the new edge, and the new edge with the
+parent of $\varepsilon$.
+
+Once added the new edge to the dendrogram, the algorithm continue traversing the path so to possibly
+update the height of all the remaining edges.
+Indeed, since we have added the data sample $d$ to the dendrogram, the distances between the
+any super-cluster containing both $c$ and $d$ and the cluster it joins may have changed.
+
+Note that, in any case, the heights of any of such edges can't get smaller than the heights of
+their children, hence the structure of the dendrogram will not change.
+
+
+The algorithm can be easily made parallel if we represent the dendrogram as a binary tree with a
+linked structure where each node stores a pointer to the parent node together with some other
+information.
+
+
+Indeed, we just need to assign to each thread a node of the path from $c$ to the root of the
+dendrogram. One of these threads will take care of adding the new edge, while all the others will
+take care of updating the heights of the edges.
+Since the operations performed by the threads are almost independent, we require very little
+synchronization.
+
+However, there are some cases in which this algorithm does not work.
+For instance, suppose that the cluster $\{a, b\}$ joins the cluster $\{c, d\}$ at distance $l_c$
+and suppose that the new data sample $e$ is closer to $b$.
+Suppose also that $a$ is closer to $b$ than $c$.
+
+Therefore, the algorithm, will create an edge joining the cluster $\{a, b\}$ and the data sample
+$e$. However, $c$ may become closer to the resulting cluster $\{a, b, e\}$ than to $d$.
+
+This implies that the structure of the dendrogram may completely change, hence the threads do not
+work on independent data anymore.
+This, therefore, will require much more synchronization, which may force the threads to be
+executed sequentially, hence reducing the performances.
+Moreover, we also require each node of the dendrogram to store much more information.
+
+Therefore, we abandoned this algorithm, and we tried some micro-optimizations to the algorithm we
+have used so far.
+%
+%
+%
+%
 \begin{comment}
-
-
 To overcome the impossibility of parallelize the step \textit{3} of the algorithm, we decided to
 devise a new algorithm, which can be made parallel more easily.
 
@@ -644,7 +698,7 @@ A16 & 5\ms & \formatNumber{4.386}{s} & \formatNumber{50.834}{s} & \formatNumber{
 G2 & 9\ms & \formatNumber{53.895}{s} & \formatNumber{16.303}{s} & \formatNumber{10.436}{s} &
 124$\,\mu$s & 1\m 21\s\\
 G4 & 10\ms & \formatNumber{41.312}{s} & \formatNumber{16.961}{s} & \formatNumber{6.453}{s} &
-67$\,\mu$s & 1\m 5\s\\
+67$\,\mu$s & 1\m 05\s\\
 G8 & 8\ms & \formatNumber{37.104}{s} & \formatNumber{16.829}{s} & \formatNumber{3.715}{s} & 35$\,
 \mu$s & \formatNumber{57.663}{s}\\
 G12 & 8\ms & \formatNumber{37.015}{s} & \formatNumber{17.697}{s} & \formatNumber{3.430}{s} &
@@ -735,28 +789,43 @@ G12 & 10\ms & 1\m 31\s & \formatNumber{20.374}{s} & \formatNumber{4.026}{s} & 49
 G16 & 10\ms & 1\m 31\s & \formatNumber{22.532}{s} & \formatNumber{3.765}{s} & 39$\,\mu$s & 1\m 57\s
 \end{tableLayout2}
 
-\hypertarget{Conclusions}{
-\subsection{Conclusions}
-\label{Conclusions}}
+\hypertarget{speed-up}{
+\subsection{Speed-up}
+\label{speed-up}}
 
-Speed-up of $x$.
+In all the parallel implementations we have used the \textit{OpenMP} library to parallelize the
+\texttt{for} loops. We tried a combination different scheduling policies, but the most effective
+one is the \texttt{static} policy on all the \texttt{for} loops.
+
+%2.1 - 2.11
+
+When using the \texttt{std::vector<double*>} memory layout, we reached a speed-up of 2.4262 for the
+\textit{Accelerometer} dataset and a speed-up of 5.4615 for the \textit{Generated} dataset with
+the AVX solution described in \ref{data-layout-comparison} and 8 threads.
+
+Instead, when we consider the contiguous memory layout, we obtained a speed-up of 1.4794 for the
+\textit{Accelerometer} dataset with the AVX solution described in
+\ref{micro-optimization-no-square-root} and 8 threads, while we obtained a speed-up of 3.0772 for
+the \textit{Generated} dataset with the SSE solution described in \ref{data-layout-comparison}
+and 8 threads.
+
 % Maybe: Are the various implementations effective in improving the performance
 
-\lipsum[1-2]
+%\lipsum[1-2]
+
 \begin{figure}[H]
 \centering
-\begin{subfigure}{.5\linewidth}
-\includegraphics[width=\linewidth]{graph-3}
-\caption{Graph with all the points, $F$ is the last added point}
+\begin{subfigure}{.47\linewidth}
+\includegraphics[width=\linewidth]{speed-up-1}
+\caption*{Speed-up of the parallel implementations on the \textit{Accelerometer} dataset}
 \end{subfigure}%
-\begin{subfigure}{.5\linewidth}
-\includegraphics[width=\linewidth]{dendrogram-3}
-\caption{Dendrogram}
+\hspace{3mm}%
+\begin{subfigure}{.47\linewidth}
+\includegraphics[width=\linewidth]{speed-up-1}
+\caption*{Speed-up of the parallel implementations on the \textit{Generated} dataset}
 \end{subfigure}
-\caption{Situation}
 \end{figure}
 
-%TODO: We tried different scheduling (static, dynamic private) but static was the fastest one.
 
 \hypertarget{how-to-use-the-library}{
 \section{How to use the library}
@@ -778,6 +847,9 @@ implementation of the clustering algorithm, while the second, defined in the
 \texttt{ParallelClustering.h} header file, provides all the parallel implementations of the
 clustering algorithm.
 
+All the implementations (sequential and parallel) are able to process data samples with any
+number of attributes, provided that all the samples have the same number of attributes.
+
 \hypertarget{parallel-clustering}{%
 \subsection{\texttt{ParallelClustering} class}
 \label{parallel-clustering}}
@@ -794,7 +866,7 @@ algorithm.
 The method allows also to specify also the number of threads to use in each of the steps that can be
 parallelized, namely:
 \begin{enumerate}
-\item The computation of the distance between the data samples;
+\item The computation of the distance between two data samples;
 \item The operations needed to fix the structure of the dendrogram after a new point is
 added, i.e., fixing the representative of all the points whose representative joined a
 cluster containing the new data sample (the step \textit{4} of the algorithm);
@@ -832,7 +904,7 @@ over the data structure.
 \end{enumerate}
 
 \hypertarget{par-pi-lambda-layout}{
-\subsubsection{\boldmath$\pi$ and \boldmath$\lambda$ memory layouts}
+\subsubsection{\texorpdfstring{\boldmath$\pi$ and \boldmath$\lambda$}{pi and lambda} memory layouts}
 \label{par-pi-lambda-layout}}
 
 The \texttt{cluster} static method allows also a certain flexibility in the memory layout of
@@ -871,6 +943,9 @@ ROOT}, which act like\\ \texttt{SSE\textunderscore OPTIMIZED} and
 without applying the square root operation (see \ref{micro-optimization-no-square-root}).
 \end{itemize}
 
+All these constants are defined in the \texttt{DistanceComputers} enumeration, defined in the
+\texttt{DistanceComputers.h} header file.
+
 \hypertarget{sequential-clustering}{
 \subsection{\texttt{SequentialClustering} class}
 \label{sequential-clustering}}
@@ -890,7 +965,7 @@ method does require the first level to be randomly accessible, but it requires o
 level to be input iterable (or to be an input iterator).
 
 \hypertarget{seq-pi-lambda-layout}{
-\subsubsection{\boldmath$\pi$ and \boldmath$\lambda$  memory layouts}
+\subsubsection{\texorpdfstring{\boldmath$\pi$ and \boldmath$\lambda$}{pi and lambda} memory layouts}
 \label{seq-pi-lambda-layout}}
 
 The \texttt{cluster} static method supports exactly the same data layouts for both $\pi$
@@ -923,107 +998,8 @@ OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT} or\\
 \texttt{AVX\textunderscore OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT}.
 \end{itemize}
 
-Using the \texttt{print} or \texttt{printTotal} static methods of the \texttt{Timer} class you
-can print to the console the times measured by each timer.
-
-
-%
-%
-%
-%
-%
-%
-%
-%
-\clearpage
-
-The sequential \texttt{cluster} function has the following signature:
-
-To invoke the sequential clustering algorithm, the following parameters
-must be passed to the \texttt{cluster} function:
-
-\begin{itemize}
-
-\item
-\texttt{dataIterator}: a dataset iterator of generic type \texttt{D}
-that must satisfy the concept \texttt{DataIterator}, defined in the
-header file \texttt{Types.h};
-\item
-\texttt{dataSamplesCount}: the number of rows in the dataset;
-\item
-\texttt{dimension}: the number of columns in the dataset;
-\item
-\texttt{piIterator}: an iterator on the \emph{pi} data structure, of
-generic type \texttt{P} satisfying the \texttt{PiIterator} concept;
-\item
-\texttt{lambdaIterator}: an iterator on the \emph{lambda} data
-structure, of generic type \texttt{L} satisfying the
-\texttt{LambdaIterator} concept;
-\end{itemize}
-
-The \texttt{cluster} function assumes that the data structures
-underlying the \texttt{piIterator} and \texttt{lambdaIterator} iterators
-are big enough to hold all the values.
-
-
-The parallel \texttt{cluster} function has the following signature:
-
-To invoke the parallel clustering algorithm, the following parameters
-must be passed to the \texttt{cluster} function:
-
-\begin{itemize}
-\item
-\texttt{dataIterator}: a dataset iterator of generic type \texttt{D}
-that must satisfy the concept \texttt{ParallelDataIterator}, defined
-in the header file \texttt{Types.h}. In contrary to the sequential
-version, this concept requires data to be addressable through the
-\texttt{{[}{]}} operator to allow concurrent data access;
-\item
-\texttt{distanceComputationThreadsCount}: defines the number of
-threads used to compute the distances between the points. By default
-it is \(0\), meaning that OpenMP will use all the available CPU
-threads to perform the computation. If \texttt{S2} is false, this
-value is ignored;
-\item
-\texttt{stage4ThreadsCount}: defines the number of threads used to
-perform the stage 4 of the clustering algorithm. If \texttt{S4} is
-false, this value is ignored;
-\item
-\texttt{squareRootThreadsCount}: defines the number of threads used to
-compute the square roots of the distances. If \texttt{S5} is false, or
-\texttt{C} is not \texttt{SSE\_OPTIMIZED\_NO\_SQUARE\_ROOT} nor
-\texttt{AVX\_OPTIMIZED\_NO\_SQUARE\_ROOT}, then this value is ignored;
-\end{itemize}
-
-The parameters \texttt{dataSamplesCount}, \texttt{dimension},
-\texttt{piIterator} and \texttt{lambdaIterator} are equivalent to the
-sequential version.
-
-Moreover, the following template parameters must be specified:
-
-\begin{itemize}
-\item
-\texttt{DistanceComputers}: enumeration that defines which variant of
-the parallel cluster algorithm to be used to compute the distance
-between the points. Its possible values are \texttt{CLASSICAL},
-\texttt{SSE}, \texttt{AVX}, \texttt{SSE\_OPTIMIZED},
-\texttt{AVX\_OPTIMIZED}, \texttt{SSE\_OPTIMIZED\_NO\_SQUARE\_ROOT},
-\texttt{AVX\_OPTIMIZED\_NO\_SQUARE\_ROOT}. Their meaning are described
-in the previous chapter;
-\item
-\texttt{S2}: boolean value defaulted to \texttt{true}, indicates
-whether the distance computation stage of the algorithm should be
-parallelized using threads;
-\item
-\texttt{S4}: boolean value defaulted to \texttt{false}, indicates
-whether the stage 4 of the algorithm should be parallelized using
-threads;
-\item
-\texttt{S5}: boolean value defaulted to \texttt{false}, indicates
-whether the computation of the square roots of the distances should be
-parallelized using threads. Effective only if \texttt{C} is either
-\texttt{SSE\_OPTIMIZED\_NO\_SQUARE\_ROOT} or
-\texttt{AVX\_OPTIMIZED\_NO\_SQUARE\_ROOT}.
-\end{itemize}
+Using the \texttt{print} or \texttt{printTotal} static methods of the \texttt{Timer} class,
+defined in the \texttt{Timer.h} header file, you can print to the console the times measured by
+each timer.
 
 \end{document}
