@@ -92,6 +92,15 @@ add_executable(
     src/main-mean-times-printer.cpp
 )
 
+# Define the sample main
+add_executable(
+    Main_Sample
+    src/main-sample.cpp
+)
+target_link_libraries(
+    Main_Sample Final_Project_HPC_Sequential_Library Final_Project_HPC_Parallel_Library
+)
+
 # Define the automated tests
 set(testList)
 # list(APPEND testList "two-points" "samples" "same-distance" "slide" "iris" "birm")

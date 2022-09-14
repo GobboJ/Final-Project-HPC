@@ -1,8 +1,7 @@
 # DeB Cluster Visualizer
 
 Collection of applications that deal with hierarchical clusters of points. This collection contains
-the following
-applications:
+the following applications:
 
 - [Graph printer](#graph-printer): Application that prints the 2D graph of hierarchical clusters of
   2-dimensional points;

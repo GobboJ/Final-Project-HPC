@@ -89,20 +89,20 @@ public:
      * <b>MUST BE</b> big enough to contain all the <code>pi</code> values, which are exactly
      * <code>dataSamplesCount</code>.
      * @param lambda Data structure/iterator holding the <code>lambda</code> values. This data
-     * structure <b>MUST BE</b> big enough to contain all the <code>pi</code> values, which are
+     * structure <b>MUST BE</b> big enough to contain all the <code>lambda</code> values, which are
      * exactly <code>dataSamplesCount</code>.
      * @param distanceComputationThreadsCount Number of threads to use to parallelize the
      * computation of the distance between the data samples. If not specified, or if <code>0</code>
      * is specified, then this method uses the default number of threads computed by OpenMP.<br>
-     * This parameter takes effect only if <code>S2</code> is <code>true</code>.
+     * This parameter takes effect only if <code>PD</code> is <code>true</code>.
      * @param structuralFixThreadsCount Number of threads to use to parallelize the computation of
      * structural fix after a new data sample is added to the dendrogram. If not specified, or if
      * <code>0</code> is specified, then this method uses the default number of threads computed by
-     * OpenMP.<br> This parameter takes effect only if <code>S4</code> is <code>true</code>.
+     * OpenMP.<br> This parameter takes effect only if <code>PF</code> is <code>true</code>.
      * @param squareRootThreadsCount Number of threads to use to parallelize the computation of
      * square roots of the distances. If not specified, or if <code>0</code> is specified, then this
      * method uses the default number of threads computed by OpenMP.<br> This parameter takes effect
-     * only if <code>S5</code> is <code>true</code>, and if the distance computation algorithm is
+     * only if <code>PS</code> is <code>true</code>, and if the distance computation algorithm is
      * either <code>DistanceComputers::SSE_OPTIMIZED_NO_SQUARE_ROOT</code> or
      * <code>DistanceComputers::AVX_OPTIMIZED_NO_SQUARE_ROOT</code>.
      * @throws std::invalid_argument If the data samples alignment check has been requested and one
@@ -366,7 +366,7 @@ private:
      * add. This value acts as a placeholder, and it is used to identify the end of the data sample.
      * @param m Array containing the part row values this method will initialize.
      * @param distanceComputationThreadsCount Number of threads to use to compute the distances in
-     * parallel. This parameter is ignored if <code>S2</code> is <code>false</code>.
+     * parallel. This parameter is ignored if <code>PD</code> is <code>false</code>.
      */
     template <DistanceComputers C, typename D, typename ED>
     static inline void computeDistances(const std::size_t n,
