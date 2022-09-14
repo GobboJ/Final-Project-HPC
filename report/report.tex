@@ -27,8 +27,8 @@
 
 % https://tex.stackexchange.com/questions/88929/vertical-table-lines-are-discontinuous-with-booktabs
 
-\setlength{\droptitle}{-2.75em} %-5em
-\geometry{left=1cm,right=1cm,top=1.8cm,bottom=2cm}
+\setlength{\droptitle}{-2.3em} %-5em
+\geometry{left=1cm,right=1cm,top=1.7cm,bottom=2cm}
 \graphicspath{{images/}}
 \captionsetup[table]{skip=5pt}
 \titlespacing*{\section}{0pt}{5pt}{5pt}
@@ -123,7 +123,7 @@
 \seq_set_split:Nnn \l_rows_seq { \\ } {#2}
 \begin{table}[h]
 \centering
-\begin{tabularx}{0.98\linewidth}[h]{
+\begin{tabularx}{0.98\linewidth}[H]{
 >{\raggedright}p{1.8em}|
 %!{\color{Gainsboro!50!Lavender}\vline width 0.75em}
 >{\raggedleft}p{1.8em}
@@ -178,7 +178,8 @@ compiled with the GCC G++ 12.1.1 (Red Hat) compiler, using the \texttt{-O3} and
 
 In particular, we tested the clustering algorithm implementations on two datasets:
 \begin{itemize}
-\item Accelerometer\footnote{\url{https://archive.ics.uci.edu/ml/datasets/Accelerometer}} (A), composed
+\item Accelerometer\footnote{\url{https://archive.ics.uci.edu/ml/datasets/Accelerometer}} (A),
+composed
 of 153'000 samples, each of which with 5 attributes. For the tests we have performed, we have
 selected only the last 3 of them;
 \item Generated (G), composed of 100'000 samples, each of which with 45 randomly generated real
@@ -192,7 +193,8 @@ and running Fedora Workstation 36.
 In particular, we measured the time taken by each step of the pseudo-code (reported as S1, S2, S3
 and S4) to be executed.
 
-In all the tests we used two \texttt{std::vector} data structures to hold the values of $\pi$ and $\lambda$.
+In all the tests we used two \texttt{std::vector} data structures to hold the values of $\pi$ and
+$\lambda$.
 
 Note that the reported total times include also some extra time, which is spent by the various
 implementations to perform operations like allocating and de-allocating the memory, or copying
@@ -228,7 +230,8 @@ G & 19\ms & 8\m 59\s & \formatNumber{16.246}{s} & \formatNumber{12.802}{s} & 9\m
 \hypertarget{parallel-distance}{%
 \subsection{Multithreaded distance computation}\label{parallel-distance}}
 
-From the previous tests results, we saw that the computation of the distances (i.e., the step \textit{2} of the pseudo-code) is the most expensive step of the algorithm.
+From the previous tests results, we saw that the computation of the distances (i.e., the step
+\textit{2} of the pseudo-code) is the most expensive step of the algorithm.
 
 Since each distance can be computed independently from the others, their computation can be
 easily made parallel by using the \emph{OpenMP} library.
@@ -334,7 +337,7 @@ G8 & 8\ms & \formatNumber{37.005}{s} & \formatNumber{14.162}{s} & \formatNumber{
 G12 & 8\ms & \formatNumber{37.132}{s} & \formatNumber{15.271}{s} & \formatNumber{15.902}{s} & 1\m
 08\s
 \end{tableLayout}
-
+\vspace{-5pt}
 \begin{tableLayout}{Execution times of the implementation using a contiguous data structure and
 AVX(2 and 16 threads tests omitted)}
 A4 & 4\ms & \formatNumber{12.462}{s} & \formatNumber{42.709}{s} & \formatNumber{23.633}{s} & 1\m
@@ -378,7 +381,8 @@ thread to complete its work.
 \subsection{Make the rearrangement of the structure of the dendrogram parallel}
 \label{stage-4-parallel}}
 
-Therefore, we decided to try to parallelize the third most expensive step of the algorithm, which is the rearrangement of the structure of the
+Therefore, we decided to try to parallelize the third most expensive step of the algorithm, which
+is the rearrangement of the structure of the
 dendrogram after a new point is added (i.e., the step \textit{4} of the pseudo-code).
 
 Since each iteration of the \texttt{for} loop is independent from the others, making it parallel
@@ -387,8 +391,8 @@ it is almost trivial if we use the \emph{OpenMP} library.
 Like the last implementation, data is supplied as a unique heap-allocated array.
 
 % TODO:
-For space reasons, we omitted the results of the implementation when using SSE, since its
-execution times are slightly different than the ones of AVX.
+For space reasons, we omitted the results of the implementation when using SSE.
+%, since its execution times are slightly different than the ones of AVX.
 
 
 %For space reasons, we omitted the results of the implementation when using SSE instructions, since
@@ -422,222 +426,65 @@ G12 & 8\ms & \formatNumber{39.039}{s} & \formatNumber{17.603}{s} & \formatNumber
 \subsection{Devising a new algorithm}
 \label{failed-attempt}}
 
-As shown by the results, even if we make the initialization of $\pi$ and $\lambda$ parallel (i.e., the step \textit{1} of the pseudo-code), we can gain only few milliseconds.
+The last most expensive step of the algorithm is the initialization $\pi$ and $\lambda$ (i.e.,
+the step \textit{1} of the pseudo-code). However, as the results show, even if we make it
+parallel, we will gain only few milliseconds.
 
-Therefore, to improve the performance of the algorithm, we tried to devise a new one. This new algorithm
-builds incrementally the dendrogram like the pseudo-code does, but in a different way.
+Therefore, to improve further the performance of the algorithm, we tried devising a new one. This
+new algorithm builds incrementally the dendrogram like the pseudo-code does, but in a different way.
 
-In particular, when this new algorithm adds to the dendrogram a new data sample $d$, it first
-computes the closest data sample $c$ that has already been added.
+In particular, when the algorithm adds to the dendrogram a new data sample $d$, it first computes
+the closest sample $c$, and their distance $l$. Then, it traverses the path on the dendrogram
+from the leaf representing $c$ to the root.
 
-Since any cluster containing $d$ must also contain $c$ (otherwise $c$ is not the closest data
-sample to $d$), the algorithm adds to the dendrogram a new edge connecting $d$ to an existent cluster containing $c$.
+Indeed, since $c$ is the closest sample to $d$, then $d$ must be linked to one of the clusters
+containing $c$, and such a cluster can be found only on that path. In particular, this cluster
+is represented by the last edge $\varepsilon$ in the path with height smaller than $l$. The
+algorithm just needs to add a new edge linking $\varepsilon$ to $d$, and then it links the
+new edge with the parent of $\varepsilon$.
 
-To do so, the algorithm traverses the path from the leaf
-representing the data sample $c$ to the root of the dendrogram until it finds the last edge
-$\varepsilon$ with height smaller than the distance between $d$ and $c$.
-The algorithm, then, connects the edge $\varepsilon$ with the new edge, and the new edge with the
-parent of $\varepsilon$.
+Then, the algorithm continues traversing the path so to possibly update the height of the
+remaining edges, because adding $d$ to a cluster may have made it closer to the cluster it
+joins to.
 
-Then, the algorithm continues traversing the path so to possibly update the height of all the
-remaining edges.
+Representing the dendrogram as a binary tree using a linked structure, each edge of the path to
+traverse is just a pair of nodes.
+Since the dendrogram is not rearranged, each of these pairs can be analyzed independently.
+This implies that several threads may analyze such pairs in parallel requiring almost no
+synchronization. One of these threads will add the new edge, while all the others will possibly
+update the heights of the edges.
 
-Indeed, since we have added the data sample $d$ to the dendrogram, the distances between
-any cluster containing both $c$ and $d$ and the cluster it joins to may have changed.
-% TODO:
-However, since the heights of any of such edges can't get smaller than the heights of
-the edges it connects to, the structure of the dendrogram will not change.
-%%%%
+However, there are some cases where the dendrogram is actually rearranged. Indeed, suppose that
+the cluster $\{a, b\}$ joins the cluster $\{e, f\}$. If the data sample
+to add $d$ is closer to $b$, then it will be added to the first cluster, and this may make the
+data sample $e$ closer to the cluster $\{a, b, d\}$ more than to $f$.
 
-The algorithm, therefore, can be easily made parallel if we represent the dendrogram as a binary tree with a
-linked structure where each node stores a pointer to the parent node together with some other
-information.
+Thus, adding the data sample $d$ to the dendrogram may require to rearrange some of the edges.
+This implies that the edges in the path to traverse may change while the threads are traversing it.
+To avoid inconsistencies, we require much more synchronization between the threads, which may force
+them to work sequentially, hence reducing the performance.
 
-If we assign to each thread a node of the path from $c$ to the root of the
-dendrogram, one of these threads will take care of adding the new edge, while all the others will
-take care of updating the heights of the edges.
-Since the operations performed by the threads are almost independent, we require very little
-synchronization.
-
-However, there are some cases in which this algorithm does not work.
-For instance, suppose that a cluster $\{a, b\}$ joins another cluster $\{c, d\}$.
-Suppose that the algorithm needs to add a new data sample $e$ to the dendrogram, and this data sample
-is closer to $b$, and suppose that $a$ is closer to $b$ more than to $c$.
-
-In this case, the algorithm, will create an edge joining the cluster $\{a, b\}$ and the data sample
-$e$. However, $c$ may become closer to the resulting cluster $\{a, b, e\}$ more than to $d$. This
-implies that $c$ will not be connected directly to $d$, hence the dendrogram must be rearranged.
-
-In general, the entire structure of the dendrogram may change after a new point is added.
-Therefore, the threads do not work on independent data anymore, hence they require much more synchronization, which may force the threads to be executed sequentially, reducing the performance of the algorithm.
-Moreover, we also require each node of the binary tree to store much more information.
-% TODO:
-%Therefore, we abandoned this algorithm, and we tried to implement some micro-optimizations so to
-%improve the performance the algorithm we have used so far.
-%%%%
-%
-%
-%
-
-\begin{comment}
-To overcome the impossibility of parallelize the step \textit{3} of the algorithm, we decided to
-devise a new algorithm, which can be made parallel more easily.
-
-This new algorithm builds incrementally the dendrogram like the algorithm we used so far, but it
-is based on a different but simple idea.
-
-Suppose the algorithm needs to add to the dendrogram a new data sample $d$ and suppose that, among
-all the samples already added to the dendrogram, the data sample $c$ is the closest one with
-distance $l$ (i.e., $c$ is the data sample with the minimum distance from $d$).
-
-Then, any cluster containing $d$ for sure contains also $c$, otherwise there would be another
-data sample $e$ already added to the dendrogram which is closer to $d$ more than $c$, but we assumed
-$c$ is the closest one.
-
-If we look at the structure of the dendrogram, this consideration implies that the new data sample
-$d$ is connected to one of the edges in the path from $c$ to the root of the dendrogram.
-
-\begin{figure}[H]
-\centering
-\begin{subfigure}{.5\linewidth}
-\includegraphics[width=\linewidth]{graph-2}
-\caption{Graph with all the points, $F$ is the next point to add}
-\end{subfigure}%
-\begin{subfigure}{.5\linewidth}
-\includegraphics[width=\linewidth]{dendrogram-2}
-\caption{Dendrogram}
-\end{subfigure}
-\caption{Situation}
-\end{figure}
-
-In particular, the new edge will be added on that path right before the first edge $\varepsilon$
-with an
-height that is bigger than $l$.
-
-Therefore, adding a new edge to the dendrogram is trivial if we represent the dendrogram as a
-binary tree, where:
-\begin{itemize}
-\item Each leaf stores the identifier of the data sample and a pointer to the parent node;
-\item Each internal node stores the pointer to the parent node and the children nodes, as
-well as the value of height of the edge.
-\end{itemize}
-Indeed, it is just a matter of changing the values of two pointers, namely the pointer to the
-left or right child of the node representing the edge $\varepsilon$, and the pointer to the
-parent node of the node that was previously connected to $\varepsilon$.
-
-However, this is only half of the work. Suppose, at some point, the cluster $X$ joins cluster $Y$
-at distance $k$. Suppose that $c$ belongs to $X$ and suppose that $k > l$.
-
-This implies that $X$ must also contain $d$ because, since $c$ belongs to $X$, then one of the
-sub-clusters of $X$ containing $c$ must join the data sample $d$, since the distance between $c$
-and $d$ is smaller than $k$.
-
-However, if $X$ joined $Y$ at distance $k$ before adding $d$, now that we have added $d$ the two
-clusters may have become closer.
-
-If we look at the dendrogram, this may require to change the heights of all the edges in the path
-from the newly added edge to the root of the dendrogram.
-Note that, in any case, the heights of any of such edges can't get smaller than the heights of
-their children.
-
-Therefore, if in the nodes representing the dendrogram we store also the information about which
-point of the left sub-tree is the closest to which point of the right sub-tree, then adjusting
-the heights stored in such nodes is trivial.
-
-Indeed, suppose that the node stores the information that the two closest data samples are $e$
-and $f$. Suppose also that $d$ belongs to a cluster that also contain $e$. Then, to update the
-height of the edge we need to to check if the distance between $d$ and $f$ is smaller than the
-distance between $e$ and $f$ (which is the current height of the edge). If so, we need to update
-the height of the edge as well as the two closest points (which will be $d$ and $f$). Otherwise,
-no change is made.
-
-All of these operations can be easily made parallel. We just need to assign to each thread an
-node of the path from $c$ to the root of the dendrogram in a round-robin fashion. The given node
-can represent:
-\begin{enumerate}
-\item An edge with height smaller than $l$. In this case, the thread just does nothing and
-selects another edge;
-
-\item The first edge in the path with an height larger than $l$. This can be easily tested
-by looking at the heights of the two children, if at least one of them is not a leaf. If they
-are both a leaves, then the edge receives by the thread IS the first in the path with an
-height larger than $l$.
-
-In this case, the thread just changes the values some the pointers,
-which can be done safely by using the \textit{Compare And Swap} primitives offered by the CPU.
-
-\item An edge that does not fall in one of the previous cases. Therefore, the thread needs
-only to update the height stored in the node and the two closest points, if the newly added
-data sample has made two two sub-clusters closer.
-\end{enumerate}
-
-This algorithm is extremely parallel because there almost no data dependency among the nodes the
-threads analyze.
-
-However, there are some cases in which this algorithm does not work. Let's take the following
-example:
-
-\begin{figure}[H]
-\centering
-\begin{subfigure}{.5\linewidth}
-\includegraphics[width=\linewidth]{graph-2}
-\caption{Graph with all the points, $F$ is the next point to add}
-\end{subfigure}%
-\begin{subfigure}{.5\linewidth}
-\includegraphics[width=\linewidth]{dendrogram-2}
-\caption{Dendrogram}
-\end{subfigure}
-\caption{Situation}
-\end{figure}
-
-When we add to the the dendrogram the point $F$, its structure completely changes:
-
-\begin{figure}[H]
-\centering
-\begin{subfigure}{.5\linewidth}
-\includegraphics[width=\linewidth]{graph-3}
-\caption{Graph with all the points, $F$ is the last added point}
-\end{subfigure}%
-\begin{subfigure}{.5\linewidth}
-\includegraphics[width=\linewidth]{dendrogram-3}
-\caption{Dendrogram}
-\end{subfigure}
-\caption{Situation}
-\end{figure}
-
-This implies that any node of the tree representing the dendrogram can be moved, which implies
-that the pointers to the parent and children nodes can change on every node.
-
-Since the threads are traversing the path from a leaf to the root, if a thread moves a node, it
-must perform such an operation in mutual exclusion, otherwise the other threads may analyze nodes
-that do not belong to the path.
-
-This requires any thread to lock the node they are using, so to prevent any other thread to
-traverse the node and analyze the parent of such node, which indeed may change is the thread
-moves the node.
-
-All these locks will introduce a high complexity in the algorithm, which leads to poor performances.
-
-Therefore, we abandoned this algorithm, and we tried some micro-optimizations to the algorithm we
-have used so far.
-\end{comment}
-
-% TODO: Remove
-\vspace{-20pt}
-%%%%
+Therefore, we abandoned this algorithm, and we tried to implement some micro-optimizations so to
+improve the performance the algorithm we have used so far.
 
 \hypertarget{micro-optimization-partial-sum}{%
 \subsection{Partial sums micro-optimization}\label{micro-optimization-partial-sum}}
 
-To compute the distance between two data samples, the previous implementations using SSE and AVX instructions first load from memory 2 and 4 attributes respectively. Then, they compute the square of the pairwise attributes difference, and they accumulate the result on a stack-allocated variable, which requires to horizontally sum all the values in the extended register.
+To compute the distance between two data samples, the previous implementations using SSE and AVX
+instructions first load from memory 2 and 4 attributes respectively. Then, they compute the
+square of the pairwise attributes difference, and they accumulate the result on a stack-allocated
+variable, which requires to horizontally sum all the values in the extended register.
 All these four operations are repeated until no more attributes are left.
 
 The first micro-optimization we have implemented accumulates the partial sums in an
 extended register instead of in a
-stack-allocated variable, in order to perform the horizontal sum only once at the end of the computation, and to avoid writing to memory each partial result.
+stack-allocated variable, in order to perform the horizontal sum only once at the end of the
+computation, and to avoid writing to memory each partial result.
 
-The new implementation combines this micro-optimization with all the parallelization strategies we have implemented so far.
-This implies that the data is still supplied as a unique heap-allocated array.
+The new implementation combines this micro-optimization with all the parallelization strategies
+we have implemented so far. The data is still supplied as a unique heap-allocated array.
+
+Also in this case, for space reasons, we omitted the results of the implementation when using SSE.
 
 \begin{tableLayout}{Execution times of the first micro-optimized implementation using AVX (2 and
 16 threads tests omitted)}
@@ -661,14 +508,16 @@ G12 & 9\ms & \formatNumber{37.005}{s} & \formatNumber{17.897}{s} & \formatNumber
 
 The last micro-optimization we have implemented extends the previous one by using the
 square of the distances instead of the distances themselves. The computation of the square roots
-is performed only at end of the execution of the algorithm and only on the computed values of $\lambda$.
+is performed only at end of the execution of the algorithm and only on the computed values of
+$\lambda$.
 
-Indeed, ignoring possible rounding errors, this solution works because the following property holds for
+Indeed, ignoring possible rounding errors, this solution works because the following property
+holds for
 non-negative values (as the distances are):
+
 \[
 \sqrt{n^2} \geq \sqrt{m^2} \quad \iff \quad n^2 \geq m^2
 \]
-
 
 \begin{tableLayout2}{Execution times of the second micro-optimized implementation using SSE}
 A2 & 4\ms & \formatNumber{10.961}{s} & \formatNumber{37.824}{s} & \formatNumber{12.933}{s} &
@@ -692,7 +541,7 @@ G12 & 9\ms & \formatNumber{36.747}{s} & \formatNumber{17.697}{s} & \formatNumber
 G16 & 5\ms & \formatNumber{36.383}{s} & \formatNumber{20.554}{s} & \formatNumber{3.100}{s} &
 38$\,\mu$s & 1\m 01\s
 \end{tableLayout2}
-
+\vspace{-4pt}
 \begin{tableLayout2}{Execution times of the second micro-optimized implementation using AVX}
 A2 & 4\ms & \formatNumber{11.439}{s} & \formatNumber{37.881}{s} & \formatNumber{13.146}{s} &
 216$\,\mu$s & 1\m 02\s\\
@@ -723,7 +572,8 @@ In the previous tables, S5 reports the time taken to compute the square roots on
 \subsection{A new data structure for the sequential implementation}
 \label{sequential-linearized}}
 
-To compute the speed-ups of all the previous parallel implementations, we need to also execute the sequential implementation with data supplied as a unique heap-allocated array.
+To compute the speed-ups of all the previous parallel implementations, we need to also execute
+the sequential implementation with data supplied as a unique heap-allocated array.
 
 
 %\loremTableSequential
@@ -735,7 +585,8 @@ A & 4\ms & \formatNumber{27.978}{s} & \formatNumber{28.764}{s} & \formatNumber{2
 G & 16\ms & 2\m 24\s & \formatNumber{16.307}{s} & \formatNumber{13.705}{s} & 2\m 54\s
 \end{tableLayout}
 
-As we can see, this memory layout drastically improves the performance of the sequential implementation, even without using any parallelization technique.
+As we can see, this memory layout drastically improves the performance of the sequential
+implementation, even without using any parallelization technique.
 
 Indeed, storing all the data samples contiguously in memory greatly improves the use of the cache,
 as we observed using the \textit{perf} tool.
@@ -745,11 +596,12 @@ as we observed using the \textit{perf} tool.
 \label{data-layout-comparison}}
 
 Finally, we report the results of the tests we have performed on the last parallel implementation
-of the clustering algorithm, but supplying the data as a \texttt{std::vector<double *>} (i.e., a vector of heap allocated arrays each holding the attributes of one data sample) like in the first parallel implementation.
+of the clustering algorithm, but supplying the data as a \texttt{std::vector<double *>} (i.e., a
+vector of heap allocated arrays each holding the attributes of one data sample) like in the first
+parallel implementation.
 
 % TODO: S5 reports
-The tables 12 and 13 report the results, where S5 reports the time taken to compute the square
-roots only.
+In the following tables, S5 reports the time taken to compute the square roots only.
 %%%%
 
 %\loremTable
@@ -806,21 +658,28 @@ G16 & 14\ms & 1\m 29\s & \formatNumber{21.576}{s} & \formatNumber{3.801}{s} & 42
 
 %2.1 - 2.11
 
-When storing the data samples in a \texttt{std::vector<double*>}, we reached a speed-up of 2.43 for the
+When storing the data samples in a \texttt{std::vector<double*>}, we reached a speed-up of 2.43
+for the
 \textit{Accelerometer} dataset and 5.46 for the \textit{Generated} one, both executing
 the AVX parallel implementation described in \ref{data-layout-comparison} with 8 threads.
 
 Instead, when storing the data samples in a unique array, we obtained a speed-up of 1.48 for the
 \textit{Accelerometer} dataset exeuting the AVX parallel implementation described in
 \ref{micro-optimization-no-square-root} with 8 threads, while we obtained a speed-up of 3.08 for
-the \textit{Generated} dataset executing the SSE parallel implementation described in \ref{micro-optimization-no-square-root} with 8 threads.
+the \textit{Generated} dataset executing the SSE parallel implementation described in
+\ref{micro-optimization-no-square-root} with 8 threads.
 
-The key takeaway is that the parallel techniques we have applied achieve better speed-ups when the data samples are composed of many attributes, like for the \textit{Generated} dataset.%
+The key takeaway is that the parallel techniques we have applied achieve better speed-ups when
+the data samples are composed of many attributes, like for the \textit{Generated} dataset.
+
 % TODO:
-Moreover, we get the highest speed-ups when using 8 threads, which is the maximum parallel degree we can achieve on the CPU we have used.
+Moreover, we get the highest speed-ups when using 8 threads, since we are exploiting all the
+available CPUs.
+%which is the maximum parallel degree we can achieve on the CPU we have used.
 %%%%
 
-In conclusion, among all the scheduling policies offered by the \textit{OpenMP} library, we have found that the \texttt{static} one is the most effective to parallelize the \texttt{for} loops.
+In conclusion, among all the scheduling policies offered by the \textit{OpenMP} library, we have
+found that the \texttt{static} one is the most effective to parallelize the \texttt{for} loops.
 \vspace{-6pt}
 
 % Maybe: Are the various implementations effective in improving the performance
@@ -830,11 +689,10 @@ In conclusion, among all the scheduling policies offered by the \textit{OpenMP} 
 \newlength{\axesLineWidth}
 \newlength{\gridLineWidth}
 \newlength{\graphLineWidth}
-\setlength{\graphShift}{30mm}
+\setlength{\graphShift}{0mm}
 \setlength{\axesLineWidth}{2pt}
 \setlength{\gridLineWidth}{1pt}
 \setlength{\graphLineWidth}{2pt}
-
 
 \definecolor{gridColor}{HTML}{CCCCCC}
 \definecolor{labelColor}{HTML}{000000}
@@ -860,314 +718,50 @@ In conclusion, among all the scheduling policies offered by the \textit{OpenMP} 
 
 
 \begin{figure}[H]
+\begin{minipage}{\linewidth}
 \centering
-\begin{subfigure}{.47\linewidth}%
-\begin{tikzpicture}[scale=0.47]
-%\draw (0mm, 0mm) rectangle (100mm, 130mm);
-% Horizontal grid
-% Total 72 for 1.5 --> 48 for 1 ---> 24 for 0.5
-%\draw[gridColor,line width=\gridLineWidth] (10mm, 96mm) -- (95mm, 96mm);
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 87mm) -- (10mm, 87mm)
-node[labelColor, anchor=east] {2.5};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 63mm) -- (10mm, 63mm)
-node[labelColor, anchor=east] {2};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 39mm) -- (10mm, 39mm)
-node[labelColor, anchor=east] {1.5};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 15mm) -- (10mm, 15mm)
-node[labelColor, anchor=east] {1};
-% Vertical grid
-% (85-68)/2 = 8.5 mm of margin left and right
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (18.5mm, 95mm) -- (18.5mm, 10mm)
-node[labelColor,
-anchor=north] {2};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (35.5mm, 95mm) -- (35.5mm, 10mm)
-node[labelColor,
-anchor=north] {4};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (52.5mm, 95mm) -- (52.5mm, 10mm)
-node[labelColor,
-anchor=north] {8};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (69.5mm, 95mm) -- (69.5mm, 10mm)
-node[labelColor,
-anchor=north] {12};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (86.5mm, 95mm) -- (86.5mm, 10mm)
-node[labelColor,
-anchor=north] {16};
-% Lines
-\draw[parallel1Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 34.02mm) --
-(35.5mm, 46.82mm) --
-(52.5mm, 55.80mm) --
-(69.5mm, 50.58mm) --
-(86.5mm, 37.34mm);
-
-\draw[parallel2Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 38.04mm) --
-(35.5mm, 43.39mm) --
-(52.5mm, 49.60mm) --
-(69.5mm, 46.82mm) --
-(86.5mm, 36.65mm);
-
-\draw[parallel3Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 37.34mm) --
-(35.5mm, 49.60mm) --
-(52.5mm, 56.92mm) --
-(69.5mm, 52.59mm) --
-(86.5mm, 38.76mm);
-
-\draw[parallel4Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 14.38mm) --
-(35.5mm, 19.80mm) --
-(52.5mm, 22.16mm) --
-(69.5mm, 19.80mm) --
-(86.5mm, 13.78mm);
-
-\draw[parallel5Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 11.53mm) --
-(35.5mm, 14.38mm) --
-(52.5mm, 16.95mm) --
-(69.5mm, 16.28mm) --
-(86.5mm, 13.20mm);
-
-\draw[parallel6Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 16.95mm) --
-(35.5mm, 26.61mm) --
-(52.5mm, 35.44mm) --
-(69.5mm, 33mm) --
-(86.5mm, 26.61mm);
-
-\draw[parallel7Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 19.06mm) --
-(35.5mm, 27.59mm) --
-(52.5mm, 35.44mm) --
-(69.5mm, 31.84mm) --
-(86.5mm, 25.67mm);
-
-\draw[parallel8Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 26.61mm) --
-(35.5mm, 31.84mm) --
-(52.5mm, 38.08mm) --
-(69.5mm, 35.44mm) --
-(86.5mm, 29.64mm);
-
-\draw[parallel9Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 26.61mm) --
-(35.5mm, 30.72mm) --
-(52.5mm, 38.08mm) --
-(69.5mm, 35.44mm) --
-(86.5mm, 29.64mm);
-
-\draw[parallel10Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 37.34mm) --
-(35.5mm, 49.06mm) --
-(52.5mm, 58.08mm) --
-(69.5mm, 58.08mm) --
-(86.5mm, 51.57mm);
-
-\draw[parallel11Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 46.82mm) --
-(35.5mm, 67.06mm) --
-(52.5mm, 83.46mm) --
-(69.5mm, 76.29mm) --
-(86.5mm, 61.72mm);
-% Axes
-\draw[line width=\axesLineWidth, yshift=\graphShift] (95mm, 10mm) -- (10mm, 10mm) -- (10mm, 95mm);
-\fill[line width=\axesLineWidth, yshift=\graphShift] (7.5mm, 92mm) -- (10mm, 97mm) -- (12.5mm,
-92mm) --
-cycle;
-% Labels
-\draw[yshift=\graphShift] (6mm, 100mm) node[labelColor, anchor=north] {$S$};
-\draw[yshift=\graphShift] (96mm, 9mm) node[labelColor, anchor=north] {$p$};
-% Legend
-\fill[parallel1Color] (4mm, 28mm) rectangle (10mm, 22mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.2};
-\fill[parallel2Color] (28mm, 28mm) rectangle (34mm, 22mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.3\footnotesize S};
-\fill[parallel3Color] (52mm, 28mm) rectangle (58mm, 22mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.3\footnotesize A};
-\fill[parallel4Color] (76mm, 28mm) rectangle (82mm, 22mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.4\footnotesize S};
-
-\fill[parallel5Color] (4mm, 18mm) rectangle (10mm, 12mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.4\footnotesize A};
-\fill[parallel6Color] (28mm, 18mm) rectangle (34mm, 12mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.6};
-\fill[parallel7Color] (52mm, 18mm) rectangle (58mm, 12mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.8};
-\fill[parallel8Color] (76mm, 18mm) rectangle (82mm, 12mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.9\footnotesize S};
-
-\fill[parallel9Color] (4mm, 8mm) rectangle (10mm, 2mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.9\footnotesize A};
-\fill[parallel10Color] (28mm, 8mm) rectangle (34mm, 2mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.11\footnotesize S};
-\fill[parallel11Color] (54mm, 8mm) rectangle (60mm, 2mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.11\footnotesize A};
-\end{tikzpicture}%
+\begin{subfigure}[t]{.47\linewidth}%
+\input{images/graphs/graph-accelerometer-vector.tikz}%
 \setlength{\abovecaptionskip}{0pt}%
-\caption*{Speed-up of the parallel implementations on the \textit{Accelerometer} dataset}%
+\caption*{\textit{Accelerometer} dataset with data layout \texttt{std::vector<double *>}}%
 \end{subfigure}%
-%
-%
-%
-%
 %
 \hspace{5mm}%
 %
-%
-%
-%
-\begin{subfigure}{.47\linewidth}%
-\begin{tikzpicture}[scale=0.47]
-%\draw (0mm, 0mm) rectangle (100mm, 130mm);
-% Horizontal grid
-% Total 81 for 4.5 --> 18 for 1
-%\draw[gridColor,line width=\gridLineWidth] (10mm, 96mm) -- (95mm, 96mm);
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 87mm) -- (10mm, 87mm)
-node[labelColor,
-anchor=east] {5};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 69mm) -- (10mm, 69mm)
-node[labelColor,
-anchor=east] {4};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 51mm) -- (10mm, 51mm)
-node[labelColor,
-anchor=east] {3};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 33mm) -- (10mm, 33mm)
-node[labelColor,
-anchor=east] {2};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 15mm) -- (10mm, 15mm)
-node[labelColor,
-anchor=east] {1};
-% Vertical grid
-% (85-68)/2 = 8.5 mm of margin left and right
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (18.5mm, 95mm) -- (18.5mm, 10mm)
-node[labelColor,
-anchor=north] {2};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (35.5mm, 95mm) -- (35.5mm, 10mm)
-node[labelColor,
-anchor=north] {4};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (52.5mm, 95mm) -- (52.5mm, 10mm)
-node[labelColor,
-anchor=north] {8};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (69.5mm, 95mm) -- (69.5mm, 10mm)
-node[labelColor,
-anchor=north] {12};
-\draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (86.5mm, 95mm) -- (86.5mm, 10mm)
-node[labelColor,
-anchor=north] {16};
-% Lines
-\draw[parallel1Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 33.38mm) --
-(35.5mm, 56.10mm) --
-(52.5mm, 79.45mm) --
-(69.5mm, 72.18mm) --
-(86.5mm, 71.09mm);
-
-\draw[parallel2Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 31.08mm) --
-(35.5mm, 51.38mm) --
-(52.5mm, 72.73mm) --
-(69.5mm, 71.09mm) --
-(86.5mm, 71.63mm);
-
-\draw[parallel3Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 30.74mm) --
-(35.5mm, 51.67mm) --
-(52.5mm, 73.87mm) --
-(69.5mm, 69mm) --
-(86.5mm, 70.03mm);
-
-\draw[parallel4Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 28.32mm) --
-(35.5mm, 38.76mm) --
-(52.5mm, 43.75mm) --
-(69.5mm, 43.06mm) --
-(86.5mm, 42.39mm);
-
-\draw[parallel5Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 28.64mm) --
-(35.5mm, 37.68mm) --
-(52.5mm, 41.74mm) --
-(69.5mm, 41.11mm) --
-(86.5mm, 38.76mm);
-
-\draw[parallel6Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 29.29mm) --
-(35.5mm, 42.39mm) --
-(52.5mm, 51mm) --
-(69.5mm, 49.20mm) --
-(86.5mm, 46.71mm);
-
-\draw[parallel7Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 34.29mm) --
-(35.5mm, 45.18mm) --
-(52.5mm, 51.95mm) --
-(69.5mm, 51mm) --
-(86.5mm, 48.34mm);
-
-\draw[parallel8Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 31.80mm) --
-(35.5mm, 43.75mm) --
-(52.5mm, 52.93mm) --
-(69.5mm, 51.95mm) --
-(86.5mm, 48.34mm);
-
-\draw[parallel9Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 35.67mm) --
-(35.5mm, 45.18mm) --
-(52.5mm, 51.95mm) --
-(69.5mm, 51mm) --
-(86.5mm, 48.34mm);
-
-\draw[parallel10Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 48.12mm) --
-(35.5mm, 73.87mm) --
-(52.5mm, 91.67mm) --
-(69.5mm, 85.14mm) --
-(86.5mm, 84.38mm);
-
-\draw[parallel11Color, line width=\graphLineWidth, yshift=\graphShift]
-(18.5mm, 55.76mm) --
-(35.5mm, 82.92mm) --
-(52.5mm, 95.31mm) --
-(69.5mm, 86.68mm) --
-(86.5mm, 85.9mm);
-% Axes
-\draw[line width=\axesLineWidth, yshift=\graphShift] (95mm, 10mm) -- (10mm, 10mm) -- (10mm, 95mm);
-\fill[line width=\axesLineWidth, yshift=\graphShift] (7.5mm, 92mm) -- (10mm, 97mm) -- (12.5mm,
-92mm) --
-cycle;
-% Labels
-\draw[yshift=\graphShift] (6mm, 100mm) node[labelColor, anchor=north] {$S$};
-\draw[yshift=\graphShift] (96mm, 9mm) node[labelColor, anchor=north] {$p$};
-% Legend
-\fill[parallel1Color] (4mm, 28mm) rectangle (10mm, 22mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.2};
-\fill[parallel2Color] (28mm, 28mm) rectangle (34mm, 22mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.3\footnotesize S};
-\fill[parallel3Color] (52mm, 28mm) rectangle (58mm, 22mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.3\footnotesize A};
-\fill[parallel4Color] (76mm, 28mm) rectangle (82mm, 22mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.4\footnotesize S};
-
-\fill[parallel5Color] (4mm, 18mm) rectangle (10mm, 12mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.4\footnotesize A};
-\fill[parallel6Color] (28mm, 18mm) rectangle (34mm, 12mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.6};
-\fill[parallel7Color] (52mm, 18mm) rectangle (58mm, 12mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.8};
-\fill[parallel8Color] (76mm, 18mm) rectangle (82mm, 12mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.9\footnotesize S};
-
-\fill[parallel9Color] (4mm, 8mm) rectangle (10mm, 2mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.9\footnotesize A};
-\fill[parallel10Color] (28mm, 8mm) rectangle (34mm, 2mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.11\footnotesize S};
-\fill[parallel11Color] (54mm, 8mm) rectangle (60mm, 2mm) node[labelColor, anchor=mid west,
-yshift=0.25\baselineskip, xshift=-2pt] {2.11\footnotesize A};
-\end{tikzpicture}%
-\setlength{\abovecaptionskip}{1pt}%
-\caption*{Speed-up of the parallel implementations on the \textit{Generated} dataset}%
+\begin{subfigure}[t]{.47\linewidth}%
+\input{images/graphs/graph-generated-vector.tikz}%
+\setlength{\abovecaptionskip}{0pt}%
+\caption*{\textit{Generated} dataset with data layout \texttt{std::vector<double *>}}%
 \end{subfigure}%
+\end{minipage}
+%
+%
+\begin{minipage}{\linewidth}
+\centering
+\begin{subfigure}[t]{.47\linewidth}%
+\input{images/graphs/graph-accelerometer-array.tikz}%
+\setlength{\abovecaptionskip}{0pt}%
+\caption*{\textit{Accelerometer} dataset with unique array data layout}%
+\end{subfigure}%
+%
+\hspace{5mm}%
+%
+\begin{subfigure}[t]{.47\linewidth}%
+\input{images/graphs/graph-generated-array.tikz}%
+\setlength{\abovecaptionskip}{0pt}%
+\caption*{\textit{Generated} dataset with unique array data layout}%
+\end{subfigure}%
+\end{minipage}
+%
+%
+% Legend
+\begin{subfigure}{.47\linewidth}%
+\hspace*{6pt}
+\input{images/graphs/legend.tikz}%
+\setlength{\abovecaptionskip}{0pt}%
+\end{subfigure}%
+\setlength{\abovecaptionskip}{4pt}%
+\caption*{Speed-ups varying dataset and data samples layout}
 \end{figure}
 
 \vspace{-14pt}
@@ -1183,12 +777,12 @@ yshift=0.25\baselineskip, xshift=-2pt] {2.11\footnotesize A};
 %TODO: Cache sizes?
 %   TODO: Structure used in the tests to hold pi and lambda --> std::vector
 
-We organized the implementations of the clustering algorithm into two different classes, namely the
-\texttt{SequentialClustering} class, defined in the \texttt{SequentialClustering.h} header file, and the \texttt{ParallelClustering} class, defined in the\\\texttt{ParallelClustering.h} header file, which
-implement the sequential and parallel implementations of the clustering algorithm respectively.
+We organized all the sequential and parallel implementations of the clustering algorithm into two
+different classes, namely the \texttt{SequentialClustering} and \texttt{ParallelClustering} classes.
 
 % TODO
-All these implementations are able to process data samples with any number of attributes, provided that all the samples have the same number of attributes.
+All these implementations are able to process data samples with any number of attributes,
+provided that all the samples have the same number of attributes.
 %%%%
 
 The \texttt{main-sample.cpp} file in the \texttt{test/src} directory contains an example
@@ -1197,12 +791,14 @@ illustrating how to use the library.
 \hypertarget{parallel-clustering}{%
 \subsection{\texttt{ParallelClustering} class}
 \label{parallel-clustering}}
-This class offers several utility methods and constants allowing the programmer to easily deal
-with aligned memory. In particular, the \texttt{computeSseDimension} and
-\texttt{computeAvxDimension} static methods allow to compute the number of \texttt{double}
-elements each data sample must be composed of, taking into account also possible paddings.
+This class, defined in \texttt{ParallelClustering.h} header file, offers several utility methods and
+constants allowing the programmer to easily deal with aligned memory. In particular, the
+\texttt{computeSseDimension} and \texttt{computeAvxDimension} static methods allow to compute the
+number of \texttt{double} elements each data sample must be composed of, taking into account also
+possible paddings.
 
-However, the \texttt{cluster} static method is the most important one offered by this class. It clusters
+However, the \texttt{cluster} static method is the most important one offered by this class. It
+clusters
 the given data samples using the specified distance computation algorithm (see
 \ref{distance-computation-algorithms} for the list of available algorithms), which
 is specified as a template argument so to compile only the code needed to execute the requested
@@ -1296,8 +892,9 @@ All these constants are defined in the \texttt{DistanceComputers} enumeration, d
 \subsection{\texttt{SequentialClustering} class}
 \label{sequential-clustering}}
 
-This class provide only one method, the \texttt{cluster} static method, which executes the
-sequential implementation of the clustering algorithm on the specified data samples.
+This class, defined in the \texttt{SequentialClustering.h} header file, provides only one method,
+the \texttt{cluster} static method, which executes the sequential implementation of the
+clustering algorithm on the specified data samples.
 
 \hypertarget{seq-data-samples-layout}{
 \subsubsection{Data samples memory layout}

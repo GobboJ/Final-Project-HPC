@@ -1,0 +1,36 @@
+\newlength{\marginLeft}%
+\setlength{\marginLeft}{20pt}%
+\begin{tikzpicture}
+    % Legend
+    \fill[parallel1Color] (4mm, 28mm) rectangle (7mm, 25mm) node[labelColor,
+    anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.2};
+    \fill[parallel2Color] (15mm, 28mm) rectangle (18mm, 25mm)
+    node[labelColor, anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.3 \footnotesize
+    SSE};
+    \fill[parallel3Color] (33mm, 28mm) rectangle (36mm, 25mm)
+    node[labelColor, anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.3 \footnotesize
+    AVX};
+    \fill[parallel4Color] (51mm, 28mm) rectangle (54mm, 25mm)
+    node[labelColor, anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.4 \footnotesize
+    SSE};
+    \fill[parallel5Color] (69mm, 28mm) rectangle (72mm, 25mm)
+    node[labelColor, anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.4 \footnotesize
+    AVX};
+    \fill[parallel6Color] (87mm, 28mm) rectangle (90mm, 25mm)
+    node[labelColor, anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.6};
+    %
+    \fill[parallel7Color] (4mm, 22mm) rectangle (7mm, 19mm) node[labelColor,
+    anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.8};
+    \fill[parallel8Color] (15mm, 22mm) rectangle (18mm, 19mm)
+    node[labelColor, anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.9 \footnotesize
+    SSE};
+    \fill[parallel9Color] (33mm, 22mm) rectangle (36mm, 19mm)
+    node[labelColor, anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.9 \footnotesize
+    AVX};
+    \fill[parallel10Color] (51mm, 22mm) rectangle (54mm, 19mm)
+    node[labelColor, anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.11 \footnotesize
+    SSE};
+    \fill[parallel11Color] (69mm, 22mm) rectangle (72mm, 19mm)
+    node[labelColor, anchor=mid west, yshift=0.25\baselineskip, xshift=-2pt] {2.11 \footnotesize
+    AVX};
+\end{tikzpicture}

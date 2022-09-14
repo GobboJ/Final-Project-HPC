@@ -1,0 +1,79 @@
+\begin{tikzpicture}[scale=0.47]
+    %\draw (0mm, 0mm) rectangle (100mm, 130mm);
+    % Horizontal grid
+    % Total 72 for 1.5 --> 48 for 1 ---> 24 for 0.5
+    %\draw[gridColor,line width=\gridLineWidth] (10mm, 96mm) -- (95mm, 96mm);
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 88.2mm) -- (10mm, 88.2mm)
+    node[labelColor, anchor=east] {2.4};
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 74.6mm) -- (10mm, 74.6mm)
+    node[labelColor, anchor=east] {2.2};
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 61mm) -- (10mm, 61mm)
+    node[labelColor, anchor=east] {2};
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 47.4mm) -- (10mm, 47.4mm)
+    node[labelColor, anchor=east] {1.8};
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 33.8mm) -- (10mm, 33.8mm)
+    node[labelColor, anchor=east] {1.6};
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (95mm, 20.2mm) -- (10mm, 20.2mm)
+    node[labelColor, anchor=east] {1.4};
+    % Vertical grid
+    % (85-68)/2 = 8.5 mm of margin left and right
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (18.5mm, 95mm) -- (18.5mm, 10mm)
+    node[labelColor,
+    anchor=north] {2};
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (35.5mm, 95mm) -- (35.5mm, 10mm)
+    node[labelColor,
+    anchor=north] {4};
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (52.5mm, 95mm) -- (52.5mm, 10mm)
+    node[labelColor,
+    anchor=north] {8};
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (69.5mm, 95mm) -- (69.5mm, 10mm)
+    node[labelColor,
+    anchor=north] {12};
+    \draw[gridColor,line width=\gridLineWidth, yshift=\graphShift] (86.5mm, 95mm) -- (86.5mm, 10mm)
+    node[labelColor,
+    anchor=north] {16};
+    % Lines
+    \draw[parallel1Color, line width=\graphLineWidth, yshift=\graphShift]
+    (18.5mm, 19.94mm) --
+    (35.5mm, 38.08mm) --
+    (52.5mm, 50.80mm) --
+    (69.5mm, 43.40mm) --
+    (86.5mm, 24.64mm);
+    
+    \draw[parallel2Color, line width=\graphLineWidth, yshift=\graphShift]
+    (18.5mm, 25.64mm) --
+    (35.5mm, 33.22mm) --
+    (52.5mm, 42.02mm) --
+    (69.5mm, 38.08mm) --
+    (86.5mm, 23.67mm);
+    
+    \draw[parallel3Color, line width=\graphLineWidth, yshift=\graphShift]
+    (18.5mm, 24.64mm) --
+    (35.5mm, 42.02mm) --
+    (52.5mm, 52.39mm) --
+    (69.5mm, 46.25mm) --
+    (86.5mm, 26.66mm);
+    
+    \draw[parallel10Color, line width=\graphLineWidth, yshift=\graphShift]
+    (18.5mm, 24.64mm) --
+    (35.5mm, 42.02mm) --
+    (52.5mm, 54.03mm) --
+    (69.5mm, 54.03mm) --
+    (86.5mm, 44.81mm);
+    
+    \draw[parallel11Color, line width=\graphLineWidth, yshift=\graphShift]
+    (18.5mm, 38.08mm) --
+    (35.5mm, 66.75mm) --
+    (52.5mm, 89.98mm) --
+    (69.5mm, 79.83mm) --
+    (86.5mm, 59.19mm);
+    % Axes
+    \draw[line width=\axesLineWidth, yshift=\graphShift] (95mm, 10mm) -- (10mm, 10mm) -- (10mm,
+    95mm);
+    \fill[line width=\axesLineWidth, yshift=\graphShift] (7.5mm, 92mm) -- (10mm, 97mm) -- (12.5mm,
+    92mm) --
+    cycle;
+    % Labels
+    \draw[yshift=\graphShift] (4mm, 100mm) node[labelColor, anchor=north] {$S$};
+    \draw[yshift=\graphShift] (96mm, 9mm) node[labelColor, anchor=north] {$p$};
+\end{tikzpicture}
