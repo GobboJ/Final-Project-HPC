@@ -172,7 +172,7 @@ parsep=0.25mm}
 The purpose of this project is to implement the SLINK clustering algorithm and to apply
 parallelization techniques to improve its performance.
 
-All the implementations of the clustering algorithms are written in \texttt{C++20} and they are
+All the implementations of the clustering algorithms are written in \texttt{C++ 20} and they are
 compiled with the GCC G++ 12.1.1 (Red Hat) compiler, using the \texttt{-O3} and
 \texttt{-march=native} flags.
 
@@ -390,17 +390,7 @@ it is almost trivial if we use the \emph{OpenMP} library.
 
 Like the last implementation, data is supplied as a unique heap-allocated array.
 
-% TODO:
 For space reasons, we omitted the results of the implementation when using SSE.
-%, since its execution times are slightly different than the ones of AVX.
-
-
-%For space reasons, we omitted the results of the implementation when using SSE instructions, since
-%it takes slightly more time to be executed with respect to the AVX version.
-%%%%%%%%%%%
-
-
-
 
 \begin{tableLayout}{Execution times of the implementation executing in parallel the computation
 of the distances (using threads and AVX instructions) as well as the rearrangement of the
@@ -600,11 +590,7 @@ of the clustering algorithm, but supplying the data as a \texttt{std::vector<dou
 vector of heap allocated arrays each holding the attributes of one data sample) like in the first
 parallel implementation.
 
-% TODO: S5 reports
 In the following tables, S5 reports the time taken to compute the square roots only.
-%%%%
-
-%\loremTable
 
 \begin{tableLayout2}{Execution times of the second micro-optimized implementation using SSE and
 \texttt{std::vector<double*>}}
@@ -673,14 +659,17 @@ The key takeaway is that the parallel techniques we have applied achieve better 
 the data samples are composed of many attributes, like for the \textit{Generated} dataset.
 
 % TODO:
-Moreover, we get the highest speed-ups when using 8 threads, since we are exploiting all the
-available CPUs.
-%which is the maximum parallel degree we can achieve on the CPU we have used.
+%The key takeaway is that the parallel techniques we have applied achieve better speed-ups when
+%the data samples have many attributes, since we parallelize the
+%most expensive step of the algorithm, which is the computation of the distances.
 %%%%
+
+Moreover, we get the highest speed-ups when using 8 threads, since we are exploiting exactly all the
+available CPUs.
 
 In conclusion, among all the scheduling policies offered by the \textit{OpenMP} library, we have
 found that the \texttt{static} one is the most effective to parallelize the \texttt{for} loops.
-\vspace{-6pt}
+\vspace{-10pt}
 
 % Maybe: Are the various implementations effective in improving the performance
 
@@ -769,21 +758,11 @@ found that the \texttt{static} one is the most effective to parallelize the \tex
 \section{How to use the library}
 \label{how-to-use-the-library}}
 
-%    TODO: Requires C++ 20
-%TODO: the data samples can have whatever dimension you want, provided that all the samples have
-%the same dimension.
-%    TODO: Missing specification of which compiler flags we have used (at least -O3 and
-%   -march=native)
-%TODO: Cache sizes?
-%   TODO: Structure used in the tests to hold pi and lambda --> std::vector
-
 We organized all the sequential and parallel implementations of the clustering algorithm into two
 different classes, namely the \texttt{SequentialClustering} and \texttt{ParallelClustering} classes.
 
-% TODO
 All these implementations are able to process data samples with any number of attributes,
-provided that all the samples have the same number of attributes.
-%%%%
+as long it is the same for all the samples.
 
 The \texttt{main-sample.cpp} file in the \texttt{test/src} directory contains an example
 illustrating how to use the library.
@@ -804,14 +783,13 @@ the given data samples using the specified distance computation algorithm (see
 is specified as a template argument so to compile only the code needed to execute the requested
 algorithm.
 The method allows also to specify the number of threads to use in each of the steps that can be
-parallelized, namely:
+executed in parallel, namely:
 \begin{enumerate}
 \item The computation of the distance between two data samples;
-% TODO:
-\item The operations needed to fix the structure of the dendrogram after a new point is
-added, i.e., fixing the representative of all the points whose representative joined a
-cluster containing the new data sample (the step \textit{4} of the algorithm);
-%%%%
+
+\item The operations needed to rearrange the structure of the dendrogram after a new point is
+added (i.e., the step \textit{4} of the pseudo-code);
+
 \item The computation of the square roots of the distances stored in $\lambda$.
 \end{enumerate}
 Note that the parallelization of such steps can be enabled or disabled at compile time by using the
@@ -824,18 +802,21 @@ template parameters of the \texttt{ParallelClustering} class.
 The \texttt{cluster} static method allows a certain flexibility in the memory layout of the data
 samples. In particular, the method accepts two main organizations:
 \begin{enumerate}
-\item A contiguous region of memory, where the data samples are stored one after the other.
-The method accepts either an iterator iterating over that region, or directly the data
+\item A contiguous region of memory, where the data samples, as well as the attributes of each sample,
+are stored one after the other.
+
+The method accepts either an iterator iterating over that region of memory, or directly the data
 structure holding it. In this case, the \texttt{cluster} method takes care of extracting the
 iterator by calling the \texttt{begin} method or, if present, the \texttt{cbegin} one;
 
 \item A data layout organized in two levels.
 
 The first level is merely a container that holds the data samples to cluster (or the iterators
-iterating over them). This container is required to be randomly accessible, but it is not
-required to be contiguous in memory.
+iterating over them).
 
-Each element of the second level is a data structure (or an iterator iterating over it) holding a
+This container is required to be randomly accessible, but it is not required to be contiguous in memory.
+
+Each element of the second level, instead, is a data structure (or an iterator iterating over it) holding a
 contiguous region of memory that stores the attributes of one data sample.
 
 For both levels, the \texttt{cluster} method accepts either the iterator over the data structure, or
@@ -849,33 +830,31 @@ over the data structure.
 \subsubsection{\texorpdfstring{\boldmath$\pi$ and \boldmath$\lambda$}{pi and lambda} memory layouts}
 \label{par-pi-lambda-layout}}
 
-The \texttt{cluster} static method allows also a certain flexibility in the memory layout of
-$\pi$ and $\lambda$.
+The \texttt{cluster} static method allows also a certain flexibility in the memory layout
+of $\pi$ and $\lambda$.
 
 In particular, each of them can be any randomly accessible data structure, or an iterator
 iterating over it.
-In the former case, the method takes care of calling \texttt{begin} method, or the
-\texttt{cbegin} one if present, to retrieve the random access iterator iterating over the
-specified data structure.
+In the former case, the method takes care of calling \texttt{begin} method to retrieve the
+random access iterator iterating over the specified data structure.
 
-The \texttt{cluster} method assumes the data structures holding $\pi$ and
-$\lambda$ to be as big as the number of data samples to cluster.
+Both the data structures holding the values of $\pi$ and $\lambda$ must be sized so to contain all the
+values computed by the \texttt{cluster} method.
 
 \hypertarget{distance-computation-algorithms}{
 \subsubsection{Distance computation algorithms}
 \label{distance-computation-algorithms}}
 
-The \texttt{cluster} stating method allows the programmer to use different algorithms to compute
+The \texttt{cluster} static method allows the programmer to use different algorithms to compute
 the distance between two data samples. In particular:
 \begin{itemize}
-\item \texttt{CLASSICAL}, which computes the Euclidean distances without using any SIMD
+\item \texttt{CLASSICAL} computes the Euclidean distances without using any SIMD
 instruction;
-\item \texttt{SSE} and \texttt{AVX}, which compute the distances using SSE and AVX
+\item \texttt{SSE} and \texttt{AVX} compute the distances using SSE and AVX
 instructions respectively;
-\item \texttt{SSE\textunderscore OPTIMIZED} and \texttt{AVX\textunderscore OPTIMIZED}, which
-compute the distances using
-SSE and AVX instructions respectively, and they keep the partial sums in the registers
-instead of storing them into a variable (see
+\item \texttt{SSE\textunderscore OPTIMIZED} and \texttt{AVX\textunderscore OPTIMIZED} compute the distances using
+SSE and AVX instructions respectively, and they keep the partial sums in the extended registers
+instead of storing them into a stack-allocated variable (see
 \ref{micro-optimization-partial-sum});
 \item \texttt{SSE\textunderscore
 OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT} and\\
@@ -904,8 +883,7 @@ The \texttt{cluster} static method supports the same data layouts as the \texttt
 of the parallel implementation (see \ref{par-data-samples-layout}).
 
 In addition, if the specified data structure (or iterator) is organized in two levels, then this
-method does require the first level to be randomly accessible, but it requires only the first
-level to be input iterable (or to be an input iterator).
+method does not require the first level to be randomly accessible, but to be at least input iterable (or an input iterator).
 
 \hypertarget{seq-pi-lambda-layout}{
 \subsubsection{\texorpdfstring{\boldmath$\pi$ and \boldmath$\lambda$}{pi and lambda} memory layouts}
@@ -919,20 +897,22 @@ of the parallel implementation (see \ref{par-pi-lambda-layout}).
 \subsection{\texttt{Timer} class}
 \label{timer}}
 
-If you define the \texttt{TIMERS} macro, both the sequential and parallel implementations of the
+If the \texttt{TIMERS} macro is defined, both the sequential and parallel implementations of the
 clustering algorithm will measure the time taken to execute each step of the algorithm using a
 timer.
 
 In particular, each step is measured by a different timer with a specific identifier, where
-\texttt{0} measures the time taken to execute all the service operations, \texttt{1} to
-\texttt{4} measure the time taken to execute the corresponding steps of the pseudo-code,
-and \texttt{5} measures the time taken to compute the square roots of the values in
-$\lambda$. This time is measured only for the parallel implementation if the distance
-computation algorithm is one of \texttt{SSE\textunderscore
-OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT} or\\
-\texttt{AVX\textunderscore OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT}.
+\texttt{0} measures the time taken to execute all the service operations, while \texttt{1} to
+\texttt{4} measure the time taken to execute the corresponding steps of the pseudo-code.
 
-The \texttt{Timer}, defined in the \texttt{Timer.h} header file, offers the \texttt{print} and
-\texttt{printTotal} static methods to print to the console the times measured by each timer.
+In addition, only for the parallel implementations run with the distance
+computation algorithms\\
+\texttt{SSE\textunderscore
+OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT} and\\
+\texttt{AVX\textunderscore OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT},
+the timer with identifier \texttt{5} measures the time taken to compute the square root of each value stored in $\lambda$.
+
+The \texttt{Timer} class, defined in the \texttt{Timer.h} header file, offers the \texttt{print} and
+\texttt{printTotal} static methods to print to the console the times measured by each of these timers.
 
 \end{document}
