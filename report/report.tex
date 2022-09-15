@@ -183,7 +183,7 @@ composed
 of 153'000 samples, each of which with 5 attributes. For the tests we have performed, we have
 selected only the last 3 of them;
 \item Generated (G), composed of 100'000 samples, each of which with 45 randomly generated real
-attributes uniformly distributed in the range 0-100.
+attributes uniformly distributed in the range from 0 to 99 included.
 \end{itemize}
 
 We will report the mean execution time of 3 executions of each implementation on the two datasets,
@@ -193,12 +193,12 @@ and running Fedora Workstation 36.
 In particular, we measured the time taken by each step of the pseudo-code (reported as S1, S2, S3
 and S4) to be executed.
 
-In all the tests we used two \texttt{std::vector} data structures to hold the values of $\pi$ and
-$\lambda$.
+In all the tests we used two \texttt{std::vector} data structures to hold the computed values of
+$\pi$ and $\lambda$.
 
 Note that the reported total times include also some extra time, which is spent by the various
-implementations to perform operations like allocating and de-allocating the memory, or copying
-the iterators.
+implementations to perform the service operations like allocating and de-allocating the memory, or
+copying the iterators.
 
 Moreover, for space reasons, in some tests we do not report the results obtained using 2 and 16
 threads.
@@ -313,8 +313,8 @@ stalled due to a high rate of cache misses (about 80\% of all the data memory ac
 \hypertarget{a-new-data-structure}{%
 \subsection{A new data structure}\label{a-new-data-structure}}
 
-Therefore, we decided to change the data structure holding the data samples to cluster in flavour
-to a more a contiguous one.
+Therefore, we decided to change the data structure holding the data samples to cluster in favour
+of a more a contiguous one.
 
 In particular, we chose to organize the data as a unique heap-allocated array, where the data
 samples, as well as the attributes of each of them, are stored one after the other.
@@ -358,9 +358,9 @@ G12 & 8\ms & \formatNumber{39.331}{s} & \formatNumber{15.580}{s} & \formatNumber
 As we can see from these results, making the data samples contiguous in memory improves
 significantly the performance of the algorithm.
 
-Indeed, when a thread loads one data sample, it is very likely that with the same memory
-transaction more data samples are brought to the cache, hence, when the thread accesses the
-following data samples, they are already in cache.
+Indeed, when a thread loads one data sample, it is very likely that, with the same memory
+transaction, more data samples are brought to the cache. Consequently, when the thread
+accesses the following data samples, they are already in the cache.
 
 \hypertarget{stage-3-parallel}{
 \subsection{Make the insertion of a new point parallel}
@@ -386,11 +386,11 @@ is the rearrangement of the structure of the
 dendrogram after a new point is added (i.e., the step \textit{4} of the pseudo-code).
 
 Since each iteration of the \texttt{for} loop is independent from the others, making it parallel
-it is almost trivial if we use the \emph{OpenMP} library.
+is almost trivial if we use the \emph{OpenMP} library.
 
-Like the last implementation, data is supplied as a unique heap-allocated array.
+Like the previous implementation, data is supplied as a unique heap-allocated array.
 
-For space reasons, we omitted the results of the implementation when using SSE.
+For space reasons, we omitted the results of the implementation when using SSE instructions.
 
 \begin{tableLayout}{Execution times of the implementation executing in parallel the computation
 of the distances (using threads and AVX instructions) as well as the rearrangement of the
@@ -424,14 +424,14 @@ Therefore, to improve further the performance of the algorithm, we tried devisin
 new algorithm builds incrementally the dendrogram like the pseudo-code does, but in a different way.
 
 In particular, when the algorithm adds to the dendrogram a new data sample $d$, it first computes
-the closest sample $c$, and their distance $l$. Then, it traverses the path on the dendrogram
-from the leaf representing $c$ to the root.
+the closest sample $c$, and their distance $l$. Then, the algorithm traverses the path on the
+dendrogram from the leaf representing $c$ to the root.
 
 Indeed, since $c$ is the closest sample to $d$, then $d$ must be linked to one of the clusters
 containing $c$, and such a cluster can be found only on that path. In particular, this cluster
-is represented by the last edge $\varepsilon$ in the path with height smaller than $l$. The
-algorithm just needs to add a new edge linking $\varepsilon$ to $d$, and then it links the
-new edge with the parent of $\varepsilon$.
+is represented by the last edge $\varepsilon$ in the path with height smaller than $l$. Therefore,
+the algorithm just needs to add a new edge linking $\varepsilon$ to $d$, and then to link the new
+edge to the parent of $\varepsilon$.
 
 Then, the algorithm continues traversing the path so to possibly update the height of the
 remaining edges, because adding $d$ to a cluster may have made it closer to the cluster it
@@ -474,7 +474,8 @@ computation, and to avoid writing to memory each partial result.
 The new implementation combines this micro-optimization with all the parallelization strategies
 we have implemented so far. The data is still supplied as a unique heap-allocated array.
 
-Also in this case, for space reasons, we omitted the results of the implementation when using SSE.
+Also in this case, for space reasons, we omitted the results of the implementation when using SSE
+instructions.
 
 \begin{tableLayout}{Execution times of the first micro-optimized implementation using AVX (2 and
 16 threads tests omitted)}
@@ -563,10 +564,8 @@ In the previous tables, S5 reports the time taken to compute the square roots on
 \label{sequential-linearized}}
 
 To compute the speed-ups of all the previous parallel implementations, we need to also execute
-the sequential implementation with data supplied as a unique heap-allocated array.
+the sequential implementation with the data supplied as a unique heap-allocated array.
 
-
-%\loremTableSequential
 \begin{tableLayout}{Execution times of the sequential implementation using a contiguous data
 structure to store the data samples}
 A & 4\ms & \formatNumber{27.978}{s} & \formatNumber{28.764}{s} & \formatNumber{20.663}{s} & 1\m
@@ -655,21 +654,21 @@ Instead, when storing the data samples in a unique array, we obtained a speed-up
 the \textit{Generated} dataset executing the SSE parallel implementation described in
 \ref{micro-optimization-no-square-root} with 8 threads.
 
-The key takeaway is that the parallel techniques we have applied achieve better speed-ups when
-the data samples are composed of many attributes, like for the \textit{Generated} dataset.
+%The key takeaway is that the parallel techniques we have applied achieve better speed-ups when
+%the data samples are composed of many attributes, like for the \textit{Generated} dataset.
 
-% TODO:
 %The key takeaway is that the parallel techniques we have applied achieve better speed-ups when
 %the data samples have many attributes, since we parallelize the
 %most expensive step of the algorithm, which is the computation of the distances.
-%%%%
-
+All the parallel techniques we have applied achieve better speed-ups when the data samples are
+composed of many attributes, since we exploit the parallelization of the computation of
+the distances, which is the most expensive step of the algorithm.
 Moreover, we get the highest speed-ups when using 8 threads, since we are exploiting exactly all the
 available CPUs.
 
 In conclusion, among all the scheduling policies offered by the \textit{OpenMP} library, we have
-found that the \texttt{static} one is the most effective to parallelize the \texttt{for} loops.
-\vspace{-10pt}
+found that the \texttt{static} one is the most effective in parallelizing the \texttt{for} loops.
+\vspace{-12pt}
 
 % Maybe: Are the various implementations effective in improving the performance
 
@@ -711,7 +710,7 @@ found that the \texttt{static} one is the most effective to parallelize the \tex
 \centering
 \begin{subfigure}[t]{.47\linewidth}%
 \input{images/graphs/graph-accelerometer-vector.tikz}%
-\setlength{\abovecaptionskip}{0pt}%
+\setlength{\abovecaptionskip}{-1pt}%
 \caption*{\textit{Accelerometer} dataset with data layout \texttt{std::vector<double *>}}%
 \end{subfigure}%
 %
@@ -719,17 +718,18 @@ found that the \texttt{static} one is the most effective to parallelize the \tex
 %
 \begin{subfigure}[t]{.47\linewidth}%
 \input{images/graphs/graph-generated-vector.tikz}%
-\setlength{\abovecaptionskip}{0pt}%
+\setlength{\abovecaptionskip}{-1pt}%
 \caption*{\textit{Generated} dataset with data layout \texttt{std::vector<double *>}}%
 \end{subfigure}%
 \end{minipage}
 %
+\vspace{-2pt}%
 %
 \begin{minipage}{\linewidth}
 \centering
 \begin{subfigure}[t]{.47\linewidth}%
 \input{images/graphs/graph-accelerometer-array.tikz}%
-\setlength{\abovecaptionskip}{0pt}%
+\setlength{\abovecaptionskip}{-1pt}%
 \caption*{\textit{Accelerometer} dataset with unique array data layout}%
 \end{subfigure}%
 %
@@ -737,7 +737,7 @@ found that the \texttt{static} one is the most effective to parallelize the \tex
 %
 \begin{subfigure}[t]{.47\linewidth}%
 \input{images/graphs/graph-generated-array.tikz}%
-\setlength{\abovecaptionskip}{0pt}%
+\setlength{\abovecaptionskip}{-1pt}%
 \caption*{\textit{Generated} dataset with unique array data layout}%
 \end{subfigure}%
 \end{minipage}
@@ -749,11 +749,11 @@ found that the \texttt{static} one is the most effective to parallelize the \tex
 \input{images/graphs/legend.tikz}%
 \setlength{\abovecaptionskip}{0pt}%
 \end{subfigure}%
-\setlength{\abovecaptionskip}{4pt}%
+\setlength{\abovecaptionskip}{2pt}%
 \caption*{Speed-ups varying dataset and data samples layout}
 \end{figure}
 
-\vspace{-14pt}
+\vspace{-18pt}
 \hypertarget{how-to-use-the-library}{
 \section{How to use the library}
 \label{how-to-use-the-library}}
@@ -802,7 +802,8 @@ template parameters of the \texttt{ParallelClustering} class.
 The \texttt{cluster} static method allows a certain flexibility in the memory layout of the data
 samples. In particular, the method accepts two main organizations:
 \begin{enumerate}
-\item A contiguous region of memory, where the data samples, as well as the attributes of each sample,
+\item A contiguous region of memory, where the data samples, as well as the attributes of each
+sample,
 are stored one after the other.
 
 The method accepts either an iterator iterating over that region of memory, or directly the data
@@ -814,9 +815,11 @@ iterator by calling the \texttt{begin} method or, if present, the \texttt{cbegin
 The first level is merely a container that holds the data samples to cluster (or the iterators
 iterating over them).
 
-This container is required to be randomly accessible, but it is not required to be contiguous in memory.
+This container is required to be randomly accessible, but it is not required to be contiguous in
+memory.
 
-Each element of the second level, instead, is a data structure (or an iterator iterating over it) holding a
+Each element of the second level, instead, is a data structure (or an iterator iterating over it)
+holding a
 contiguous region of memory that stores the attributes of one data sample.
 
 For both levels, the \texttt{cluster} method accepts either the iterator over the data structure, or
@@ -838,8 +841,8 @@ iterating over it.
 In the former case, the method takes care of calling \texttt{begin} method to retrieve the
 random access iterator iterating over the specified data structure.
 
-Both the data structures holding the values of $\pi$ and $\lambda$ must be sized so to contain all the
-values computed by the \texttt{cluster} method.
+Both the data structures holding the values of $\pi$ and $\lambda$ must be properly sized so that
+all the values computed by the \texttt{cluster} method can fit into them.
 
 \hypertarget{distance-computation-algorithms}{
 \subsubsection{Distance computation algorithms}
@@ -852,8 +855,9 @@ the distance between two data samples. In particular:
 instruction;
 \item \texttt{SSE} and \texttt{AVX} compute the distances using SSE and AVX
 instructions respectively;
-\item \texttt{SSE\textunderscore OPTIMIZED} and \texttt{AVX\textunderscore OPTIMIZED} compute the distances using
-SSE and AVX instructions respectively, and they keep the partial sums in the extended registers
+\item \texttt{SSE\textunderscore OPTIMIZED} and \texttt{AVX\textunderscore OPTIMIZED} compute the
+distances using
+SSE and AVX instructions respectively, and they keep the partial sums in an extended register
 instead of storing them into a stack-allocated variable (see
 \ref{micro-optimization-partial-sum});
 \item \texttt{SSE\textunderscore
@@ -880,10 +884,11 @@ clustering algorithm on the specified data samples.
 \label{seq-data-samples-layout}}
 
 The \texttt{cluster} static method supports the same data layouts as the \texttt{cluster} method
-of the parallel implementation (see \ref{par-data-samples-layout}).
+of the parallel implementations (see \ref{par-data-samples-layout}).
 
 In addition, if the specified data structure (or iterator) is organized in two levels, then this
-method does not require the first level to be randomly accessible, but to be at least input iterable (or an input iterator).
+method does not require the first level to be randomly accessible, but only to be at least input
+iterable (or an input iterator).
 
 \hypertarget{seq-pi-lambda-layout}{
 \subsubsection{\texorpdfstring{\boldmath$\pi$ and \boldmath$\lambda$}{pi and lambda} memory layouts}
@@ -891,15 +896,15 @@ method does not require the first level to be randomly accessible, but to be at 
 
 The \texttt{cluster} static method supports exactly the same data layouts for both $\pi$
 and $\lambda$ as the \texttt{cluster} method
-of the parallel implementation (see \ref{par-pi-lambda-layout}).
+of the parallel implementations (see \ref{par-pi-lambda-layout}).
 
 \hypertarget{timers}{
 \subsection{\texttt{Timer} class}
 \label{timer}}
 
 If the \texttt{TIMERS} macro is defined, both the sequential and parallel implementations of the
-clustering algorithm will measure the time taken to execute each step of the algorithm using a
-timer.
+clustering algorithm will measure, using a timer, the time taken to execute each step of the
+algorithm.
 
 In particular, each step is measured by a different timer with a specific identifier, where
 \texttt{0} measures the time taken to execute all the service operations, while \texttt{1} to
@@ -910,9 +915,11 @@ computation algorithms\\
 \texttt{SSE\textunderscore
 OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT} and\\
 \texttt{AVX\textunderscore OPTIMIZED\textunderscore NO\textunderscore SQUARE\textunderscore ROOT},
-the timer with identifier \texttt{5} measures the time taken to compute the square root of each value stored in $\lambda$.
+the timer with identifier \texttt{5} measures the time taken to compute the square root of each
+value stored in $\lambda$.
 
 The \texttt{Timer} class, defined in the \texttt{Timer.h} header file, offers the \texttt{print} and
-\texttt{printTotal} static methods to print to the console the times measured by each of these timers.
+\texttt{printTotal} static methods to print to the console the times measured by each of these
+timers.
 
 \end{document}
